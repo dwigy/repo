@@ -14,6 +14,17 @@ let loaded = false;
 const RETRY_MS = 24 * 3600 * 1000;
 
 export function onArtChange(fn) { listeners.add(fn); }
+
+// Only use an image once the browser has actually loaded it, so an offline
+// launch or a dead link never paints a broken-image placeholder over a chip.
+function verify(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
+}
 function notify() { listeners.forEach(fn => fn()); }
 
 export function getArt(char) { return art[char] || null; }
@@ -22,12 +33,12 @@ export function artEnabled() { return state.settings.realArt !== false; }
 export async function loadArtwork() {
   if (loaded) return;
   loaded = true;
-  for (const char of Object.keys(CHARACTERS)) {
+  await Promise.all(Object.keys(CHARACTERS).map(async (char) => {
     const custom = await idbGet('art:custom:' + char);
-    if (custom) { art[char] = { src: custom, custom: true }; continue; }
+    if (custom) { art[char] = { src: custom, custom: true }; return; }
     const wiki = await idbGet('art:wiki:' + char);
-    if (wiki && wiki.src) art[char] = wiki;
-  }
+    if (wiki && wiki.src && await verify(wiki.src)) art[char] = wiki;
+  }));
   notify();
   if (artEnabled()) refreshWiki();
 }
@@ -48,7 +59,8 @@ export async function refreshWiki(force = false) {
       const file = page?.pageimage || '';
       if (src.startsWith('https://upload.wikimedia.org/wikipedia/commons/')) {
         const entry = { src, file, page: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file)}`, checked: Date.now() };
-        art[char] = entry; await idbSet('art:wiki:' + char, entry); notify();
+        await idbSet('art:wiki:' + char, entry);
+        if (await verify(src)) { art[char] = entry; notify(); }
       } else {
         await idbSet('art:wiki:' + char, { checked: Date.now(), reason: src ? 'not on Commons (probably fair use)' : 'no page image' });
       }
