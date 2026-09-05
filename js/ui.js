@@ -6,6 +6,7 @@ import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG } from './a
 import { state, commit, exportCode, parseSaveCode, replaceState, resetState, todayKey } from './store.js';
 import * as G from './game.js';
 import * as B from './gtoons.js';
+import { getArt, artEnabled, setCustomArt, clearCustomArt, refreshWiki, forgetWiki } from './artwork.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -246,9 +247,23 @@ function detailModal(id) {
       <div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
       <div class="small">Owned ${n} · In deck ${inDeck} · In cZone ${inZone}</div>
       <div class="row wrap">${actions.join('')}</div>
+      ${artSection(t)}
       <button class="obtn grey block" data-action="closeModal">CLOSE</button>
     </div>`);
 }
+function artSection(t) {
+  if (!t.char || t.series === 'pz') return '';
+  const a = getArt(t.char);
+  let line;
+  if (a?.custom) line = 'Artwork: your own image (stored on this device).';
+  else if (a?.src && artEnabled()) line = `Artwork: Wikimedia Commons file <a href="${esc(a.page || a.src)}" target="_blank" rel="noopener">${esc(a.file || 'image')}</a>.`;
+  else if (!artEnabled()) line = 'Artwork: drawn portrait (real artwork is switched off in Settings).';
+  else line = 'Artwork: drawn portrait. Real artwork appears when a free-licensed image is found on Wikimedia Commons (needs internet once).';
+  return `<div class="artbox"><div class="small">${line}</div>
+    <div class="row wrap"><label class="obtn small">USE MY OWN IMAGE<input type="file" accept="image/*" hidden data-char="${t.char}" class="artfile"></label>
+    ${a?.custom ? `<button class="obtn small grey" data-action="clearArt" data-id="${t.char}">REMOVE MY IMAGE</button>` : ''}</div></div>`;
+}
+
 function cmartView() {
   const free = G.dailyFreeCtoon(); const freeDone = state.dailyFree === todayKey();
   return `<div class="panel">
@@ -568,6 +583,9 @@ function settingsView() {
   return `<div class="panel"><div class="ptab">ORBIT NAME</div>
     <div class="row"><input id="nameInput" class="oinput" value="${esc(state.name)}" maxlength="16"><button class="obtn" data-action="saveName">SAVE</button></div>
     <div class="ptab">SOUND</div><button class="obtn ${state.settings.sound ? '' : 'grey'}" data-action="toggleSound">SOUND EFFECTS: ${state.settings.sound ? 'ON' : 'OFF'}</button>
+    <div class="ptab">REAL ARTWORK</div>
+    <p class="note">When on, each character's chip shows the free-licensed image from its Wikipedia article (hosted on Wikimedia Commons, mostly public-domain stills from the original works). Images are downloaded once and kept for offline play. Characters without a free image keep their drawn portrait. You can also set your own image on any cToon's details page.</p>
+    <div class="row wrap"><button class="obtn ${artEnabled() ? '' : 'grey'}" data-action="toggleArt">REAL ARTWORK: ${artEnabled() ? 'ON' : 'OFF'}</button><button class="obtn grey" data-action="refreshArt">CHECK AGAIN</button></div>
     <div class="ptab">STATS</div><p class="note">Battles ${state.stats.battles} · Wins ${state.stats.wins} · Packs ${state.stats.packs} · Trades ${state.stats.trades} · Recycled ${state.stats.recycled} · Orbiter since ${new Date(state.created).toLocaleDateString()}</p>
     <div class="ptab danger">RESET</div><p class="note">Deletes your binder and progress on this device. Make a backup first!</p><button class="obtn grey" data-action="resetConfirm">RESET GAME</button>
     <p class="fine">Cartoon Orbit is a fan-made homage to the classic collect-and-battle web game. It is free, not for sale, and every character, series and piece of artwork here is original. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p></div>`;
@@ -590,6 +608,8 @@ function onboardingScreen() {
     </div>
   </div>`;
 }
+
+export function rerender() { if (!busy) render(); }
 
 // ---------- render ----------
 export function render() {
@@ -691,6 +711,9 @@ const actions = {
   restoreSave() { try { const obj = parseSaveCode($('#restoreInput').value); if (!confirm('Replace the save on this device with this backup?')) return false; replaceState(obj); sfx.great(); toast('Save restored!'); section = 'orbit'; } catch (e) { sfx.bad(); toast(e.message); return false; } },
   saveName() { const v = ($('#nameInput')?.value || '').trim().slice(0, 16); if (v) { commit(s => { s.name = v; }); toast('Name saved.'); } },
   toggleSound() { commit(s => { s.settings.sound = !s.settings.sound; }); sfx.tap(); },
+  toggleArt() { commit(s => { s.settings.realArt = s.settings.realArt === false; }); if (artEnabled()) refreshWiki(); sfx.tap(); },
+  refreshArt() { if (!navigator.onLine) { toast('You are offline. Try again when connected.'); return false; } forgetWiki().then(() => refreshWiki(true)); toast('Looking up artwork…'); return false; },
+  clearArt(d) { clearCustomArt(d.id).then(() => { toast('Your image was removed.'); detailModal(CTOONS.find(t => t.char === d.id).id); }); return false; },
   resetConfirm() { showModal(`<div class="ptab danger">RESET GAME?</div><p class="note">This permanently deletes your binder, points and cZone on this device.</p><div class="row center"><button class="obtn danger-btn" data-action="resetDo">YES, RESET</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
   resetDo() { resetState(); closeModal(); match = null; section = 'orbit'; toast('Game reset.'); },
 };
@@ -707,6 +730,12 @@ export function bind() {
     e.preventDefault();
     const r = fn(el.dataset);
     if (r !== false) render();
+  });
+  document.body.addEventListener('change', (e) => {
+    const inp = e.target.closest('.artfile'); if (!inp || !inp.files?.[0]) return;
+    const char = inp.dataset.char;
+    setCustomArt(char, inp.files[0]).then(() => { sfx.good(); toast('Artwork updated!'); detailModal(CTOONS.find(t => t.char === char).id); })
+      .catch(err => { sfx.bad(); toast(err.message || 'Could not use that image.'); });
   });
   document.body.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'codeInput') { if (actions.redeem() !== false) render(); }
