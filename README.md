@@ -17,8 +17,12 @@ from the original works), downloads it once and keeps it for offline play, with 
 the Commons file in the cToon details. Characters whose article image is a fair-use file
 keep a hand-drawn rubber-hose portrait instead, and you can set your own image on any
 character from its details page (stored on your device). Switch real artwork off in
-Settings if you prefer the drawn set. Each character comes in four collectible editions (Classic, a film-reel edition
-named for a public-domain title, Spotlight, and a Gold or Holo top edition). No Cartoon
+Settings if you prefer the drawn set. Each character comes in eight collectible editions across five rarity tiers: Classic
+(Common, grey), a film-reel edition named for a public-domain title (Uncommon, green),
+Spotlight (Rare, electric blue), Holo / Full Silver / Dark Matter (Mythic, purple) and Full
+Gold / Platinum (Legendary, gold). The metal editions render the whole portrait in that
+metal; Dark Matter puts it in a starfield. Collect all eight for a character to complete
+its set. No Cartoon
 Network characters are used. Fonts are open-licensed lookalikes bundled for offline use:
 Michroma for the wide headers and Barlow Condensed for the condensed italic numerals
 (SIL OFL, see `fonts/LICENSE.txt`).
@@ -60,13 +64,14 @@ Open that link on your iPhone and follow the install steps above.
 
 | Feature | Details |
 | --- | --- |
-| Binder | 66 cToons: 15 public-domain stars × 4 editions across 5 series, plus 6 earn-only Prize cToons. Seven rarity tiers (Common → Ultra Rare). Duplicates can be recycled for points. |
-| cToon Vendor | Free daily cToon plus Standard, Premium and Mega cPacks with published odds. |
+| Binder | 126 cToons: 15 public-domain stars × 8 editions across 5 series, plus 6 earn-only Prize cToons. Five rarity tiers (Common, Uncommon, Rare, Mythic, Legendary) with per-character set meters. Duplicates can be recycled for points. |
+| cMart | Free daily cToon plus Standard, Premium and Mega cPacks with published odds. Opening a pack is a rip: drag across the foil, it bursts, and the chips flip one at a time from least rare to most rare, with bigger effects for Mythic and Legendary pulls and NEW badges for first-time pulls. |
 | gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and a power (x2 to a buddy, bonuses per colour, penalties to the rival across the line, back/front row bonuses…). Three of a colour scores a bonus; swapping a hand gToon costs 10. Chips flip through the air from your hand to the board, land with a shockwave, and rival chips flash or shake when powers hit them. Five unlockable opponents, deck builder with auto-fill. |
 | cZones | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC cZones to visit (Previous / Random / Next) with awards. |
 | Auction | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
 | Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
 | Orbit Codes | A featured code on the front page rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
+| Look | The 2003 Orbit layout in a clean white, blue and grey finish with glossy highlights, so the chips are the most colourful thing on screen. |
 
 ## Running locally
 
@@ -83,7 +88,8 @@ sw.js                 offline cache
 css/style.css         styling (2003 Orbit look)
 css/fonts.css, fonts/ bundled open-licensed fonts
 js/data.js            cToon catalog, packs, opponents, quests, codes
-js/art.js             vector portraits of the public-domain cast, glossy gToon chips, sockets, cZone badges
+js/art.js             vector portraits, glossy chips, metal/dark edition treatments, sockets, badges, pack foils
+js/pack.js            pack ripping and reveal overlay
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
 js/gtoons.js          battle engine and AI
