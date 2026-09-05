@@ -85,10 +85,12 @@ export function rollPack(pack, rnd = Math.random) {
     let r = 0, x = rnd(), acc = 0;
     for (let k = 0; k < pack.odds.length; k++) { acc += pack.odds[k]; if (x < acc) { r = k; break; } r = k; }
     if (i === 0 && r < pack.minRarity) r = pack.minRarity;
-    const pool = PACKABLE.filter(t => t.rarity === r);
+    let pool = PACKABLE.filter(t => t.rarity === r);
+    while (!pool.length && r > 0) { r--; pool = PACKABLE.filter(t => t.rarity === r); }
     out.push(pool[Math.floor(rnd() * pool.length)].id);
   }
-  return out;
+  // Reveal order: least rare first, so the last flip is the big one.
+  return out.sort((a, b) => (BY_ID[a].rarity - BY_ID[b].rarity) || (BY_ID[a].pts - BY_ID[b].pts));
 }
 export function buyPack(packId) {
   const pack = PACKS.find(p => p.id === packId);
@@ -96,12 +98,13 @@ export function buyPack(packId) {
   return commit(s => {
     s.points -= pack.price;
     const ids = rollPack(pack);
-    ids.forEach(id => addCtoon(id));
+    const newIds = [];
+    ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id); });
     s.stats.packs++;
     bumpQuest(s, 'packsToday');
     log(`Opened a ${pack.name}: ${ids.map(id => BY_ID[id].name).join(', ')}.`);
     checkPrizes(s);
-    return ids;
+    return { ids, newIds, pack };
   });
 }
 export function grantPack(packId) {
@@ -294,7 +297,7 @@ export function checkPrizes(s = state) {
   const unique = Object.keys(s.collection).filter(id => s.collection[id] > 0).length;
   const got = [];
   if (s.daily.streak >= 7) { const p = award('pz02'); if (p) got.push(p); }
-  if (unique >= 40)        { const p = award('pz03'); if (p) got.push(p); }
+  if (unique >= 60)        { const p = award('pz03'); if (p) got.push(p); }
   if (s.stats.trades >= 10){ const p = award('pz04'); if (p) got.push(p); }
   if (s.stats.wins >= 25)  { const p = award('pz05'); if (p) got.push(p); }
   if (s.beaten.includes('master')) { const p = award('pz06'); if (p) got.push(p); }

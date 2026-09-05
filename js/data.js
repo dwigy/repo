@@ -2,16 +2,18 @@
 // The cast are cartoon stars whose original works are in the US public domain
 // (published 1905–1930). Every portrait is drawn from scratch for this game.
 
+// Five rarity tiers (plus earn-only Prizes). `color` is the tier colour used on
+// rings, labels and pack reveals; `glow` is the reveal burst colour.
 export const RARITY = [
-  { key: 'common',    name: 'Common',          color: '#9aa3b2', recycle: 25   },
-  { key: 'uncommon',  name: 'Uncommon',        color: '#4ade80', recycle: 60   },
-  { key: 'rare',      name: 'Rare',            color: '#60a5fa', recycle: 150  },
-  { key: 'veryrare',  name: 'Very Rare',       color: '#c084fc', recycle: 400  },
-  { key: 'extreme',   name: 'Extremely Rare',  color: '#fb923c', recycle: 1000 },
-  { key: 'ultra',     name: 'Ultra Rare',      color: '#fbbf24', recycle: 2500 },
-  { key: 'prize',     name: 'Prize',           color: '#f472b6', recycle: 0    },
+  { key: 'common',    name: 'Common',    color: '#8f98a8', glow: '#c7ced8', recycle: 25   },
+  { key: 'uncommon',  name: 'Uncommon',  color: '#2fbf5a', glow: '#7ee3a0', recycle: 60   },
+  { key: 'rare',      name: 'Rare',      color: '#1e8fff', glow: '#7cc4ff', recycle: 150  },
+  { key: 'mythic',    name: 'Mythic',    color: '#9b4dff', glow: '#c9a0ff', recycle: 500  },
+  { key: 'legendary', name: 'Legendary', color: '#f5a623', glow: '#ffd76a', recycle: 1500 },
+  { key: 'prize',     name: 'Prize',     color: '#f06aa8', glow: '#ffb3d6', recycle: 0    },
 ];
-const VALUE = [25, 60, 120, 250, 500, 1000, 400];
+export const MYTHIC = 3, LEGENDARY = 4;
+const VALUE = [25, 60, 150, 500, 1500, 750];
 
 // gToon colour groups (the ring around a chip and its point bubble).
 export const COLORS = {
@@ -68,28 +70,52 @@ export const CHARACTERS = {
              stats: [['blu', 3, { t: 'first', n: 4 }], ['yel', 6, { t: 'lonely', n: 4 }], ['blu', 8, { t: 'last', n: 6 }], ['blu', 12, { t: 'last', n: 12 }]] },
 };
 
-const EDITIONS = [
-  { n: 1, variant: 'classic', pose: 'normal', rarity: 0, label: (c) => c.name,                         tag: 'Classic' },
-  { n: 2, variant: 'reel',    pose: 'mirror', rarity: 1, label: (c) => `${c.name} · ${c.film}`,        tag: (c) => `${c.film} (${c.year})` },
-  { n: 3, variant: 'stage',   pose: 'zoom',   rarity: 2, label: (c) => `${c.name} · Spotlight`,        tag: 'Spotlight Edition' },
-  { n: 4, variant: 'holo',    pose: 'hero',   rarity: null, label: (c) => `${c.name} · ${c.top >= 5 ? 'Holo' : 'Gold'} Edition`, tag: (c) => c.top >= 5 ? 'Holo Edition' : 'Gold Edition' },
+// Eight editions per character. Common/Uncommon/Rare are the base set; Mythic and
+// Legendary carry the collectible metal and Dark Matter variants.
+export const EDITIONS = [
+  { n: 1, variant: 'classic',  pose: 'normal', rarity: 0, label: (c) => c.name,                    tag: 'Classic',                         short: 'Classic' },
+  { n: 2, variant: 'reel',     pose: 'mirror', rarity: 1, label: (c) => `${c.name} · ${c.film}`,   tag: (c) => `${c.film} (${c.year})`,    short: (c) => `Reel ${c.year}` },
+  { n: 3, variant: 'stage',    pose: 'zoom',   rarity: 2, label: (c) => `${c.name} · Spotlight`,   tag: 'Spotlight',                       short: 'Spotlight' },
+  { n: 4, variant: 'holo',     pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Holo`,        tag: 'Holo',                            short: 'Holo' },
+  { n: 5, variant: 'silver',   pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Silver`,      tag: 'Full Silver',                     short: 'Silver' },
+  { n: 6, variant: 'dark',     pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Dark Matter`, tag: 'Dark Matter',                     short: 'Dark Matter' },
+  { n: 7, variant: 'gold',     pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Gold`,        tag: 'Full Gold',                       short: 'Gold' },
+  { n: 8, variant: 'platinum', pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Platinum`,    tag: 'Platinum',                        short: 'Platinum' },
 ];
+// Which colour each character's Dark Matter edition punishes.
+const RIVAL_COLOR = { grn: 'red', yel: 'blu', org: 'blu', red: 'grn', blu: 'org', prp: 'yel', slv: 'prp' };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function editionStats(c, e, i) {
+  if (i < 3) return c.stats[i];
+  const [topColor, topPts, topPower] = c.stats[3];
+  const own = c.stats[0][0];
+  switch (e.variant) {
+    case 'holo':     return [own, clamp(topPts - 4, 8, 12), { t: 'perOwnColor', color: own, n: 2 }];
+    case 'silver':   return ['slv', clamp(topPts - 3, 9, 13), i % 2 ? { t: 'mirror' } : { t: 'steal', n: 4 }];
+    case 'dark':     return [own, clamp(topPts - 3, 9, 13), { t: 'minusOppColor', color: RIVAL_COLOR[own] || 'blu', n: 3 }];
+    case 'gold':     return [topColor, clamp(topPts, 13, 16), topPower];
+    case 'platinum': return ['slv', clamp(topPts - 1, 13, 16), { t: 'plusAll', n: 2 }];
+  }
+  return c.stats[3];
+}
 
 function build() {
   const out = [];
   for (const [key, c] of Object.entries(CHARACTERS)) {
     EDITIONS.forEach((e, i) => {
-      const rarity = e.rarity == null ? c.top : e.rarity;
-      const [color, pts, power] = c.stats[i];
+      const rarity = e.rarity;
+      const [color, pts, power] = editionStats(c, e, i);
       out.push({ id: `${key}${e.n}`, char: key, series: c.series, name: e.label(c), short: c.name, edition: typeof e.tag === 'function' ? e.tag(c) : e.tag,
+        edShort: typeof e.short === 'function' ? e.short(c) : e.short,
         variant: e.variant, pose: e.pose, rarity, points: VALUE[rarity], color, pts, power, blurb: c.blurb, year: c.year });
     });
   }
-  const prize = (id, char, name, color, pts, power, blurb) => ({ id, char, series: 'pz', name, short: name, edition: 'Prize', variant: 'holo', pose: 'normal', rarity: 6, points: VALUE[6], color, pts, power, blurb, year: 2000 });
+  const prize = (id, char, name, color, pts, power, blurb) => ({ id, char, series: 'pz', name, short: name, edition: 'Prize', edShort: 'Prize', variant: 'holo', pose: 'normal', rarity: 5, points: VALUE[5], color, pts, power, blurb, year: 2000 });
   out.push(
     prize('pz01', 'rookie', 'Orbit Rookie',      'slv', 7,  { t: 'first', n: 5 },                          'Awarded to every new Orbiter. Welcome aboard!'),
     prize('pz02', 'comet',  'Streak Comet',      'org', 11, { t: 'front', n: 5 },                          'Earned by logging in 7 days in a row.'),
-    prize('pz03', 'crown',  "Collector's Crown", 'yel', 11, { t: 'perOwnColor', color: 'slv', n: 3 },      'Earned by collecting 40 different cToons.'),
+    prize('pz03', 'crown',  "Collector's Crown", 'yel', 11, { t: 'perOwnColor', color: 'slv', n: 3 },      'Earned by collecting 60 different cToons.'),
     prize('pz04', 'titan',  'Trade Titan',       'slv', 12, { t: 'plusOwnColor', color: 'slv', n: 2 },     'Earned by completing 10 trades.'),
     prize('pz05', 'badge',  'Battle Badge',      'red', 12, { t: 'opp', n: 7 },                            'Earned by winning 25 gToons matches.'),
     prize('pz06', 'champ',  "Champion's Star",   'slv', 16, { t: 'plusAll', n: 2 },                        'Earned by defeating the Orbit Master.'),
@@ -101,12 +127,12 @@ export const BY_ID = Object.fromEntries(CTOONS.map(t => [t.id, t]));
 export const PACKABLE = CTOONS.filter(t => t.series !== 'pz');
 
 export const PACKS = [
-  { id: 'std',  name: 'Standard cPack', price: 300, size: 3, desc: '3 random cToons. Uncommon or better guaranteed.',
-    odds: [0.55, 0.27, 0.12, 0.045, 0.013, 0.002], minRarity: 1 },
-  { id: 'prem', name: 'Premium cPack',  price: 900, size: 3, desc: '3 cToons. Rare or better guaranteed. Better odds all round.',
-    odds: [0.20, 0.30, 0.30, 0.14, 0.05, 0.01],  minRarity: 2 },
-  { id: 'mega', name: 'Mega cPack',     price: 2000, size: 5, desc: '5 cToons. One Very Rare or better guaranteed.',
-    odds: [0.30, 0.30, 0.22, 0.12, 0.05, 0.01],  minRarity: 3 },
+  { id: 'std',  name: 'Standard cPack', price: 300, size: 3, desc: '3 cToons. Uncommon or better guaranteed.',
+    odds: [0.60, 0.27, 0.10, 0.025, 0.005], minRarity: 1 },
+  { id: 'prem', name: 'Premium cPack',  price: 900, size: 4, desc: '4 cToons. Rare or better guaranteed. Better odds all round.',
+    odds: [0.25, 0.35, 0.28, 0.10, 0.02],  minRarity: 2 },
+  { id: 'mega', name: 'Mega cPack',     price: 2000, size: 5, desc: '5 cToons. One Mythic or better guaranteed.',
+    odds: [0.28, 0.30, 0.25, 0.13, 0.04],  minRarity: 3 },
 ];
 
 export const BACKGROUNDS = [
@@ -125,7 +151,7 @@ export const OPPONENTS = [
   { id: 'betty',  name: 'Binder Betty',     diff: 0.55, minR: 0, maxR: 1, reward: 180, avatar: 'betty1',   taunt: 'I have every Common. Every. Single. One.' },
   { id: 'tom',    name: 'Tycoon Tom',       diff: 0.7,  minR: 1, maxR: 2, reward: 240, avatar: 'ignatz2',  taunt: 'I could buy your whole binder. Twice.' },
   { id: 'vendor', name: 'The Vendor',       diff: 0.85, minR: 2, maxR: 3, reward: 320, avatar: 'alfalfa3', taunt: 'You have been buying my packs. Now face my deck.' },
-  { id: 'master', name: 'Orbit Master',     diff: 1.0,  minR: 3, maxR: 5, reward: 500, avatar: 'willie4',  taunt: 'Nobody has beaten me. Nobody will.' },
+  { id: 'master', name: 'Orbit Master',     diff: 1.0,  minR: 3, maxR: 4, reward: 500, avatar: 'willie7',  taunt: 'Nobody has beaten me. Nobody will.' },
 ];
 
 export const TRADERS = [

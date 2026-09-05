@@ -1,7 +1,8 @@
 // All screens and interactions, styled after the 2003 Cartoon Orbit site.
 // Rendering is string templates plus one delegated click handler keyed on
 // data-action attributes.
-import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, powerText } from './data.js';
+import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, powerText } from './data.js';
+import { openPack } from './pack.js';
 import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG } from './art.js';
 import { state, commit, exportCode, parseSaveCode, replaceState, resetState, todayKey } from './store.js';
 import * as G from './game.js';
@@ -16,6 +17,7 @@ const fmt = (n) => n.toLocaleString();
 let section = 'orbit';
 const subs = { orbit: 'home', collect: 'binder', compete: 'arena', czone: 'mine', help: 'codes' };
 let binderFilter = 'all';
+let binderTier = 'all'; // all | mythic | legendary
 let match = null;
 let selectedHand = -1;
 let pendingLand = null;   // {who, slot} socket that just received a chip
@@ -38,6 +40,22 @@ function beep(freq = 660, dur = 0.08, type = 'square', vol = 0.05) {
     o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + dur);
   } catch { /* no audio */ }
 }
+const packSfx = (kind) => {
+  switch (kind) {
+    case 'grab': beep(220, 0.05, 'triangle', 0.04); break;
+    case 'rip': beep(160 + Math.random() * 80, 0.06, 'sawtooth', 0.05); break;
+    case 'burst': beep(90, 0.25, 'sawtooth', 0.07); setTimeout(() => beep(700, 0.15, 'triangle', 0.06), 80); setTimeout(() => beep(1100, 0.2, 'triangle', 0.05), 160); break;
+    case 'flip': beep(600, 0.06, 'square', 0.04); break;
+    case 'tension': beep(140, 0.5, 'sine', 0.05); break;
+    case 'drum': [0, 180, 360, 540].forEach((d, i) => setTimeout(() => beep(110 + i * 20, 0.12, 'square', 0.06), d)); break;
+    case 'reveal0': beep(520, 0.08); break;
+    case 'reveal1': beep(600, 0.08); setTimeout(() => beep(760, 0.1), 80); break;
+    case 'reveal2': [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.12, 'triangle', 0.06), i * 80)); break;
+    case 'reveal3': [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.14, 'triangle', 0.07), i * 90)); break;
+    case 'reveal4': [392, 523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => beep(f, 0.18, 'triangle', 0.08), i * 100)); break;
+    case 'done': beep(660, 0.08); setTimeout(() => beep(880, 0.12), 80); break;
+  }
+};
 const sfx = {
   tap: () => beep(520, 0.05),
   good: () => { beep(660, 0.08); setTimeout(() => beep(880, 0.12), 80); },
@@ -58,7 +76,7 @@ function tokenHTML(t, opts = {}) {
   return `<div class="${cls}" data-action="${opts.action || 'detail'}" data-id="${t.id}" ${opts.data || ''}>
     <div class="tok-art">${svg}${count}</div>
     <div class="tok-label">${owned ? esc(opts.name || t.short || t.name) : '???'}</div>
-    ${owned && t.edition && t.edition !== 'Classic' && t.edition !== 'Prize' ? `<div class="tok-ed r${t.rarity}">${esc(t.edition)}</div>` : ''}
+    ${owned && t.edShort && t.edShort !== 'Classic' && t.edShort !== 'Prize' ? `<div class="tok-ed" style="--rc:${RARITY[t.rarity].color}">${esc(t.edShort)}</div>` : ''}
   </div>`;
 }
 
@@ -210,15 +228,30 @@ function updatesView() {
 
 // ---------- COLLECT ----------
 function binderView() {
-  const list = CTOONS.filter(t => binderFilter === 'all' ? true : t.series === binderFilter);
   const tabs = [['all', 'ALL'], ...Object.entries(SERIES).map(([k, s]) => [k, s.name.toUpperCase()])];
   const ownedIn = (k) => CTOONS.filter(t => (k === 'all' || t.series === k) && G.ownedCount(t.id) > 0).length;
   const totalIn = (k) => CTOONS.filter(t => k === 'all' || t.series === k).length;
+  const tierOk = (t) => binderTier === 'all' || (binderTier === 'mythic' && t.rarity === MYTHIC) || (binderTier === 'legendary' && t.rarity === LEGENDARY);
+  const chars = Object.entries(CHARACTERS).filter(([, c]) => binderFilter === 'all' || c.series === binderFilter);
+  const sets = chars.filter(([k]) => CTOONS.filter(t => t.char === k).every(t => G.ownedCount(t.id) > 0)).length;
+  const blocks = chars.map(([key, c]) => {
+    const eds = CTOONS.filter(t => t.char === key);
+    const have = eds.filter(t => G.ownedCount(t.id) > 0).length;
+    const shown = eds.filter(tierOk);
+    if (!shown.length) return '';
+    return `<div class="charset ${have === eds.length ? 'complete' : ''}">
+      <div class="charset-head"><div><b>${esc(c.name)}</b><span class="small">${esc(SERIES[c.series].name)} · ${c.year}</span></div>
+        <div class="charset-meter">${eds.map(t => `<i style="--rc:${RARITY[t.rarity].color}" class="${G.ownedCount(t.id) > 0 ? 'on' : ''}"></i>`).join('')}<b>${have}/${eds.length}</b>${have === eds.length ? '<span class="setbadge">SET COMPLETE</span>' : ''}</div></div>
+      <div class="tokgrid">${shown.map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
+    </div>`;
+  }).join('');
+  const prizes = (binderFilter === 'all' || binderFilter === 'pz') && binderTier === 'all' ? `<div class="charset"><div class="charset-head"><div><b>Orbit Prizes</b><span class="small">Earn only</span></div></div><div class="tokgrid">${CTOONS.filter(t => t.series === 'pz').map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div></div>` : '';
   return `<div class="panel">
-    <div class="ptab">MY BINDER <em>${G.uniqueOwned()}/${CTOONS.length} cTOONS · ${fmt(G.binderValue())} PTS</em></div>
+    <div class="ptab">MY BINDER <em>${G.uniqueOwned()}/${CTOONS.length} cTOONS · ${sets} SETS</em></div>
     <div class="chips scroll">${tabs.map(([k, n]) => `<button class="chip ${binderFilter === k ? 'on' : ''}" data-action="binderFilter" data-id="${k}">${n} <em>${ownedIn(k)}/${totalIn(k)}</em></button>`).join('')}</div>
-    ${binderFilter !== 'all' ? `<div class="series-blurb">${esc(SERIES[binderFilter].blurb)}</div>` : ''}
-    <div class="tokgrid">${list.map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
+    <div class="chips tiers">${[['all', 'ALL TIERS', '#5d6f88'], ['mythic', 'MYTHIC', RARITY[MYTHIC].color], ['legendary', 'LEGENDARY', RARITY[LEGENDARY].color]].map(([k, n, col]) => `<button class="chip tier ${binderTier === k ? 'on' : ''}" style="--tc:${col}" data-action="binderTier" data-id="${k}">${n}</button>`).join('')}</div>
+    ${binderFilter !== 'all' && SERIES[binderFilter] ? `<div class="series-blurb">${esc(SERIES[binderFilter].blurb)}</div>` : ''}
+    ${blocks}${prizes}
   </div>`;
 }
 function detailModal(id) {
@@ -655,6 +688,7 @@ const actions = {
   claimDaily() { const r = G.claimDaily(); if (r) { sfx.good(); toast(`+${r.amount} points! Day ${r.streak} streak.`); if (r.prize) setTimeout(() => revealModal([r.prize], 'PRIZE UNLOCKED!'), 300); } },
   claimQuest(d) { const v = G.claimQuest(d.id); if (v) { sfx.good(); toast(`Quest complete! +${v} points.`); } },
   binderFilter(d) { binderFilter = d.id; },
+  binderTier(d) { binderTier = d.id; },
   binderSeries(d) { binderFilter = d.id; section = 'collect'; subs.collect = 'binder'; window.scrollTo(0, 0); },
   detail(d) { sfx.tap(); detailModal(d.id); return false; },
   deckAdd(d) { commit(s => { if (s.deck.length < 12) s.deck.push(d.id); }); toast('Added to deck.'); detailModal(d.id); return false; },
@@ -669,7 +703,7 @@ const actions = {
   copyText(d) { copy(d.text); return false; },
   shareText(d) { navigator.share({ text: `A cToon gift for you in Cartoon Orbit! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
   claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'FREE cTOON!'); },
-  buyPack(d) { const ids = G.buyPack(d.id); if (ids) revealModal(ids, 'cPACK OPENED!'); else toast('Not enough points.'); },
+  buyPack(d) { const r = G.buyPack(d.id); if (!r) { toast('Not enough points.'); return; } render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
   autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Deck auto-filled with your best gToons.'); },
   deckToggle(d) { commit(s => { const inDeck = s.deck.filter(x => x === d.id).length; const own = s.collection[d.id] || 0;
     if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Deck is full (12).'); }); sfx.tap(); },
