@@ -17,6 +17,10 @@ const subs = { orbit: 'home', collect: 'binder', compete: 'arena', czone: 'mine'
 let binderFilter = 'all';
 let match = null;
 let selectedHand = -1;
+let pendingLand = null;   // {who, slot} socket that just received a chip
+let pendingHits = {};     // 'p3' -> 'up'|'down' sockets whose totals changed
+let lastTotals = null;    // {a, b} for the rolling score counters
+let busy = false;         // true while a chip is in the air
 let zonePick = false;
 let visitIndex = 0;
 let installDismissed = false;
@@ -52,7 +56,8 @@ function tokenHTML(t, opts = {}) {
   const svg = owned ? tokenSVG(t, 100, { bubble: opts.bubble !== false, label: opts.label }) : shadowTokenSVG(t);
   return `<div class="${cls}" data-action="${opts.action || 'detail'}" data-id="${t.id}" ${opts.data || ''}>
     <div class="tok-art">${svg}${count}</div>
-    <div class="tok-label">${owned ? esc(opts.name || t.name) : '???'}</div>
+    <div class="tok-label">${owned ? esc(opts.name || t.short || t.name) : '???'}</div>
+    ${owned && t.edition && t.edition !== 'Classic' && t.edition !== 'Prize' ? `<div class="tok-ed r${t.rarity}">${esc(t.edition)}</div>` : ''}
   </div>`;
 }
 
@@ -78,11 +83,11 @@ function headline() {
 }
 
 const SECTIONS = [
-  ['orbit',   'MY ORBIT'],
-  ['collect', 'GET CARDS'],
-  ['compete', 'PLAY gTOONS'],
-  ['czone',   'VISIT cZONES'],
-  ['help',    'ORBIT HELP'],
+  ['orbit',   'ORBIT'],
+  ['collect', 'CARDS'],
+  ['compete', 'BATTLE'],
+  ['czone',   'cZONES'],
+  ['help',    'HELP'],
 ];
 const SUBTABS = {
   orbit:   [['home', 'HOME'], ['quests', 'QUESTS'], ['updates', 'UPDATES']],
@@ -102,7 +107,9 @@ function orbitFrame(inner) {
     </div>
     <div class="content">${inner}</div>
   </div>
-  <nav class="leftnav">${SECTIONS.map(([k, n]) => `<button class="lnav ${section === k ? 'on' : ''}" data-action="go" data-to="${k}"><span>${n}</span><i>›</i></button>`).join('')}</nav>`;
+  <nav class="leftnav">${SECTIONS.map(([k, n]) => k === 'compete'
+    ? `<button class="lnav battle ${section === k ? 'on' : ''}" data-action="go" data-to="${k}"><i>⚔</i><span>${n}</span></button>`
+    : `<button class="lnav ${section === k ? 'on' : ''}" data-action="go" data-to="${k}"><span>${n}</span><i>›</i></button>`).join('')}</nav>`;
 }
 
 // ---------- modal & toast ----------
@@ -231,7 +238,7 @@ function detailModal(id) {
         <div class="detail-tok">${n ? tokenSVG(t, 150) : shadowTokenSVG(t, 150)}</div>
         <div class="detail-info">
           <h2>${n ? esc(t.name) : '???'}</h2>
-          <div class="row wrap"><span class="stag">${esc(s.name)}</span>${rtag(t)}</div>
+          <div class="row wrap"><span class="stag">${esc(s.name)}</span>${rtag(t)}${t.edition && t.edition !== 'Prize' ? `<span class="etag">${esc(t.edition)}</span>` : ''}</div>
           <div class="statline"><span>VALUE</span><b>${t.points}</b><span>gTOON</span><b>${t.pts}</b>${ctag(t)}</div>
         </div>
       </div>
@@ -330,7 +337,9 @@ function socketHTML(side, i, ev, who) {
   if (!id) return `<div class="sock ${canDrop ? 'drop' : ''}" data-action="${who === 'p' ? 'placeCard' : 'none'}" data-i="${i}">${socketSVG(100)}</div>`;
   const t = BY_ID[id]; const v = ev[i]; const delta = v.total - v.base;
   const last = match.lastMove && match.lastMove.who === who && match.lastMove.slot === i;
-  return `<div class="sock filled ${last ? 'last' : ''}" data-action="slotInfo" data-who="${who}" data-i="${i}">
+  const land = pendingLand && pendingLand.who === who && pendingLand.slot === i ? 'land' : '';
+  const hit = pendingHits[who + i] ? 'hit-' + pendingHits[who + i] : '';
+  return `<div class="sock filled ${last ? 'last' : ''} ${land} ${hit}" data-action="slotInfo" data-who="${who}" data-i="${i}">
     ${tokenSVG(t, 100, { label: v.total })}
     ${delta ? `<span class="delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '+' : ''}${delta}</span>` : ''}
   </div>`;
@@ -344,7 +353,7 @@ function scoreBox(name, avatarId, ev, prefix, cols, who) {
     <div class="sbox-label">COLOR</div>
     <div class="sbox-colors">${cols.map(c => `<div><span>${COLORS[c].abbr}</span><i style="background:${COLORS[c].hex}"></i><b>${cc[c] || 0}</b></div>`).join('')}</div>
     <div class="sbox-label">POINTS</div>
-    <div class="sbox-points">${total}</div>
+    <div class="sbox-points" data-who="${who}" data-total="${total}">${lastTotals ? (who === 'p' ? lastTotals.a : lastTotals.b) : total}</div>
     <div class="sbox-sub">${swaps ? `-${swaps * B.SWAP_COST} FOR SWAPPING` : '-10 FOR SWAPPING'}</div>
   </div>`;
 }
@@ -365,11 +374,15 @@ function matchScreen() {
         ${scoreBox(state.name, state.deck[0] || 'pz01', ev, 'p', pCols, 'p')}
       </aside>
       <div class="gz-board">
+        <div class="gz-side ai">
         <div class="gz-row r3">${[0, 1, 2].map(i => socketHTML(match.ai, i, ev.b, 'ai')).join('')}</div>
         <div class="gz-row r4">${[3, 4, 5, 6].map(i => socketHTML(match.ai, i, ev.b, 'ai')).join('')}</div>
-        <div class="gz-mid"><span class="gz-pill">${match.done ? 'GAME OVER' : match.turn === 'p' ? 'YOUR TURN' : 'SCORING…'}</span></div>
+        </div>
+        <div class="gz-mid"><span class="gz-pill ${match.turn !== 'p' && !match.done ? 'blink' : ''}">${match.done ? 'GAME OVER' : match.turn === 'p' ? 'YOUR TURN' : 'SCORING…'}</span></div>
+        <div class="gz-side p">
         <div class="gz-row r4">${[3, 4, 5, 6].map(i => socketHTML(match.p, i, ev.a, 'p')).join('')}</div>
         <div class="gz-row r3">${[0, 1, 2].map(i => socketHTML(match.p, i, ev.a, 'p')).join('')}</div>
+        </div>
       </div>
       <aside class="gz-right">
         <div class="gz-sel">
@@ -385,19 +398,67 @@ function matchScreen() {
     <div class="gz-status">${esc(status)}${match.done ? ' <b data-action="forfeit">CLICK HERE TO RETURN TO THE CHALLENGE ZONE.</b>' : ''}</div>
   </div>`;
 }
+const rectOf = (sel) => { const el = $(sel); return el ? el.getBoundingClientRect() : null; };
+
+// Fly a chip from one rectangle to another with a flip and an arc.
+function flyChip(t, from, to, opts = {}) {
+  return new Promise((resolve) => {
+    if (!from || !to) return resolve();
+    const el = document.createElement('div'); el.className = 'fly';
+    el.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+    el.innerHTML = tokenSVG(t, 100);
+    document.body.appendChild(el);
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    const sc = to.width / from.width;
+    const lift = -Math.max(90, Math.abs(dy) * 0.4);
+    const spins = opts.spins || 2;
+    const anim = el.animate([
+      { transform: 'translate(0,0) scale(1) rotateY(0deg) rotateZ(0deg)', offset: 0 },
+      { transform: `translate(${dx * 0.5}px, ${dy * 0.5 + lift}px) scale(${((1 + sc) / 2) * 1.4}) rotateY(${180 * spins}deg) rotateZ(${opts.tilt || -12}deg)`, offset: 0.5 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${sc}) rotateY(${360 * spins}deg) rotateZ(0deg)`, offset: 1 },
+    ], { duration: opts.dur || 700, easing: 'cubic-bezier(.35,.6,.3,1)', fill: 'forwards' });
+    anim.onfinish = () => { el.remove(); resolve(); };
+  });
+}
+function whoosh() { if (!state.settings.sound) return; beep(300, 0.12, 'sine', 0.05); setTimeout(() => beep(900, 0.1, 'triangle', 0.06), 120); }
+function slam() { if (!state.settings.sound) return; beep(120, 0.15, 'square', 0.07); setTimeout(() => beep(60, 0.2, 'sawtooth', 0.05), 40); }
+
+// Which sockets changed value because of the last play? (for flash/shake effects)
+function diffHits(before, after, landedWho, landedSlot) {
+  const hits = {};
+  const cmp = (who, a, b) => a.forEach((v, i) => { const w = b[i]; if (v && w && v.total !== w.total && !(who === landedWho && i === landedSlot)) hits[who + i] = w.total > v.total ? 'up' : 'down'; });
+  cmp('p', before.a, after.a); cmp('ai', before.b, after.b);
+  return hits;
+}
+
 function startBattle(opId) {
   const op = OPPONENTS.find(o => o.id === opId);
   if (!op || !G.opponentUnlocked(op) || state.deck.length !== 12) return;
   match = B.newMatch(state.deck.slice(), G.opponentDeck(op), op);
-  selectedHand = -1; render();
-  if (match.turn === 'ai') setTimeout(aiTurn, 800);
+  selectedHand = -1; lastTotals = null; pendingLand = null; pendingHits = {}; busy = true;
+  render();
+  const intro = document.createElement('div'); intro.className = 'gz-intro';
+  intro.innerHTML = `<b class="ready">READY?</b><b class="fight">BATTLE!</b>`;
+  document.body.appendChild(intro);
+  sfx.good(); setTimeout(() => sfx.great(), 650);
+  setTimeout(() => { intro.remove(); busy = false; render(); if (match && match.turn === 'ai') setTimeout(aiTurn, 500); }, 1500);
 }
 function aiTurn() {
-  if (!match || match.done || match.turn !== 'ai') return;
+  if (!match || match.done || match.turn !== 'ai' || busy) return;
   const mv = B.aiChoose(match);
-  B.place(match, 'ai', mv.handIndex, mv.slot);
-  sfx.tap(); render();
-  if (match.done) setTimeout(finishMatch, 700);
+  const t = BY_ID[match.ai.hand[mv.handIndex]];
+  const before = B.evaluate(match.p, match.ai);
+  const from = rectOf('.sbox.ai .sbox-av') || rectOf('.gz-title');
+  const to = rectOf(`.gz-side.ai .sock[data-i="${mv.slot}"]`);
+  busy = true; whoosh();
+  flyChip(t, from, to, { spins: 2, tilt: 14, dur: 750 }).then(() => {
+    B.place(match, 'ai', mv.handIndex, mv.slot);
+    pendingLand = { who: 'ai', slot: mv.slot };
+    pendingHits = diffHits(before, B.evaluate(match.p, match.ai), 'ai', mv.slot);
+    busy = false; slam(); render();
+    if (match.done) setTimeout(finishMatch, 900);
+  });
 }
 function finishMatch() {
   if (!match || !match.done) return;
@@ -519,7 +580,7 @@ function onboardingScreen() {
     <div class="content">
       <div class="panel join">
         <div class="ptab">JOIN ORBIT NOW</div>
-        <div class="join-toks">${['rr01', 'gw07', 'ss06', 'mm06', 'cc06', 'rd06'].map(id => tokenSVG(BY_ID[id], 64)).join('')}</div>
+        <div class="join-toks">${['felix1', 'betty1', 'popeye1', 'willie1', 'koko1', 'krazy1'].map(id => tokenSVG(BY_ID[id], 64)).join('')}</div>
         <p>Start collecting, trading and competing today! Collect <b>cToons</b>, play <b>gToons</b>, build your <b>cZone</b>. Everything saves automatically on this device.</p>
         <label class="small">ORBIT NAME</label>
         <input id="nameInput" class="oinput big" placeholder="Orbiter" maxlength="16" autocomplete="off">
@@ -536,7 +597,7 @@ export function render() {
   document.body.classList.toggle('in-match', !!match && state.onboarded);
   if (!state.onboarded) { app.innerHTML = onboardingScreen(); return; }
   G.ensureQuests(state);
-  if (match) { app.innerHTML = matchScreen(); return; }
+  if (match) { app.innerHTML = matchScreen(); afterMatchRender(); return; }
   const views = {
     orbit: { home: homeView, quests: questsView, updates: updatesView },
     collect: { binder: binderView, cmart: cmartView, auction: auctionView },
@@ -546,6 +607,20 @@ export function render() {
   };
   app.innerHTML = orbitFrame(views[section][subs[section]]());
   if (section === 'czone' && subs.czone === 'mine') bindStage();
+}
+
+function afterMatchRender() {
+  const ev = B.evaluate(match.p, match.ai);
+  document.querySelectorAll('.sbox-points').forEach(el => {
+    const target = +el.dataset.total; const start = +el.textContent || 0;
+    if (start === target) { el.textContent = target; return; }
+    el.classList.add('bump');
+    const t0 = performance.now(), dur = 550;
+    const step = (now) => { const k = Math.min(1, (now - t0) / dur); const e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(start + (target - start) * e); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+  lastTotals = { a: ev.aTotal, b: ev.bTotal };
+  pendingLand = null; pendingHits = {};
 }
 
 // ---------- actions ----------
@@ -579,15 +654,28 @@ const actions = {
   deckToggle(d) { commit(s => { const inDeck = s.deck.filter(x => x === d.id).length; const own = s.collection[d.id] || 0;
     if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Deck is full (12).'); }); sfx.tap(); },
   battle(d) { startBattle(d.id); return false; },
-  pickHand(d) { if (!match || match.turn !== 'p' || match.done) return; selectedHand = selectedHand === +d.i ? -1 : +d.i; sfx.tap(); },
-  placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0) return;
-    if (B.place(match, 'p', selectedHand, +d.i)) { selectedHand = -1; sfx.tap(); render(); if (match.done) setTimeout(finishMatch, 700); else setTimeout(aiTurn, 800); } return false; },
-  swapCard() { if (!match || match.turn !== 'p' || match.done || selectedHand < 0) return; if (B.swap(match, 'p', selectedHand)) { sfx.bad(); toast('Swapped. -10 points.'); } },
+  pickHand(d) { if (!match || match.turn !== 'p' || match.done || busy) return false; selectedHand = selectedHand === +d.i ? -1 : +d.i; sfx.tap(); },
+  placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false;
+    const slot = +d.i; if (match.p.slots[slot]) return false;
+    const hi = selectedHand; const t = BY_ID[match.p.hand[hi]];
+    const before = B.evaluate(match.p, match.ai);
+    const from = rectOf(`.hslot[data-i="${hi}"]`); const to = rectOf(`.gz-side.p .sock[data-i="${slot}"]`);
+    const src = $(`.hslot[data-i="${hi}"]`); if (src) src.style.visibility = 'hidden';
+    busy = true; whoosh();
+    flyChip(t, from, to, { spins: 2, tilt: -14 }).then(() => {
+      B.place(match, 'p', hi, slot); selectedHand = -1;
+      pendingLand = { who: 'p', slot };
+      pendingHits = diffHits(before, B.evaluate(match.p, match.ai), 'p', slot);
+      busy = false; slam(); render();
+      if (match.done) setTimeout(finishMatch, 900); else setTimeout(aiTurn, 700);
+    });
+    return false; },
+  swapCard() { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false; if (B.swap(match, 'p', selectedHand)) { sfx.bad(); toast('Swapped. -10 points.'); } },
   slotInfo(d) { const side = match[d.who]; const id = side.slots[+d.i]; if (!id) return; const ev = B.evaluate(match.p, match.ai); const v = (d.who === 'p' ? ev.a : ev.b)[+d.i]; const t = BY_ID[id];
     showModal(`<div class="detail"><div class="ptab">${esc(t.name).toUpperCase()}</div><div class="detail-tok center">${tokenSVG(t, 120)}</div><div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
       <div class="mods"><div>BASE <b>${v.base}</b></div>${v.mods.map(m => `<div>${m.v > 0 ? '+' : ''}${m.v} <span class="small">${esc(m.why)}</span></div>`).join('')}<div>TOTAL <b>${v.total}</b></div></div>
       <button class="obtn grey block" data-action="closeModal">CLOSE</button></div>`); return false; },
-  forfeit() { if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; G.recordBattle(match.opponent, false, 0); } match = null; closeModal(); },
+  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; G.recordBattle(match.opponent, false, 0); } match = null; closeModal(); },
   rematch() { const op = match.opponent; closeModal(); startBattle(op.id); return false; },
   leaveMatch() { closeModal(); match = null; },
   zonePicker() { zonePick = !zonePick; },
