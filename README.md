@@ -10,9 +10,14 @@ saves automatically on your device.
 It is free and not for sale. The cast are cartoon stars whose original works are in the
 US public domain (published 1905–1930): Felix the Cat, Koko the Clown, Oswald the Lucky
 Rabbit, Steamboat Willie, Bosko, Bimbo, Flip the Frog, the 1930 Betty Boop, Popeye, Olive
-Oyl, Krazy Kat, Ignatz Mouse, Gertie the Dinosaur, Farmer Al Falfa and Little Nemo. Every
-portrait is drawn from scratch for this game in the rubber-hose style; no studio artwork is
-copied. Each character comes in four collectible editions (Classic, a film-reel edition
+Oyl, Krazy Kat, Ignatz Mouse, Gertie the Dinosaur, Farmer Al Falfa and Little Nemo. Each chip
+shows real artwork when it can: the game looks up the character's Wikipedia article and,
+if its lead image is hosted on Wikimedia Commons (free-licensed, mostly public-domain stills
+from the original works), downloads it once and keeps it for offline play, with a link to
+the Commons file in the cToon details. Characters whose article image is a fair-use file
+keep a hand-drawn rubber-hose portrait instead, and you can set your own image on any
+character from its details page (stored on your device). Switch real artwork off in
+Settings if you prefer the drawn set. Each character comes in four collectible editions (Classic, a film-reel edition
 named for a public-domain title, Spotlight, and a Gold or Holo top edition). No Cartoon
 Network characters are used. Fonts are open-licensed lookalikes bundled for offline use:
 Michroma for the wide headers and Barlow Condensed for the condensed italic numerals

@@ -1,12 +1,15 @@
 import { load, onChange } from './store.js';
-import { render, bind, toast } from './ui.js';
+import { render, bind, toast, rerender } from './ui.js';
 import { sanitize } from './game.js';
+import { loadArtwork, onArtChange } from './artwork.js';
 
 async function boot() {
   await load();
   sanitize();
   bind();
   render();
+  onArtChange(() => rerender());
+  loadArtwork();
   onChange(() => { /* state saved automatically by store.commit */ });
 
   if ('serviceWorker' in navigator) {

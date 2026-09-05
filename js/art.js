@@ -1,6 +1,7 @@
 // Vector portraits of public-domain cartoon stars (original works 1905–1930),
 // drawn in the rubber-hose style, rendered inside glossy circular gToon chips.
 import { SERIES, COLORS, RARITY } from './data.js';
+import { getArt, artEnabled } from './artwork.js';
 
 const O = 'stroke="#111" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"';
 const K = '#151515';
@@ -187,6 +188,7 @@ function scene(t, id) {
       <linearGradient id="gl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
       <linearGradient id="bv${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9d7e5"/><stop offset="1" stop-color="#5b7fa6"/></linearGradient>
       <linearGradient id="au${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#f5c342"/><stop offset="1" stop-color="#9a6b00"/></linearGradient>
+      <radialGradient id="vig${id}" cx="50%" cy="40%" r="60%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".75"/></radialGradient>
       <clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath>
     </defs>
     <g clip-path="url(#clip${id})">${deco}</g>`;
@@ -203,6 +205,17 @@ function pose(t) {
   }
 }
 
+// Real artwork (custom or Wikimedia Commons) with per-edition treatment.
+function photo(t, id) {
+  const a = (t.char && artEnabled()) ? getArt(t.char) : null;
+  if (!a || !a.src) return '';
+  const filt = t.variant === 'reel' ? `filter="url(#sepia${id})"` : t.variant === 'holo' ? `filter="url(#vivid${id})"` : '';
+  const tf = t.pose === 'mirror' ? 'translate(100 0) scale(-1 1)' : t.pose === 'zoom' ? 'translate(50 50) scale(1.15) rotate(-4) translate(-50 -50)' : '';
+  return `<defs><filter id="sepia${id}"><feColorMatrix type="matrix" values=".393 .769 .189 0 0 .349 .686 .168 0 0 .272 .534 .131 0 0 0 0 0 1 0"/></filter><filter id="vivid${id}"><feColorMatrix type="saturate" values="1.6"/></filter></defs>
+    <g transform="${tf}"><image href="${a.src}" x="4" y="4" width="92" height="92" preserveAspectRatio="xMidYMid slice" ${filt}/></g>
+    ${t.variant === 'stage' ? `<circle cx="50" cy="50" r="46" fill="url(#vig${id})"/>` : ''}`;
+}
+
 // The glossy chip: scene + portrait + bevel ring + colour ring + point bubble.
 export function tokenSVG(t, size = 100, opts = {}) {
   const id = 'k' + (uid++);
@@ -217,7 +230,7 @@ export function tokenSVG(t, size = 100, opts = {}) {
     : gold ? `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#au${id})" stroke-width="4"/>` : `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#bv${id})" stroke-width="4"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${t.name}">
     ${scene(t, id)}
-    <g clip-path="url(#clip${id})"><g transform="translate(50 50) scale(.8) translate(-50 -50) ${pose(t)}">${draw()}</g>${t.variant === 'holo' || t.rarity >= 5 ? sparkles : ''}</g>
+    <g clip-path="url(#clip${id})"><g transform="translate(50 50) scale(.8) translate(-50 -50) ${pose(t)}">${draw()}</g>${photo(t, id)}${t.variant === 'holo' || t.rarity >= 5 ? sparkles : ''}</g>
     <g clip-path="url(#clip${id})"><ellipse cx="36" cy="26" rx="28" ry="15" fill="url(#gl${id})" transform="rotate(-18 36 26)"/><path d="M18 74 Q50 96 82 74" fill="none" stroke="#fff" stroke-width="5" opacity=".22"/></g>
     ${outer}
     ${ring ? `<circle cx="50" cy="50" r="43.5" fill="none" stroke="${col.hex}" stroke-width="3.2"/>` : ''}

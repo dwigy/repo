@@ -359,3 +359,8 @@ body.in-match #app { padding-left: 0; padding-bottom: 0; }
 .upd { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #dfe7ee; font-size: 14px; }
 .upd:last-child { border-bottom: 0; }
 .upd-date { flex: none; background: var(--navy); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 2px; letter-spacing: .04em; }
+
+.artbox { margin-top: 10px; background: #fff; border-radius: 4px; padding: 8px 10px; }
+.artbox a { color: var(--navy); }
+.artbox .row { margin-top: 6px; }
+label.obtn { display: inline-block; cursor: pointer; }

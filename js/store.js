@@ -48,7 +48,7 @@ function openDB() {
     } catch (e) { reject(e); }
   });
 }
-async function idbGet(key) {
+export async function idbGet(key) {
   try {
     const db = await openDB();
     return await new Promise((resolve, reject) => {
@@ -59,7 +59,7 @@ async function idbGet(key) {
     });
   } catch { return undefined; }
 }
-async function idbSet(key, value) {
+export async function idbSet(key, value) {
   try {
     const db = await openDB();
     await new Promise((resolve, reject) => {
