@@ -42,7 +42,7 @@ export function startNewPlayer(name) {
   return commit(s => {
     s.name = (name || 'Orbiter').trim().slice(0, 16) || 'Orbiter';
     s.points = 500;
-    const starters = ['rr01', 'gw02', 'rd02', 'ss01', 'mm02', 'cc01', 'rr03', 'gw03', 'rd01', 'ss03', 'mm03', 'cc03'];
+    const starters = ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1'];
     starters.forEach(id => addCtoon(id));
     addCtoon('pz01'); s.prizes.push('pz01');
     // one random uncommon and one random rare to make the first deck fun
@@ -324,4 +324,22 @@ export function npcZones() {
     }
     return { ...z, items, rating: items.reduce((s, it) => s + BY_ID[it.id].points, 0) };
   });
+}
+
+// ---- Drop references to cToons that no longer exist (older catalogs) ----
+export function sanitize() {
+  let changed = false;
+  const known = (id) => !!BY_ID[id];
+  for (const id of Object.keys(state.collection)) if (!known(id)) { delete state.collection[id]; changed = true; }
+  const deck = state.deck.filter(known); if (deck.length !== state.deck.length) { state.deck = deck; changed = true; }
+  const items = state.czone.items.filter(it => known(it.id)); if (items.length !== state.czone.items.length) { state.czone.items = items; changed = true; }
+  const prizes = state.prizes.filter(known); if (prizes.length !== state.prizes.length) { state.prizes = prizes; changed = true; }
+  if (state.onboarded && Object.keys(state.collection).length === 0) {
+    ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1', 'pz01'].forEach(id => addCtoon(id));
+    if (!state.prizes.includes('pz01')) state.prizes.push('pz01');
+    state.points += 500;
+    log('The Orbit got a fresh cast! Your binder has been restocked and you got 500 points for the trouble.');
+    changed = true;
+  }
+  if (changed) { if (state.deck.length < 12) state.deck = autoDeck(state); commit(); }
 }

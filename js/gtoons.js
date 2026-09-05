@@ -39,7 +39,7 @@ function powersFor(me, rival) {
     const p = t.power; const add = (v, why) => mods[i].push({ v, why });
     const rt = card(rival, across(i));
     switch (p.t) {
-      case 'x2':            for (let j = 0; j < SLOTS; j++) if (j !== i && me.slots[j] === p.id) mods[j].push({ v: BY_ID[p.id].pts, why: `x2 from ${t.name}` }); break;
+      case 'x2':            for (let j = 0; j < SLOTS; j++) { const b = card(me, j); if (j !== i && b && b.char === p.id) mods[j].push({ v: b.pts, why: `x2 from ${t.short || t.name}` }); } break;
       case 'perOppColor':   { const n = rvC[p.color] || 0; if (n) add(p.n * n, `${n} rival ${COLORS[p.color].name}`); break; }
       case 'perOwnColor':   { const n = (myC[p.color] || 0) - (t.color === p.color ? 1 : 0); if (n > 0) add(p.n * n, `${n} ${COLORS[p.color].name}`); break; }
       case 'minusOppColor': for (let j = 0; j < SLOTS; j++) if (card(rival, j)?.color === p.color) rmods[j].push({ v: -p.n, why: t.name }); break;

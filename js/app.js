@@ -1,8 +1,10 @@
 import { load, onChange } from './store.js';
 import { render, bind, toast } from './ui.js';
+import { sanitize } from './game.js';
 
 async function boot() {
   await load();
+  sanitize();
   bind();
   render();
   onChange(() => { /* state saved automatically by store.commit */ });

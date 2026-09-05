@@ -7,11 +7,16 @@ steel-blue bevelled panels, angled tabs, the gToon Game Zone board with its sunb
 decorate your **cZone**, trade at the Auction and redeem **Orbit Codes**. Everything
 saves automatically on your device.
 
-It is free and not for sale. All 66 characters and their six series are original
-creations drawn in the era's flat, bold-outline style; no Cartoon Network characters or
-artwork are used. Fonts are open-licensed lookalikes bundled for offline use: Michroma for
-the wide headers and Barlow Condensed for the condensed italic numerals (SIL OFL, see
-`fonts/LICENSE.txt`).
+It is free and not for sale. The cast are cartoon stars whose original works are in the
+US public domain (published 1905–1930): Felix the Cat, Koko the Clown, Oswald the Lucky
+Rabbit, Steamboat Willie, Bosko, Bimbo, Flip the Frog, the 1930 Betty Boop, Popeye, Olive
+Oyl, Krazy Kat, Ignatz Mouse, Gertie the Dinosaur, Farmer Al Falfa and Little Nemo. Every
+portrait is drawn from scratch for this game in the rubber-hose style; no studio artwork is
+copied. Each character comes in four collectible editions (Classic, a film-reel edition
+named for a public-domain title, Spotlight, and a Gold or Holo top edition). No Cartoon
+Network characters are used. Fonts are open-licensed lookalikes bundled for offline use:
+Michroma for the wide headers and Barlow Condensed for the condensed italic numerals
+(SIL OFL, see `fonts/LICENSE.txt`).
 
 No app store, no computer and no account needed.
 
@@ -50,13 +55,13 @@ Open that link on your iPhone and follow the install steps above.
 
 | Feature | Details |
 | --- | --- |
-| Binder | 66 cToons in 7 series and 7 rarity tiers (Common → Ultra Rare, plus earn-only Prize cToons). Duplicates can be recycled for points. |
+| Binder | 66 cToons: 15 public-domain stars × 4 editions across 5 series, plus 6 earn-only Prize cToons. Seven rarity tiers (Common → Ultra Rare). Duplicates can be recycled for points. |
 | cToon Vendor | Free daily cToon plus Standard, Premium and Mega cPacks with published odds. |
-| gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and a power (x2 to a buddy, bonuses per colour, penalties to the rival across the line, back/front row bonuses…). Three of a colour scores a bonus; swapping a hand gToon costs 10. Five unlockable opponents, deck builder with auto-fill. |
+| gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and a power (x2 to a buddy, bonuses per colour, penalties to the rival across the line, back/front row bonuses…). Three of a colour scores a bonus; swapping a hand gToon costs 10. Chips flip through the air from your hand to the board, land with a shockwave, and rival chips flash or shake when powers hit them. Five unlockable opponents, deck builder with auto-fill. |
 | cZones | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC cZones to visit (Previous / Random / Next) with awards. |
 | Auction | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
 | Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
-| Orbit Codes | A featured code on the front page rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `ROCKETRASCAL`, `SPOOKY` and `MUFFINTIME`. |
+| Orbit Codes | A featured code on the front page rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
 
 ## Running locally
 
@@ -73,7 +78,7 @@ sw.js                 offline cache
 css/style.css         styling (2003 Orbit look)
 css/fonts.css, fonts/ bundled open-licensed fonts
 js/data.js            cToon catalog, packs, opponents, quests, codes
-js/art.js             procedural SVG artwork: characters, gToon tokens, sockets, cZone badges
+js/art.js             vector portraits of the public-domain cast, glossy gToon chips, sockets, cZone badges
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
 js/gtoons.js          battle engine and AI
