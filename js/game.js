@@ -1,5 +1,5 @@
 // Game rules: economy, packs, daily rewards, quests, trades, prizes.
-import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS } from './data.js';
+import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
 import { state, commit, todayKey, seededRng, parseGiftCode, makeGiftCode } from './store.js';
 
 export const DAILY_BASE = 100;
@@ -58,7 +58,7 @@ export function startNewPlayer(name) {
 export function autoDeck(s = state) {
   const list = [];
   Object.entries(s.collection).forEach(([id, n]) => { for (let i = 0; i < n; i++) list.push(id); });
-  list.sort((a, b) => BY_ID[b].points - BY_ID[a].points);
+  list.sort((a, b) => BY_ID[b].pts - BY_ID[a].pts);
   return list.slice(0, 12);
 }
 
@@ -263,6 +263,11 @@ export function redeemCode(raw) {
     if (state.redeemed.includes(gift.key)) return { ok: false, text: 'That gift code was already redeemed on this device.' };
     return commit(s => { s.redeemed.push(gift.key); addCtoon(gift.id); log(`Gift received: ${BY_ID[gift.id].name}!`); checkPrizes(s); return { ok: true, text: `${BY_ID[gift.id].name} joins your binder!`, ctoons: [gift.id] }; });
   }
+  if (code === featuredCode()) {
+    const key = 'featured:' + todayKey() + ':' + code;
+    if (state.redeemed.includes(key)) return { ok: false, text: 'You already used today\'s featured code.' };
+    return commit(s => { s.redeemed.push(key); s.points += 150; log(`Featured code ${code}: +150 points.`); return { ok: true, text: 'Featured code accepted! +150 points.', ctoons: [] }; });
+  }
   const promo = PROMO_CODES[code];
   if (!promo) return { ok: false, text: 'Unknown code. Check the spelling and try again.' };
   const key = 'promo:' + code;
@@ -299,4 +304,24 @@ export function checkPrizes(s = state) {
 export function catalogProgress() {
   const total = CTOONS.length;
   return { have: uniqueOwned(), total };
+}
+
+// ---- Front page featured code (rotates daily) ----
+export function featuredCode() {
+  const rnd = seededRng('featured:' + todayKey());
+  return FEATURED_CODES[Math.floor(rnd() * FEATURED_CODES.length)];
+}
+
+// ---- Visitable NPC cZones (generated daily from a seed) ----
+export function npcZones() {
+  const rnd = seededRng('zones:' + todayKey());
+  return NPC_ZONES.map(z => {
+    const n = 5 + Math.floor(rnd() * 6);
+    const items = [];
+    for (let i = 0; i < n; i++) {
+      const pool = PACKABLE.filter(t => t.rarity <= (rnd() < 0.15 ? 4 : 2));
+      items.push({ id: pool[Math.floor(rnd() * pool.length)].id, x: 0.05 + rnd() * 0.78, y: 0.05 + rnd() * 0.7 });
+    }
+    return { ...z, items, rating: items.reduce((s, it) => s + BY_ID[it.id].points, 0) };
+  });
 }

@@ -1,8 +1,10 @@
 // Procedural cartoon character renderer. Every cToon is drawn from a small
 // set of parameters so the whole catalog stays tiny and fully offline.
-import { SERIES } from './data.js';
+// Characters are rendered inside circular "gToon" tokens like the original site.
+import { SERIES, COLORS } from './data.js';
 
 const O = 'stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"';
+let uid = 0;
 
 function body(a) {
   const { c1, c2 } = a;
@@ -32,7 +34,6 @@ function body(a) {
 }
 
 function faceY(a) {
-  // Where the face sits, per body shape.
   switch (a.body) {
     case 'muffin': return { ey: 42, my: 52 };
     case 'moth':   return { ey: 46, my: 58 };
@@ -57,7 +58,7 @@ function eyes(a, ey) {
       case 'dot':   return `<circle cx="${x}" cy="${ey}" r="3" fill="#111"/>`;
       case 'big':   return `<circle cx="${x}" cy="${ey}" r="7" fill="#fff" ${O}/><circle cx="${x+1.5}" cy="${ey+1}" r="3.2" fill="#111"/><circle cx="${x+3}" cy="${ey-1.5}" r="1.2" fill="#fff"/>`;
       case 'sleepy':return `<path d="M${x-6} ${ey} Q${x} ${ey+6} ${x+6} ${ey}" fill="none" ${O}/>`;
-      case 'angry': return `<circle cx="${x}" cy="${ey}" r="6" fill="#fff" ${O}/><circle cx="${x}" cy="${ey+1}" r="3" fill="#111"/><line x1="${x-7}" y1="${ey-8 + (x<50? -1: 1)*0}" x2="${x+7}" y2="${ey-6}" ${O} transform="${x<50?'':'scale(-1 1) translate(-'+(2*x)+' 0)'}"/>`;
+      case 'angry': return `<circle cx="${x}" cy="${ey}" r="6" fill="#fff" ${O}/><circle cx="${x}" cy="${ey+1}" r="3" fill="#111"/><line x1="${x-7}" y1="${ey-8}" x2="${x+7}" y2="${ey-6}" ${O} transform="${x<50?'':'scale(-1 1) translate(-'+(2*x)+' 0)'}"/>`;
       case 'happy': return `<path d="M${x-6} ${ey+2} Q${x} ${ey-6} ${x+6} ${ey+2}" fill="none" ${O}/>`;
       case 'x':     return `<path d="M${x-4} ${ey-4} L${x+4} ${ey+4} M${x+4} ${ey-4} L${x-4} ${ey+4}" ${O}/>`;
       default:      return `<circle cx="${x}" cy="${ey}" r="5" fill="#fff" ${O}/><circle cx="${x}" cy="${ey}" r="2.5" fill="#111"/>`;
@@ -126,28 +127,97 @@ function extra(a, ey, my) {
   }
 }
 
-export function ctoonSVG(t, size = 100) {
+// Just the character (transparent background), 100x100 viewBox.
+export function characterSVG(t, size = 100) {
   const a = t.art;
   const { ey, my } = faceY(a);
-  const bg = SERIES[t.series]?.color || '#fff';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${t.name}">
-    <circle cx="50" cy="50" r="46" fill="${bg}" opacity=".18"/>
-    ${a.extra === 'cape' ? extra(a, ey, my) : ''}
-    ${body(a)}
-    ${eyes(a, ey)}
-    ${mouth(a, my)}
-    ${hat(a)}
-    ${a.extra !== 'cape' ? extra(a, ey, my) : ''}
+    ${a.extra === 'cape' ? extra(a, ey, my) : ''}${body(a)}${eyes(a, ey)}${mouth(a, my)}${hat(a)}${a.extra !== 'cape' ? extra(a, ey, my) : ''}
+  </svg>`;
+}
+
+// Scene background for a token: a little cartoon backdrop per series.
+function scene(t, id) {
+  const [d, l] = SERIES[t.series]?.bg || ['#333', '#777'];
+  const deco = {
+    rr: `<circle cx="22" cy="24" r="1.6" fill="#fff"/><circle cx="76" cy="18" r="1.2" fill="#fff"/><circle cx="82" cy="60" r="1.8" fill="#fff"/><circle cx="16" cy="70" r="1.2" fill="#fff"/><circle cx="74" cy="82" r="7" fill="#fff" opacity=".25"/>`,
+    gw: `<path d="M0 78 Q20 60 40 78 T80 78 T120 78 V100 H0 Z" fill="#0f5a2a"/><path d="M18 80 L24 50 L30 80 Z M70 82 L78 46 L86 82 Z" fill="#1f7a36"/>`,
+    rd: `<rect x="0" y="0" width="100" height="100" fill="url(#chk${id})"/>`,
+    ss: `<circle cx="74" cy="24" r="12" fill="#fef3c7" opacity=".9"/><path d="M0 84 L14 70 L26 84 L40 66 L54 84 L70 72 L84 84 L100 70 V100 H0 Z" fill="#150a2e"/>`,
+    mm: `<rect x="0" y="0" width="100" height="100" fill="url(#str${id})"/>`,
+    cc: `<circle cx="72" cy="26" r="11" fill="#fff5b0"/><path d="M0 76 Q30 64 50 76 T100 74 V100 H0 Z" fill="#c9862a"/>`,
+    pz: `<path d="M50 6 L56 42 L94 50 L56 58 L50 94 L44 58 L6 50 L44 42 Z" fill="#fff" opacity=".35"/>`,
+  }[t.series] || '';
+  return `<defs>
+      <radialGradient id="bg${id}" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></radialGradient>
+      <pattern id="chk${id}" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#fff" opacity=".18"/><rect x="8" y="8" width="8" height="8" fill="#fff" opacity=".18"/></pattern>
+      <pattern id="str${id}" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="14" fill="#fff" opacity=".12"/></pattern>
+      <clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath>
+    </defs>
+    <circle cx="50" cy="50" r="46" fill="url(#bg${id})"/>
+    <g clip-path="url(#clip${id})">${deco}</g>`;
+}
+
+// A gToon token: circular scene + character + colour ring + point bubble.
+export function tokenSVG(t, size = 100, opts = {}) {
+  const id = 'k' + (uid++);
+  const a = t.art;
+  const { ey, my } = faceY(a);
+  const col = COLORS[t.color] || COLORS.slv;
+  const ring = opts.ring !== false;
+  const bubble = opts.bubble !== false;
+  const label = opts.label != null ? opts.label : t.pts;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${t.name}">
+    ${scene(t, id)}
+    <g clip-path="url(#clip${id})" transform="translate(50 50) scale(.78) translate(-50 -47)">
+      ${a.extra === 'cape' ? extra(a, ey, my) : ''}${body(a)}${eyes(a, ey)}${mouth(a, my)}${hat(a)}${a.extra !== 'cape' ? extra(a, ey, my) : ''}
+    </g>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="5"/>
+    ${ring ? `<circle cx="50" cy="50" r="46" fill="none" stroke="${col.hex}" stroke-width="3.5"/>` : ''}
+    <circle cx="50" cy="50" r="48.5" fill="none" stroke="#5b7fa6" stroke-width="1.5"/>
+    ${bubble ? `<circle cx="76" cy="76" r="13" fill="${col.hex}" stroke="#fff" stroke-width="2.5"/><text x="76" y="81" text-anchor="middle" font-size="15" font-weight="800" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" fill="${t.color === 'yel' || t.color === 'slv' ? '#1c2f4a' : '#fff'}">${label}</text>` : ''}
+  </svg>`;
+}
+
+// Empty board socket: silver sunburst with "ORBIT".
+export function socketSVG(size = 100) {
+  const rays = [];
+  for (let i = 0; i < 24; i++) rays.push(`<path d="M50 50 L${(50 + 46 * Math.cos(i * Math.PI / 12)).toFixed(2)} ${(50 + 46 * Math.sin(i * Math.PI / 12)).toFixed(2)} L${(50 + 46 * Math.cos((i + .5) * Math.PI / 12)).toFixed(2)} ${(50 + 46 * Math.sin((i + .5) * Math.PI / 12)).toFixed(2)} Z" fill="#fff" opacity=".35"/>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+    <circle cx="50" cy="50" r="47" fill="#8ea9c4"/>
+    ${rays.join('')}
+    <circle cx="50" cy="50" r="47" fill="none" stroke="#dbe7f2" stroke-width="4"/>
+    <circle cx="50" cy="50" r="49" fill="none" stroke="#5b7fa6" stroke-width="1.5"/>
+    <text x="50" y="55" text-anchor="middle" font-size="15" font-family="Michroma, 'Arial Black', sans-serif" font-style="italic" fill="#dbe7f2" opacity=".85">ORBIT</text>
   </svg>`;
 }
 
 // Silhouette used for cToons the player has not collected yet.
-export function ctoonShadowSVG(t, size = 100) {
-  const a = { ...t.art, c1: '#1f2937', c2: '#111827' };
+export function shadowTokenSVG(t, size = 100) {
+  const id = 'k' + (uid++);
+  const a = { ...t.art, c1: '#5d7896', c2: '#42536b' };
   const { ey, my } = faceY(a);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" opacity=".55">
-    <circle cx="50" cy="50" r="46" fill="#000" opacity=".25"/>
-    ${body(a)}
-    <text x="50" y="${my}" text-anchor="middle" font-size="34" font-weight="900" fill="#94a3b8" font-family="system-ui, sans-serif">?</text>
+  void ey; void my;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+    <defs><clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath></defs>
+    <circle cx="50" cy="50" r="46" fill="#7f97b1"/>
+    <g clip-path="url(#clip${id})" opacity=".5" transform="translate(50 50) scale(.78) translate(-50 -47)">${body(a)}</g>
+    <text x="50" y="62" text-anchor="middle" font-size="34" font-weight="800" fill="#dbe7f2" font-family="'Barlow Condensed', sans-serif">?</text>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="#c9d7e5" stroke-width="5"/>
+    <circle cx="50" cy="50" r="48.5" fill="none" stroke="#5b7fa6" stroke-width="1.5"/>
   </svg>`;
 }
+
+// cZone badge: spiky starburst frame around a token (like the cZones page).
+export function badgeSVG(t, size = 100) {
+  const pts = [];
+  for (let i = 0; i < 32; i++) { const r = i % 2 ? 50 : 44; const ang = i * Math.PI / 16; pts.push(`${(50 + r * Math.cos(ang)).toFixed(2)},${(50 + r * Math.sin(ang)).toFixed(2)}`); }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+    <polygon points="${pts.join(' ')}" fill="#2f6fd0" stroke="#1c3f7a" stroke-width="1.5"/>
+    <g transform="translate(50 50) scale(.84) translate(-50 -50)">${tokenSVG(t, 100, { bubble: false, ring: false })}</g>
+  </svg>`;
+}
+
+// Keep old name working for anything that still imports it.
+export const ctoonSVG = (t, size) => tokenSVG(t, size, { bubble: false });
+export const ctoonShadowSVG = shadowTokenSVG;

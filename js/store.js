@@ -21,8 +21,8 @@ export function freshState() {
     points: 0,
     collection: {},          // { ctoonId: count }
     deck: [],                // up to 12 ctoon ids
-    czone: { bg: 'space', items: [] }, // items: [{id, x, y}] (x/y 0..1)
-    unlockedBgs: ['space'],
+    czone: { bg: 'orbit', items: [] }, // items: [{id, x, y}] (x/y 0..1)
+    unlockedBgs: ['orbit'],
     daily: { last: '', streak: 0 },
     dailyFree: '',           // date the free vendor cToon was claimed
     quests: { date: '', stats: {}, claimed: [] },
@@ -101,6 +101,9 @@ function migrate(s) {
   for (const k of ['czone', 'daily', 'quests', 'trades', 'stats', 'settings']) {
     out[k] = { ...base[k], ...(s[k] || {}) };
   }
+  if (!Array.isArray(out.unlockedBgs)) out.unlockedBgs = [];
+  if (!out.unlockedBgs.includes('orbit')) out.unlockedBgs.unshift('orbit');
+  if (!out.czone.bg) out.czone.bg = 'orbit';
   out.v = SAVE_VERSION;
   return out;
 }
