@@ -1,9 +1,17 @@
 # Cartoon Orbit
 
-A fan-made tribute to the classic collect-and-battle web game, rebuilt as an installable
-web app for your phone. Collect **cToons**, battle in **gToons**, decorate your **cZone**,
-trade at the Trading Post and redeem **Orbit Codes**. Everything saves automatically on
-your device. All 66 characters and their six series are original creations.
+A fan-made homage to the classic 2003 collect-and-battle web game, rebuilt as an
+installable web app for your phone in the look of the original site: the teal frame,
+steel-blue bevelled panels, angled tabs, the gToon Game Zone board with its sunburst
+"ORBIT" sockets, and the cZones badge grid. Collect **cToons**, battle in **gToons**,
+decorate your **cZone**, trade at the Auction and redeem **Orbit Codes**. Everything
+saves automatically on your device.
+
+It is free and not for sale. All 66 characters and their six series are original
+creations drawn in the era's flat, bold-outline style; no Cartoon Network characters or
+artwork are used. Fonts are open-licensed lookalikes bundled for offline use: Michroma for
+the wide headers and Barlow Condensed for the condensed italic numerals (SIL OFL, see
+`fonts/LICENSE.txt`).
 
 No app store, no computer and no account needed.
 
@@ -44,11 +52,11 @@ Open that link on your iPhone and follow the install steps above.
 | --- | --- |
 | Binder | 66 cToons in 7 series and 7 rarity tiers (Common → Ultra Rare, plus earn-only Prize cToons). Duplicates can be recycled for points. |
 | cToon Vendor | Free daily cToon plus Standard, Premium and Mega cPacks with published odds. |
-| gToons | 2×3 grid card battles against 5 unlockable opponents. Every cToon has an ability (row bonuses, adjacency, penalties to the rival across, mirrors, steals…). Deck builder with auto-fill. |
-| cZone | Drag-and-drop display room with 7 unlockable backgrounds. |
-| Trading Post | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
+| gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and a power (x2 to a buddy, bonuses per colour, penalties to the rival across the line, back/front row bonuses…). Three of a colour scores a bonus; swapping a hand gToon costs 10. Five unlockable opponents, deck builder with auto-fill. |
+| cZones | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC cZones to visit (Previous / Random / Next) with awards. |
+| Auction | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
 | Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
-| Orbit Codes | Promo codes for bonuses. Try `ORBIT2000`, `GTOONS`, `ROCKETRASCAL`, `SPOOKY` and `MUFFINTIME`. |
+| Orbit Codes | A featured code on the front page rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `ROCKETRASCAL`, `SPOOKY` and `MUFFINTIME`. |
 
 ## Running locally
 
@@ -62,9 +70,10 @@ needs `http://localhost` or `https://` to register.
 index.html            app shell
 manifest.webmanifest  PWA manifest (name, icons, standalone display)
 sw.js                 offline cache
-css/style.css         styling
+css/style.css         styling (2003 Orbit look)
+css/fonts.css, fonts/ bundled open-licensed fonts
 js/data.js            cToon catalog, packs, opponents, quests, codes
-js/art.js             procedural SVG artwork for every cToon
+js/art.js             procedural SVG artwork: characters, gToon tokens, sockets, cZone badges
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
 js/gtoons.js          battle engine and AI

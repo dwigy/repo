@@ -1,7 +1,8 @@
-// All screens and interactions. Rendering is simple string templates and a
-// single delegated click handler keyed on data-action attributes.
-import { CTOONS, BY_ID, SERIES, RARITY, PACKS, OPPONENTS, BACKGROUNDS, abilityText } from './data.js';
-import { ctoonSVG, ctoonShadowSVG } from './art.js';
+// All screens and interactions, styled after the 2003 Cartoon Orbit site.
+// Rendering is string templates plus one delegated click handler keyed on
+// data-action attributes.
+import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, powerText } from './data.js';
+import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG } from './art.js';
 import { state, commit, exportCode, parseSaveCode, replaceState, resetState, todayKey } from './store.js';
 import * as G from './game.js';
 import * as B from './gtoons.js';
@@ -10,12 +11,14 @@ const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => n.toLocaleString();
 
-let screen = 'home';
+// navigation: section -> sub tab
+let section = 'orbit';
+const subs = { orbit: 'home', collect: 'binder', compete: 'arena', czone: 'mine', help: 'codes' };
 let binderFilter = 'all';
-let match = null;          // active gToons match
+let match = null;
 let selectedHand = -1;
-let gtoonsView = 'lobby';  // lobby | deck | match
 let zonePick = false;
+let visitIndex = 0;
 let installDismissed = false;
 try { installDismissed = sessionStorage.getItem('installDismissed') === '1'; } catch { /* ignore */ }
 
@@ -27,8 +30,7 @@ function beep(freq = 660, dur = 0.08, type = 'square', vol = 0.05) {
     audio = audio || new (window.AudioContext || window.webkitAudioContext)();
     const o = audio.createOscillator(), g = audio.createGain();
     o.type = type; o.frequency.value = freq; g.gain.value = vol;
-    o.connect(g); g.connect(audio.destination);
-    o.start(); o.stop(audio.currentTime + dur);
+    o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + dur);
   } catch { /* no audio */ }
 }
 const sfx = {
@@ -39,252 +41,363 @@ const sfx = {
 };
 
 // ---------- shared components ----------
-function rarityTag(t) { const r = RARITY[t.rarity]; return `<span class="rtag" style="--rc:${r.color}">${r.name}</span>`; }
+const rtag = (t) => `<span class="rtag" style="--rc:${RARITY[t.rarity].color}">${RARITY[t.rarity].name}</span>`;
+const ctag = (t) => `<span class="ctag" style="--cc:${COLORS[t.color].hex}">${COLORS[t.color].name}</span>`;
 
-function cardHTML(t, opts = {}) {
+// Circular token with a label box beneath, like the cZones page.
+function tokenHTML(t, opts = {}) {
   const owned = opts.owned ?? true;
-  const r = RARITY[t.rarity];
-  const cls = ['ctoon', `r-${r.key}`, owned ? '' : 'unowned', opts.small ? 'small' : '', opts.selected ? 'selected' : ''].join(' ');
-  const count = opts.count > 1 ? `<span class="count">x${opts.count}</span>` : '';
-  const badge = opts.badge != null ? `<span class="pts">${opts.badge}</span>` : `<span class="pts">${t.points}</span>`;
-  return `<div class="${cls}" style="--rc:${r.color}" data-action="${opts.action || 'detail'}" data-id="${t.id}" ${opts.data || ''}>
-    <div class="art">${owned ? ctoonSVG(t) : ctoonShadowSVG(t)}</div>
-    <div class="name">${owned ? esc(t.name) : '???'}</div>
-    ${badge}${count}
+  const cls = ['tok', owned ? '' : 'unowned', opts.selected ? 'selected' : '', opts.small ? 'small' : ''].join(' ');
+  const count = opts.count > 1 ? `<span class="tok-count">x${opts.count}</span>` : '';
+  const svg = owned ? tokenSVG(t, 100, { bubble: opts.bubble !== false, label: opts.label }) : shadowTokenSVG(t);
+  return `<div class="${cls}" data-action="${opts.action || 'detail'}" data-id="${t.id}" ${opts.data || ''}>
+    <div class="tok-art">${svg}${count}</div>
+    <div class="tok-label">${owned ? esc(opts.name || t.name) : '???'}</div>
   </div>`;
 }
 
-function topbar() {
-  return `<div class="topbar">
-    <div class="brand"><span class="logo">◉</span> Cartoon Orbit</div>
-    <div class="wallet" data-action="nav" data-to="vendor"><span class="coin">●</span> ${fmt(state.points)}</div>
+function siteHeader() {
+  return `<div class="cn-bar">
+    <div class="cn-strip"><span class="cn-strip-hot">WHAT'S ON IN ORBIT</span><span class="cn-strip-txt">${esc(headline())}</span></div>
+    <div class="cn-bar-row">
+      <div class="cn-tabs">
+        <span class="cn-tab t1" data-action="go" data-to="collect">COLLECT</span>
+        <span class="cn-tab t2" data-action="go" data-to="compete">COMPETE</span>
+        <span class="cn-tab t3" data-action="go" data-to="orbit">ORBIT</span>
+        <span class="cn-tab t4" data-action="go" data-to="czone">cZONE</span>
+      </div>
+      <div class="wallet" data-action="go" data-to="collect" data-sub="cmart"><span>POINTS</span><b>${fmt(state.points)}</b></div>
+    </div>
   </div>`;
+}
+function headline() {
+  const today = todayKey();
+  if (state.daily.last !== today) return 'Your Daily Orbit Bonus is waiting on the front page!';
+  const next = OPPONENTS.find(o => !state.beaten.includes(o.id));
+  return next ? `${next.name} is waiting in the Challenge Zone.` : 'You are the Orbit Champion. Show off that cZone!';
+}
+
+const SECTIONS = [
+  ['orbit',   'MY ORBIT'],
+  ['collect', 'GET CARDS'],
+  ['compete', 'PLAY gTOONS'],
+  ['czone',   'VISIT cZONES'],
+  ['help',    'ORBIT HELP'],
+];
+const SUBTABS = {
+  orbit:   [['home', 'HOME'], ['quests', 'QUESTS'], ['updates', 'UPDATES']],
+  collect: [['binder', 'BINDER'], ['cmart', 'cMART'], ['auction', 'AUCTION']],
+  compete: [['arena', 'CHALLENGE ZONE'], ['deck', 'MY DECK'], ['rules', 'HOW TO PLAY']],
+  czone:   [['mine', 'MY cZONE'], ['visit', 'VISIT cZONES']],
+  help:    [['codes', 'CODES'], ['backup', 'BACKUP'], ['install', 'INSTALL'], ['settings', 'SETTINGS']],
+};
+
+function orbitFrame(inner) {
+  const tabs = SUBTABS[section].map(([k, n]) => `<button class="stab ${subs[section] === k ? 'on' : ''}" data-action="sub" data-id="${k}">${n}</button>`).join('');
+  return `${siteHeader()}
+  <div class="frame">
+    <div class="orbit-head">
+      <div class="orbit-logo" data-action="go" data-to="orbit">CARTOON <span class="o">O</span>RBIT<i>®</i></div>
+      <div class="subnav">${tabs}</div>
+    </div>
+    <div class="content">${inner}</div>
+  </div>
+  <nav class="leftnav">${SECTIONS.map(([k, n]) => `<button class="lnav ${section === k ? 'on' : ''}" data-action="go" data-to="${k}"><span>${n}</span><i>›</i></button>`).join('')}</nav>`;
 }
 
 // ---------- modal & toast ----------
 export function showModal(html, cls = '') {
   const m = $('#modal');
-  m.innerHTML = `<div class="modal-back" data-action="closeModal"></div><div class="modal ${cls}">${html}</div>`;
+  m.innerHTML = `<div class="modal-back" data-action="closeModal"></div><div class="modal panel ${cls}">${html}</div>`;
   m.hidden = false;
 }
 export function closeModal() { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; }
 let toastTimer = null;
 export function toast(text, ms = 2200) {
-  const t = $('#toast');
-  t.textContent = text; t.hidden = false; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove('show'); t.hidden = true; }, ms);
+  const t = $('#toast'); t.textContent = text; t.hidden = false; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.remove('show'); t.hidden = true; }, ms);
 }
-
-// ---------- screens ----------
 function isIOS() { return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
 function isStandalone() { return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches; }
 
-function installBanner() {
-  if (isStandalone() || installDismissed) return '';
-  return `<div class="card banner">
-    <b>Add Cartoon Orbit to your Home Screen</b>
-    <p>${isIOS() ? 'Tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>. It installs like an app and works offline.' : 'Open this page in Safari on your iPhone and use Share → Add to Home Screen. On Android, use the browser menu → Install app.'}</p>
-    <div class="row"><button class="btn small" data-action="nav" data-to="more" data-sub="install">Show me how</button><button class="btn small ghost" data-action="dismissInstall">Later</button></div>
+// ---------- ORBIT (front page) ----------
+function homeView() {
+  const today = todayKey();
+  const dailyDone = state.daily.last === today;
+  const prog = G.catalogProgress();
+  const free = G.dailyFreeCtoon(); const freeDone = state.dailyFree === today;
+  const nextOp = OPPONENTS.find(o => !state.beaten.includes(o.id));
+  const featured = G.featuredCode();
+  const install = (!isStandalone() && !installDismissed) ? `<div class="promo install-promo">
+      <div class="promo-title">ADD ORBIT TO YOUR HOME SCREEN</div>
+      <p>${isIOS() ? 'In Safari tap <b>Share</b>, then <b>Add to Home Screen</b>. Orbit installs like an app and works offline.' : 'Open this page in Safari on your iPhone and use Share → Add to Home Screen.'}</p>
+      <div class="row"><button class="obtn" data-action="go" data-to="help" data-sub="install">SHOW ME HOW</button><button class="obtn grey" data-action="dismissInstall">LATER</button></div>
+    </div>` : '';
+  return `<div class="cols">
+    <div class="col-main">
+      <div class="panel">
+        <div class="ptab">NOW IN ORBIT</div>
+        ${install}
+        <div class="promo daily-promo ${dailyDone ? 'done' : ''}">
+          <div class="promo-title">${dailyDone ? 'DAILY BONUS CLAIMED!' : 'YOUR DAILY ORBIT BONUS!'}</div>
+          <p>Log in every day to keep your streak. Day ${state.daily.streak} streak${state.daily.streak >= 7 ? ' 🔥' : ''}. Seven days in a row earns a Prize cToon.</p>
+          ${dailyDone ? '<span class="okchip">CLAIMED</span>' : '<button class="obtn hot" data-action="claimDaily">CLAIM BONUS</button>'}
+        </div>
+        <div class="promo free-promo ${freeDone ? 'done' : ''}">
+          <div class="row">
+            <div class="promo-tok">${tokenSVG(free, 84)}</div>
+            <div><div class="promo-title">FREE cTOON OF THE DAY</div><p>${esc(free.name)} · ${RARITY[free.rarity].name}. Every Orbiter gets one, every day.</p>
+            ${freeDone ? '<span class="okchip">COLLECTED</span>' : '<button class="obtn hot" data-action="claimFree">TAKE IT</button>'}</div>
+          </div>
+        </div>
+        <div class="orbit-badge">
+          <div class="ob-circle">${tokenSVG(BY_ID[state.deck[0] || 'pz01'], 96)}</div>
+          <div class="ob-text"><b>${esc(state.name).toUpperCase()}'S 24-HOUR ORBIT</b><div class="ob-stats">${prog.have}/${prog.total} cTOONS · ${state.stats.wins} gTOONS WINS · ${fmt(G.binderValue())} PTS BINDER</div>
+            <div class="ob-links"><span data-action="go" data-to="collect">cTOONS</span><span data-action="go" data-to="compete">gTOONS</span><span data-action="go" data-to="collect" data-sub="auction">TRADING</span></div></div>
+        </div>
+      </div>
+      <div class="getstarted">
+        <div class="gs-tabs"><span class="on">GET STARTED</span><span data-action="go" data-to="collect">COLLECT</span><span data-action="go" data-to="compete">COMPETE</span><span data-action="go" data-to="collect" data-sub="auction">AUCTION</span><span data-action="go" data-to="czone" data-sub="visit">EXPLORE</span></div>
+        <div class="gs-body">
+          <div><div class="gs-head">‹ PLAY NOW</div><ul><li data-action="go" data-to="compete">Play gToons${nextOp ? ' vs ' + esc(nextOp.name) : ''}</li><li data-action="go" data-to="collect" data-sub="cmart">Open cPacks at the cMart</li><li data-action="go" data-to="czone">Build your cZone</li></ul></div>
+          <div><div class="gs-head">TODAY'S QUESTS ›</div><ul>${G.todaysQuests().map(q => { const p = G.questProgress(q); const done = state.quests.claimed.includes(q.id); return `<li data-action="go" data-to="orbit" data-sub="quests">${done ? '✔ ' : ''}${esc(q.text)} <em>${p}/${q.goal}</em></li>`; }).join('')}</ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-side">
+      <div class="panel side">
+        <div class="ptab">COMPETE</div>
+        <button class="gtoons-card" data-action="go" data-to="compete"><span class="gt-logo">gTOONS</span><span class="gt-sub">TRADING CARD GAME</span></button>
+      </div>
+      <div class="panel side">
+        <div class="ptab">ORBIT CENTERS</div>
+        <ul class="centers">${Object.entries(SERIES).filter(([k]) => k !== 'pz').map(([k, s]) => `<li data-action="binderSeries" data-id="${k}">${esc(s.name).toUpperCase()}</li>`).join('')}<li class="muted-li">CLICK ON A LINK ABOVE</li></ul>
+      </div>
+      <div class="panel side code-panel">
+        <div class="ptab">GOT A CODE?</div>
+        <div class="row"><input id="codeInput" class="oinput" placeholder="ENTER IT HERE" autocapitalize="characters" autocomplete="off"><button class="obtn" data-action="redeem">SUBMIT</button></div>
+        <div class="featured">FEATURED CODE: <b>${featured}</b></div>
+      </div>
+    </div>
+  </div>`;
+}
+function questsView() {
+  return `<div class="panel">
+    <div class="ptab">TODAY'S QUESTS</div>
+    <p class="note">New quests every day. Finish them for points.</p>
+    <div class="list">${G.todaysQuests().map(q => { const p = G.questProgress(q); const claimed = state.quests.claimed.includes(q.id);
+      return `<div class="li"><div><b>${esc(q.text)}</b><div class="small">${p}/${q.goal} · +${q.reward} pts</div></div>
+        ${claimed ? '<span class="okchip">DONE</span>' : p >= q.goal ? `<button class="obtn hot" data-action="claimQuest" data-id="${q.id}">CLAIM</button>` : `<span class="pct">${Math.round(100 * p / q.goal)}%</span>`}</div>`; }).join('')}</div>
+    <div class="ptab">PRIZE cTOONS</div>
+    <div class="list">${CTOONS.filter(t => t.series === 'pz').map(t => `<div class="li"><div class="row"><div class="li-tok">${state.prizes.includes(t.id) ? tokenSVG(t, 48, { bubble: false }) : shadowTokenSVG(t, 48)}</div><div><b>${esc(t.name)}</b><div class="small">${esc(t.blurb)}</div></div></div>${state.prizes.includes(t.id) ? '<span class="okchip">EARNED</span>' : ''}</div>`).join('')}</div>
+  </div>`;
+}
+function updatesView() {
+  const d = (t) => new Date(t).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' });
+  return `<div class="panel">
+    <div class="ptab">ORBIT UPDATES</div>
+    <div class="updates">${state.log.length ? state.log.map(l => `<div class="upd"><div class="upd-date">${d(l.t)}</div><div>${esc(l.text)}</div></div>`).join('') : '<div class="upd"><div class="upd-date">TODAY</div><div>Hey Orbiters, welcome aboard! Open a cPack at the cMart to get started.</div></div>'}</div>
   </div>`;
 }
 
-function homeScreen() {
-  const today = todayKey();
-  const dailyDone = state.daily.last === today;
-  const quests = G.todaysQuests();
-  const prog = G.catalogProgress();
-  const nextOp = OPPONENTS.find(o => !state.beaten.includes(o.id));
-  return `${topbar()}
-  <section class="screen">
-    ${installBanner()}
-    <div class="hero">
-      <div class="hero-text">
-        <div class="hi">Welcome back, <b>${esc(state.name)}</b></div>
-        <div class="sub">${prog.have}/${prog.total} cToons collected · ${state.stats.wins} gToons wins</div>
-        <div class="bar"><i style="width:${Math.round(100 * prog.have / prog.total)}%"></i></div>
-      </div>
-    </div>
-    <div class="card daily ${dailyDone ? 'done' : ''}">
-      <div>
-        <b>Daily Orbit Bonus</b>
-        <div class="muted">Streak: ${state.daily.streak} day${state.daily.streak === 1 ? '' : 's'}${state.daily.streak >= 7 ? ' 🔥' : ''} · 7 days in a row unlocks a Prize cToon</div>
-      </div>
-      ${dailyDone ? '<span class="chip ok">Claimed</span>' : '<button class="btn glow" data-action="claimDaily">Claim</button>'}
-    </div>
-    <h3>Today's Quests</h3>
-    <div class="card list">
-      ${quests.map(q => {
-        const p = G.questProgress(q); const claimed = state.quests.claimed.includes(q.id);
-        return `<div class="li"><div><div>${esc(q.text)}</div><div class="muted">${p}/${q.goal} · +${q.reward} pts</div></div>
-          ${claimed ? '<span class="chip ok">Done</span>' : p >= q.goal ? `<button class="btn small glow" data-action="claimQuest" data-id="${q.id}">Claim</button>` : `<span class="chip">${Math.round(100 * p / q.goal)}%</span>`}</div>`;
-      }).join('')}
-    </div>
-    <div class="grid2">
-      <button class="tile" data-action="nav" data-to="vendor"><span>🎁</span>cToon Vendor<small>Open cPacks</small></button>
-      <button class="tile" data-action="nav" data-to="gtoons"><span>⚔️</span>gToons<small>${nextOp ? 'Next: ' + esc(nextOp.name) : 'Champion!'}</small></button>
-      <button class="tile" data-action="nav" data-to="more" data-sub="trade"><span>🔁</span>Trading Post<small>Daily offers</small></button>
-      <button class="tile" data-action="nav" data-to="czone"><span>🪐</span>My cZone<small>${state.czone.items.length} on display</small></button>
-    </div>
-    <h3>Orbit Log</h3>
-    <div class="card list log">${state.log.length ? state.log.map(l => `<div class="li"><span>${esc(l.text)}</span></div>`).join('') : '<div class="li muted">Nothing yet. Go open a cPack!</div>'}</div>
-  </section>`;
-}
-
-function binderScreen() {
+// ---------- COLLECT ----------
+function binderView() {
   const list = CTOONS.filter(t => binderFilter === 'all' ? true : t.series === binderFilter);
-  const tabs = [['all', 'All'], ...Object.entries(SERIES).map(([k, s]) => [k, s.name])];
+  const tabs = [['all', 'ALL'], ...Object.entries(SERIES).map(([k, s]) => [k, s.name.toUpperCase()])];
   const ownedIn = (k) => CTOONS.filter(t => (k === 'all' || t.series === k) && G.ownedCount(t.id) > 0).length;
   const totalIn = (k) => CTOONS.filter(t => k === 'all' || t.series === k).length;
-  return `${topbar()}
-  <section class="screen">
-    <div class="tabs scroll">${tabs.map(([k, n]) => `<button class="tab ${binderFilter === k ? 'on' : ''}" data-action="binderFilter" data-id="${k}">${esc(n)} <em>${ownedIn(k)}/${totalIn(k)}</em></button>`).join('')}</div>
-    ${binderFilter !== 'all' ? `<div class="muted series-blurb" style="border-color:${SERIES[binderFilter].color}">${esc(SERIES[binderFilter].blurb)}</div>` : ''}
-    <div class="muted small-note">Binder value: ${fmt(G.binderValue())} pts · ${G.totalOwned()} cToons total</div>
-    <div class="grid cards">${list.map(t => cardHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
-  </section>`;
+  return `<div class="panel">
+    <div class="ptab">MY BINDER <em>${G.uniqueOwned()}/${CTOONS.length} cTOONS · ${fmt(G.binderValue())} PTS</em></div>
+    <div class="chips scroll">${tabs.map(([k, n]) => `<button class="chip ${binderFilter === k ? 'on' : ''}" data-action="binderFilter" data-id="${k}">${n} <em>${ownedIn(k)}/${totalIn(k)}</em></button>`).join('')}</div>
+    ${binderFilter !== 'all' ? `<div class="series-blurb">${esc(SERIES[binderFilter].blurb)}</div>` : ''}
+    <div class="tokgrid">${list.map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
+  </div>`;
 }
-
 function detailModal(id) {
   const t = BY_ID[id]; const n = G.ownedCount(id); const s = SERIES[t.series];
   const inDeck = state.deck.filter(d => d === id).length;
   const inZone = state.czone.items.filter(it => it.id === id).length;
   const actions = [];
   if (n > 0) {
-    if (inDeck < n && state.deck.length < 12) actions.push(`<button class="btn small" data-action="deckAdd" data-id="${id}">Add to deck</button>`);
-    if (inDeck > 0) actions.push(`<button class="btn small ghost" data-action="deckRemove" data-id="${id}">Remove from deck</button>`);
-    if (inZone < n) actions.push(`<button class="btn small" data-action="zoneAdd" data-id="${id}">Place in cZone</button>`);
-    if (n > 1 && t.series !== 'pz') actions.push(`<button class="btn small ghost" data-action="recycle" data-id="${id}">Recycle 1 (+${RARITY[t.rarity].recycle})</button>`);
-    if (t.series !== 'pz') actions.push(`<button class="btn small ghost" data-action="gift" data-id="${id}">Gift to a friend</button>`);
+    if (inDeck < n && state.deck.length < 12) actions.push(`<button class="obtn" data-action="deckAdd" data-id="${id}">ADD TO DECK</button>`);
+    if (inDeck > 0) actions.push(`<button class="obtn grey" data-action="deckRemove" data-id="${id}">REMOVE FROM DECK</button>`);
+    if (inZone < n) actions.push(`<button class="obtn" data-action="zoneAdd" data-id="${id}">PUT IN cZONE</button>`);
+    if (n > 1 && t.series !== 'pz') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
+    if (t.series !== 'pz') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
   }
-  showModal(`
-    <div class="detail" style="--rc:${RARITY[t.rarity].color}">
-      <div class="big-art ${n ? '' : 'unowned'}">${n ? ctoonSVG(t) : ctoonShadowSVG(t)}</div>
-      <h2>${n ? esc(t.name) : '???'}</h2>
-      <div class="row center"><span class="stag" style="--sc:${s.color}">${esc(s.name)}</span>${rarityTag(t)}<span class="chip">${t.points} pts</span></div>
+  showModal(`<div class="detail">
+      <div class="ptab">cTOON DETAILS</div>
+      <div class="detail-top">
+        <div class="detail-tok">${n ? tokenSVG(t, 150) : shadowTokenSVG(t, 150)}</div>
+        <div class="detail-info">
+          <h2>${n ? esc(t.name) : '???'}</h2>
+          <div class="row wrap"><span class="stag">${esc(s.name)}</span>${rtag(t)}</div>
+          <div class="statline"><span>VALUE</span><b>${t.points}</b><span>gTOON</span><b>${t.pts}</b>${ctag(t)}</div>
+        </div>
+      </div>
       ${n ? `<p class="blurb">“${esc(t.blurb)}”</p>` : '<p class="blurb muted">Not in your binder yet. Find it in cPacks, trades or by winning gToons.</p>'}
-      <div class="ability"><b>gToons ability:</b> ${esc(abilityText(t.ability, t.series))}</div>
-      <div class="muted">Owned: ${n} · In deck: ${inDeck} · In cZone: ${inZone}</div>
+      <div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
+      <div class="small">Owned ${n} · In deck ${inDeck} · In cZone ${inZone}</div>
       <div class="row wrap">${actions.join('')}</div>
-      <button class="btn ghost block" data-action="closeModal">Close</button>
+      <button class="obtn grey block" data-action="closeModal">CLOSE</button>
     </div>`);
 }
-
-function vendorScreen() {
+function cmartView() {
   const free = G.dailyFreeCtoon(); const freeDone = state.dailyFree === todayKey();
-  return `${topbar()}
-  <section class="screen">
-    <div class="vendor-head"><div class="vendor-face">🤖</div><div><b>The Vendor</b><div class="muted">“Fresh cPacks! Get 'em while they're... packed.”</div></div></div>
-    <div class="card daily ${freeDone ? 'done' : ''}">
-      <div class="row"><div class="mini-art">${ctoonSVG(free, 48)}</div><div><b>Free daily cToon</b><div class="muted">${esc(free.name)} · ${RARITY[free.rarity].name}</div></div></div>
-      ${freeDone ? '<span class="chip ok">Claimed</span>' : '<button class="btn glow" data-action="claimFree">Take it</button>'}
-    </div>
-    <h3>cPacks</h3>
-    ${PACKS.map(p => `<div class="card pack ${p.id}">
-      <div class="pack-art">${p.id === 'std' ? '📦' : p.id === 'prem' ? '🎁' : '💎'}</div>
-      <div class="pack-info"><b>${esc(p.name)}</b><div class="muted">${esc(p.desc)}</div>
+  return `<div class="panel">
+    <div class="ptab">cMART <em>YOUR 24-HOUR ORBIT MARKETPLACE</em></div>
+    <div class="promo free-promo ${freeDone ? 'done' : ''}"><div class="row"><div class="promo-tok">${tokenSVG(free, 72)}</div><div><div class="promo-title">FREE cTOON OF THE DAY</div><p>${esc(free.name)} · ${RARITY[free.rarity].name}</p>${freeDone ? '<span class="okchip">COLLECTED</span>' : '<button class="obtn hot" data-action="claimFree">TAKE IT</button>'}</div></div></div>
+    ${PACKS.map(p => `<div class="pack ${p.id}">
+      <div class="pack-art">${['📦', '🎁', '💎'][PACKS.indexOf(p)]}</div>
+      <div class="pack-info"><b>${esc(p.name).toUpperCase()}</b><div class="small">${esc(p.desc)}</div>
         <div class="odds">${p.odds.map((o, i) => `<span style="--rc:${RARITY[i].color}">${RARITY[i].name.split(' ').map(w => w[0]).join('')} ${(o * 100).toFixed(o < 0.01 ? 1 : 0)}%</span>`).join('')}</div></div>
-      <button class="btn ${state.points >= p.price ? 'glow' : ''}" data-action="buyPack" data-id="${p.id}" ${state.points >= p.price ? '' : 'disabled'}>● ${fmt(p.price)}</button>
+      <button class="obtn ${state.points >= p.price ? 'hot' : ''}" data-action="buyPack" data-id="${p.id}" ${state.points >= p.price ? '' : 'disabled'}>${fmt(p.price)} PTS</button>
     </div>`).join('')}
-    <p class="muted small-note">Earn points from the daily bonus, quests, gToons wins and recycling duplicate cToons.</p>
-  </section>`;
+    <p class="note">Earn points from the daily bonus, quests, gToons wins and by recycling duplicate cToons.</p>
+  </div>`;
 }
-
-function revealModal(ids, title = 'You got…') {
-  showModal(`<div class="reveal"><h2>${esc(title)}</h2>
-    <div class="reveal-cards">${ids.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${cardHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>
-    <button class="btn block" data-action="closeModal">Sweet!</button></div>`);
-  const best = Math.max(...ids.map(id => BY_ID[id].rarity));
-  best >= 3 ? sfx.great() : sfx.good();
+function revealModal(ids, title = 'YOU GOT…') {
+  showModal(`<div class="reveal"><div class="ptab">${esc(title)}</div>
+    <div class="reveal-toks">${ids.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>
+    <button class="obtn block" data-action="closeModal">SWEET!</button></div>`);
+  Math.max(...ids.map(id => BY_ID[id].rarity)) >= 3 ? sfx.great() : sfx.good();
 }
-
-// ---- gToons ----
-function gtoonsScreen() {
-  if (gtoonsView === 'match' && match) return matchScreen();
-  if (gtoonsView === 'deck') return deckScreen();
-  const deckOk = state.deck.length === 12;
-  return `${topbar()}
-  <section class="screen">
-    <h2 class="title">gToons Arena</h2>
-    <div class="card row between">
-      <div><b>Your deck</b><div class="muted">${state.deck.length}/12 cToons · ${fmt(state.deck.reduce((s, id) => s + BY_ID[id].points, 0))} base pts</div></div>
-      <div class="row"><button class="btn small ghost" data-action="autoDeck">Auto</button><button class="btn small" data-action="gtoonsView" data-id="deck">Edit</button></div>
-    </div>
-    <div class="deck-strip">${state.deck.map(id => `<div class="mini">${ctoonSVG(BY_ID[id], 40)}</div>`).join('')}${Array(12 - state.deck.length).fill('<div class="mini empty"></div>').join('')}</div>
-    <h3>Opponents</h3>
-    ${OPPONENTS.map(op => { const un = G.opponentUnlocked(op); const beat = state.beaten.includes(op.id);
-      return `<div class="card opp ${un ? '' : 'locked'}">
-        <div class="opp-face">${['🧢', '📒', '🎩', '🤖', '👑'][OPPONENTS.indexOf(op)]}</div>
-        <div class="pack-info"><b>${esc(op.name)} ${beat ? '✅' : ''}</b><div class="muted">${un ? '“' + esc(op.taunt) + '”' : 'Beat the previous opponent to unlock.'}</div><div class="muted">Win: +${op.reward} pts${beat ? '' : ' · first win: +200 & Premium cPack'}</div></div>
-        <button class="btn ${un && deckOk ? 'glow' : ''}" data-action="battle" data-id="${op.id}" ${un && deckOk ? '' : 'disabled'}>Battle</button>
-      </div>`; }).join('')}
-    ${deckOk ? '' : '<p class="muted small-note">You need 12 cToons in your deck to battle. Tap Auto to fill it.</p>'}
-    <details class="card rules"><summary>How to play gToons</summary>
-      <p>Both players fill a 2×3 grid, one cToon per turn, from a hand of 4. When all 12 slots are full, points are added up. Highest total wins.</p>
-      <p>Every cToon has an ability: bonuses for the top or bottom row, for adjacent cToons of the same series, penalties to the rival cToon directly across, and more. Read the abilities in your Binder and build a deck that works together.</p>
-    </details>
-  </section>`;
-}
-
-function deckScreen() {
-  const owned = [];
-  Object.entries(state.collection).forEach(([id, n]) => { if (n > 0) owned.push({ id, n }); });
-  owned.sort((a, b) => BY_ID[b.id].points - BY_ID[a.id].points);
-  return `${topbar()}
-  <section class="screen">
-    <div class="row between"><h2 class="title">Deck (${state.deck.length}/12)</h2><div class="row"><button class="btn small ghost" data-action="autoDeck">Auto</button><button class="btn small" data-action="gtoonsView" data-id="lobby">Done</button></div></div>
-    <p class="muted small-note">Tap a cToon to add it to your deck, tap again to remove. You can add duplicates if you own more than one.</p>
-    <div class="grid cards">${owned.map(({ id, n }) => { const t = BY_ID[id]; const inDeck = state.deck.filter(d => d === id).length;
-      return cardHTML(t, { count: n, selected: inDeck > 0, action: 'deckToggle', badge: inDeck ? `${inDeck} in deck` : t.points }); }).join('')}</div>
-  </section>`;
-}
-
-function slotHTML(side, i, ev, who) {
-  const id = side.slots[i];
-  const canDrop = who === 'p' && !id && match.turn === 'p' && selectedHand >= 0 && !match.done;
-  if (!id) return `<div class="slot empty ${canDrop ? 'drop' : ''}" data-action="${who === 'p' ? 'placeCard' : 'none'}" data-i="${i}"></div>`;
-  const t = BY_ID[id]; const v = ev[i];
-  const delta = v.total - v.base;
-  const last = match.lastMove && match.lastMove.who === who && match.lastMove.slot === i;
-  return `<div class="slot filled ${last ? 'last' : ''}" style="--rc:${RARITY[t.rarity].color}" data-action="slotInfo" data-who="${who}" data-i="${i}">
-    <div class="art">${ctoonSVG(t)}</div>
-    <div class="val">${v.total}</div>
-    ${delta ? `<div class="delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '+' : ''}${delta}</div>` : ''}
+function auctionView() {
+  const offers = G.todaysTrades();
+  return `<div class="panel">
+    <div class="ptab">AUCTION <em>TRADES REFRESH DAILY</em></div>
+    ${offers.map(o => { const give = BY_ID[o.give], get = BY_ID[o.get]; const have = G.ownedCount(o.give); const done = G.tradeDoneToday(o.idx);
+      return `<div class="trade ${done ? 'done' : ''}">
+        <div class="trader">${esc(o.trader.name).toUpperCase()} <em>“${esc(o.trader.line)}”</em></div>
+        <div class="trade-row">
+          <div class="trade-side">${tokenHTML(give, { count: 0, label: o.giveN + '×' })}<div class="small">YOU GIVE (HAVE ${have})</div></div>
+          <div class="arrow">➜</div>
+          <div class="trade-side">${tokenHTML(get, { count: 0 })}<div class="small">YOU GET</div></div>
+          ${done ? '<span class="okchip">TRADED</span>' : `<button class="obtn ${have >= o.giveN ? 'hot' : ''}" data-action="trade" data-i="${o.idx}" ${have >= o.giveN ? '' : 'disabled'}>TRADE</button>`}
+        </div></div>`; }).join('')}
+    <p class="note">Trading with a real friend? Open a cToon in your Binder and choose <b>GIFT TO A FRIEND</b> to make a code they redeem under Orbit Help → Codes.</p>
   </div>`;
 }
 
+// ---------- COMPETE ----------
+function arenaView() {
+  const deckOk = state.deck.length === 12;
+  return `<div class="panel">
+    <div class="ptab">CHALLENGE ZONE</div>
+    <div class="deckbar">
+      <div><b>YOUR DECK</b> <span class="small">${state.deck.length}/12 gTOONS · ${state.deck.reduce((s, id) => s + BY_ID[id].pts, 0)} PTS</span></div>
+      <div class="row"><button class="obtn grey" data-action="autoDeck">AUTO</button><button class="obtn" data-action="sub" data-id="deck">EDIT</button></div>
+    </div>
+    <div class="deck-strip">${state.deck.map(id => `<div class="mini">${tokenSVG(BY_ID[id], 44)}</div>`).join('')}${Array(12 - state.deck.length).fill(`<div class="mini">${socketSVG(44)}</div>`).join('')}</div>
+    ${OPPONENTS.map(op => { const un = G.opponentUnlocked(op); const beat = state.beaten.includes(op.id);
+      return `<div class="opp ${un ? '' : 'locked'}">
+        <div class="opp-tok">${un ? tokenSVG(BY_ID[op.avatar], 64, { bubble: false }) : socketSVG(64)}</div>
+        <div class="pack-info"><b>${esc(op.name).toUpperCase()} ${beat ? '✔' : ''}</b><div class="small">${un ? '“' + esc(op.taunt) + '”' : 'Beat the previous opponent to unlock.'}</div><div class="small">WIN +${op.reward} PTS${beat ? '' : ' · FIRST WIN +200 & PREMIUM cPACK'}</div></div>
+        <button class="obtn ${un && deckOk ? 'hot' : ''}" data-action="battle" data-id="${op.id}" ${un && deckOk ? '' : 'disabled'}>PLAY</button>
+      </div>`; }).join('')}
+    ${deckOk ? '' : '<p class="note">You need 12 gToons in your deck. Tap AUTO to fill it with your best.</p>'}
+  </div>`;
+}
+function deckView() {
+  const owned = [];
+  Object.entries(state.collection).forEach(([id, n]) => { if (n > 0) owned.push({ id, n }); });
+  owned.sort((a, b) => BY_ID[b.id].pts - BY_ID[a.id].pts);
+  const cols = B.topColors(state.deck);
+  return `<div class="panel">
+    <div class="ptab">MY DECK <em>${state.deck.length}/12</em></div>
+    <div class="deckbar"><div class="small">Top colours: ${cols.map(c => `<span class="ctag" style="--cc:${COLORS[c].hex}">${COLORS[c].name}</span>`).join(' ')} · 3 of a colour on the board = +${B.COLOR_BONUS}</div><div class="row"><button class="obtn grey" data-action="autoDeck">AUTO</button><button class="obtn" data-action="sub" data-id="arena">DONE</button></div></div>
+    <p class="note">Tap a gToon to add it to your deck, tap again to remove it.</p>
+    <div class="tokgrid">${owned.map(({ id, n }) => { const t = BY_ID[id]; const inDeck = state.deck.filter(d => d === id).length;
+      return tokenHTML(t, { count: n, selected: inDeck > 0, action: 'deckToggle', name: inDeck ? `${t.name} (${inDeck})` : t.name }); }).join('')}</div>
+  </div>`;
+}
+function rulesView() {
+  return `<div class="panel"><div class="ptab">HOW TO PLAY gTOONS</div>
+    <div class="rules">
+      <p><b>THE BOARD.</b> Each player has 7 sockets: a back row of 3 and a front row of 4. The front rows face each other across the VS line.</p>
+      <p><b>THE DECK.</b> Bring 12 gToons. You hold 5 in your hand and draw one after every play. Take turns placing one gToon until all 14 sockets are full.</p>
+      <p><b>POINTS.</b> Every gToon has a point value (1–16) and a colour. Highest total wins.</p>
+      <p><b>POWERS.</b> Most gToons have a power: doubling a buddy, bonuses per colour, penalties to the rival across the line, back-row or front-row bonuses and more. Powers are shown on the right when you select a gToon.</p>
+      <p><b>COLOURS.</b> Every 3 gToons of the same colour on your side earns +${B.COLOR_BONUS}.</p>
+      <p><b>SWAPPING.</b> Don't like your hand? Swap a gToon for the next one in your deck for -${B.SWAP_COST} points.</p>
+    </div></div>`;
+}
+
+// ----- the Game Zone -----
+function socketHTML(side, i, ev, who) {
+  const id = side.slots[i];
+  const canDrop = who === 'p' && !id && match.turn === 'p' && selectedHand >= 0 && !match.done;
+  if (!id) return `<div class="sock ${canDrop ? 'drop' : ''}" data-action="${who === 'p' ? 'placeCard' : 'none'}" data-i="${i}">${socketSVG(100)}</div>`;
+  const t = BY_ID[id]; const v = ev[i]; const delta = v.total - v.base;
+  const last = match.lastMove && match.lastMove.who === who && match.lastMove.slot === i;
+  return `<div class="sock filled ${last ? 'last' : ''}" data-action="slotInfo" data-who="${who}" data-i="${i}">
+    ${tokenSVG(t, 100, { label: v.total })}
+    ${delta ? `<span class="delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '+' : ''}${delta}</span>` : ''}
+  </div>`;
+}
+function scoreBox(name, avatarId, ev, prefix, cols, who) {
+  const cc = who === 'p' ? ev.aColors : ev.bColors;
+  const total = who === 'p' ? ev.aTotal : ev.bTotal;
+  const swaps = who === 'p' ? ev.aSwaps : ev.bSwaps;
+  return `<div class="sbox ${who}">
+    <div class="sbox-id"><div class="sbox-av">${tokenSVG(BY_ID[avatarId], 56, { bubble: false })}</div><div class="sbox-name">${esc(name)}</div></div>
+    <div class="sbox-label">COLOR</div>
+    <div class="sbox-colors">${cols.map(c => `<div><span>${COLORS[c].abbr}</span><i style="background:${COLORS[c].hex}"></i><b>${cc[c] || 0}</b></div>`).join('')}</div>
+    <div class="sbox-label">POINTS</div>
+    <div class="sbox-points">${total}</div>
+    <div class="sbox-sub">${swaps ? `-${swaps * B.SWAP_COST} FOR SWAPPING` : '-10 FOR SWAPPING'}</div>
+  </div>`;
+}
 function matchScreen() {
   const ev = B.evaluate(match.p, match.ai);
   const op = match.opponent;
-  const status = match.done ? (ev.aTotal > ev.bTotal ? 'You win!' : ev.aTotal < ev.bTotal ? `${op.name} wins.` : 'It’s a draw!') : match.turn === 'p' ? (selectedHand >= 0 ? 'Now tap an empty slot on your side.' : 'Your turn: pick a cToon from your hand.') : `${op.name} is thinking…`;
-  return `<section class="screen match">
-    <div class="score-head">
-      <div class="side-score rival"><b>${esc(op.name)}</b><span>${ev.bTotal}</span></div>
-      <div class="vs">VS</div>
-      <div class="side-score me"><b>${esc(state.name)}</b><span>${ev.aTotal}</span></div>
+  const sel = selectedHand >= 0 ? BY_ID[match.p.hand[selectedHand]] : null;
+  const status = match.done ? (ev.aTotal > ev.bTotal ? 'GAME OVER — YOU WIN!' : ev.aTotal < ev.bTotal ? `GAME OVER — ${op.name.toUpperCase()} WINS.` : 'GAME OVER — IT’S A DRAW!')
+    : match.turn === 'p' ? (sel ? 'NOW TAP AN EMPTY SOCKET ON YOUR SIDE OF THE BOARD.' : `ROUND ${match.round}: PICK A gTOON FROM YOUR HAND.`) : `${op.name.toUpperCase()} IS THINKING…`;
+  const pCols = B.topColors(state.deck), aCols = B.topColors(match.ai.slots.filter(Boolean).concat(match.ai.hand, match.ai.deck));
+  const canSwap = match.turn === 'p' && !match.done && selectedHand >= 0 && match.p.deck.length > 0;
+  return `<div class="gz">
+    <div class="gz-title">GTOON GAME ZONE</div>
+    <div class="gz-grid">
+      <aside class="gz-left">
+        ${scoreBox(op.name, op.avatar, ev, 'ai', aCols, 'ai')}
+        <div class="vs">VS.</div>
+        ${scoreBox(state.name, state.deck[0] || 'pz01', ev, 'p', pCols, 'p')}
+      </aside>
+      <div class="gz-board">
+        <div class="gz-row r3">${[0, 1, 2].map(i => socketHTML(match.ai, i, ev.b, 'ai')).join('')}</div>
+        <div class="gz-row r4">${[3, 4, 5, 6].map(i => socketHTML(match.ai, i, ev.b, 'ai')).join('')}</div>
+        <div class="gz-mid"><span class="gz-pill">${match.done ? 'GAME OVER' : match.turn === 'p' ? 'YOUR TURN' : 'SCORING…'}</span></div>
+        <div class="gz-row r4">${[3, 4, 5, 6].map(i => socketHTML(match.p, i, ev.a, 'p')).join('')}</div>
+        <div class="gz-row r3">${[0, 1, 2].map(i => socketHTML(match.p, i, ev.a, 'p')).join('')}</div>
+      </div>
+      <aside class="gz-right">
+        <div class="gz-sel">
+          ${sel ? `<div class="gz-sel-color">${COLORS[sel.color].abbr}</div><div class="gz-sel-tok">${tokenSVG(sel, 96)}</div><div class="gz-sel-name">${esc(sel.name)}</div><div class="gz-sel-power">${esc(powerText(sel.power)).toUpperCase()}</div>`
+               : `<div class="gz-sel-tok">${socketSVG(96)}</div><div class="gz-sel-name">SELECT A gTOON</div>`}
+        </div>
+        <div class="gz-hand-title">YOUR gTOONS</div>
+        <div class="gz-hand">${[0, 1, 2, 3, 4, 5].map(hi => { const id = match.p.hand[hi]; if (!id) return `<div class="hslot empty">${socketSVG(100)}</div>`;
+          return `<div class="hslot ${selectedHand === hi ? 'sel' : ''}" data-action="pickHand" data-i="${hi}">${tokenSVG(BY_ID[id], 100)}</div>`; }).join('')}</div>
+        <div class="gz-tools"><button class="obtn small ${canSwap ? '' : 'grey'}" data-action="swapCard" ${canSwap ? '' : 'disabled'}>SWAP −10</button><span class="small">DECK ${match.p.deck.length}</span><button class="obtn small grey" data-action="forfeit">${match.done ? 'EXIT' : 'QUIT'}</button></div>
+      </aside>
     </div>
-    <div class="board rival-board">${[0, 1, 2, 3, 4, 5].map(i => slotHTML(match.ai, i, ev.b, 'ai')).join('')}</div>
-    <div class="status">${esc(status)}</div>
-    <div class="board my-board">${[0, 1, 2, 3, 4, 5].map(i => slotHTML(match.p, i, ev.a, 'p')).join('')}</div>
-    <div class="hand">${match.p.hand.map((id, hi) => cardHTML(BY_ID[id], { small: true, selected: selectedHand === hi, action: 'pickHand', data: `data-i="${hi}"` })).join('')}</div>
-    <div class="row center"><button class="btn small ghost" data-action="forfeit">${match.done ? 'Back to arena' : 'Forfeit'}</button><span class="muted">Deck: ${match.p.deck.length} left</span></div>
-  </section>`;
+    <div class="gz-status">${esc(status)}${match.done ? ' <b data-action="forfeit">CLICK HERE TO RETURN TO THE CHALLENGE ZONE.</b>' : ''}</div>
+  </div>`;
 }
-
 function startBattle(opId) {
   const op = OPPONENTS.find(o => o.id === opId);
   if (!op || !G.opponentUnlocked(op) || state.deck.length !== 12) return;
   match = B.newMatch(state.deck.slice(), G.opponentDeck(op), op);
-  selectedHand = -1; gtoonsView = 'match';
-  render();
-  if (match.turn === 'ai') setTimeout(aiTurn, 700);
+  selectedHand = -1; render();
+  if (match.turn === 'ai') setTimeout(aiTurn, 800);
 }
 function aiTurn() {
   if (!match || match.done || match.turn !== 'ai') return;
   const mv = B.aiChoose(match);
   B.place(match, 'ai', mv.handIndex, mv.slot);
   sfx.tap(); render();
-  if (match.done) setTimeout(finishMatch, 500);
+  if (match.done) setTimeout(finishMatch, 700);
 }
 function finishMatch() {
   if (!match || !match.done) return;
@@ -292,35 +405,50 @@ function finishMatch() {
   const won = ev.aTotal > ev.bTotal; const draw = ev.aTotal === ev.bTotal;
   const res = draw ? { points: 0, firstWin: false, bonus: [], prize: null } : G.recordBattle(match.opponent, won, ev.aTotal - ev.bTotal);
   won ? sfx.great() : draw ? sfx.good() : sfx.bad();
-  showModal(`<div class="reveal"><h2>${won ? '🏆 Victory!' : draw ? '🤝 Draw' : '💀 Defeat'}</h2>
+  showModal(`<div class="reveal"><div class="ptab">${won ? 'VICTORY!' : draw ? 'DRAW' : 'DEFEAT'}</div>
     <p class="big-score">${ev.aTotal} – ${ev.bTotal}</p>
-    ${draw ? '<p class="muted">No points this time. Rematch?</p>' : `<p>+${res.points} points${res.firstWin ? ' · First win bonus!' : ''}</p>`}
-    ${res.bonus.length ? `<p><b>Premium cPack unlocked:</b></p><div class="reveal-cards">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${cardHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
-    ${res.prize ? `<p><b>PRIZE cToon unlocked: ${esc(BY_ID[res.prize].name)}!</b></p>` : ''}
-    <div class="row center"><button class="btn" data-action="rematch">Rematch</button><button class="btn ghost" data-action="leaveMatch">Arena</button></div></div>`);
+    <div class="small">Colour bonus ${ev.aBonus} vs ${ev.bBonus}${ev.aSwaps ? ` · swaps −${ev.aSwaps * B.SWAP_COST}` : ''}</div>
+    ${draw ? '<p>No points this time. Rematch?</p>' : `<p><b>+${res.points} POINTS</b>${res.firstWin ? ' · FIRST WIN BONUS!' : ''}</p>`}
+    ${res.bonus.length ? `<p><b>PREMIUM cPACK UNLOCKED:</b></p><div class="reveal-toks">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
+    ${res.prize ? `<p><b>PRIZE cTOON UNLOCKED: ${esc(BY_ID[res.prize].name).toUpperCase()}!</b></p>` : ''}
+    <div class="row center"><button class="obtn hot" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">CHALLENGE ZONE</button></div></div>`);
 }
 
-// ---- cZone ----
-function czoneScreen() {
-  const bg = BACKGROUNDS.find(b => b.id === state.czone.bg) || BACKGROUNDS[0];
+// ---------- cZONES ----------
+function zoneStage(items, bgId, editable) {
+  const bg = BACKGROUNDS.find(b => b.id === bgId) || BACKGROUNDS[0];
+  return `<div class="stage ${editable ? 'editable' : ''}" id="${editable ? 'stage' : ''}" style="background:${bg.css}">
+    ${items.map((it, i) => `<div class="placed" data-i="${i}" style="left:${(it.x * 100).toFixed(1)}%;top:${(it.y * 100).toFixed(1)}%">${badgeSVG(BY_ID[it.id], 72)}<span>${esc(BY_ID[it.id].name)}</span></div>`).join('')}
+    ${items.length ? '' : '<div class="stage-hint">THIS cZONE IS EMPTY</div>'}
+  </div>`;
+}
+function myZoneView() {
   const rating = state.czone.items.reduce((s, it) => s + BY_ID[it.id].points, 0);
   const ownedIds = Object.keys(state.collection).filter(id => state.collection[id] > state.czone.items.filter(it => it.id === id).length);
-  return `${topbar()}
-  <section class="screen">
-    <div class="row between"><h2 class="title">${esc(state.name)}'s cZone</h2><span class="chip">Rating ${fmt(rating)}</span></div>
-    <div class="stage" id="stage" style="background:${bg.css}">
-      ${state.czone.items.map((it, i) => `<div class="placed" data-i="${i}" style="left:${(it.x * 100).toFixed(1)}%;top:${(it.y * 100).toFixed(1)}%">${ctoonSVG(BY_ID[it.id], 56)}</div>`).join('')}
-      ${state.czone.items.length ? '' : '<div class="stage-hint">Your cZone is empty. Add some cToons!</div>'}
-    </div>
-    <p class="muted small-note">Drag cToons to arrange them. Double-tap a cToon to remove it. Up to 20 on display.</p>
-    <div class="row"><button class="btn" data-action="zonePicker">＋ Add cToon</button><button class="btn ghost" data-action="bgPicker">Background</button></div>
-    ${zonePick ? `<h3>Pick a cToon</h3><div class="grid cards">${ownedIds.map(id => cardHTML(BY_ID[id], { count: state.collection[id], action: 'zoneAdd' })).join('') || '<p class="muted">Every cToon you own is already on display.</p>'}</div>` : ''}
-  </section>`;
+  return `<div class="panel">
+    <div class="zone-head"><div class="zone-pill"><i>c</i>cZONES</div><div class="zone-owner"><b>${esc(state.name)}</b><span>THE ORBITER</span></div></div>
+    <div class="zone-strip"><span>MY cZONE:</span><b>RATING ${fmt(rating)}</b><button class="zbtn" data-action="zonePicker">ADD cTOON</button><button class="zbtn" data-action="bgPicker">BACKGROUND</button><button class="zbtn" data-action="go" data-to="collect">VIEW COLLECTION</button></div>
+    ${zoneStage(state.czone.items, state.czone.bg, true)}
+    <p class="note">Drag cToons to arrange them. Double-tap one to send it back to your binder. Up to 20 on display.</p>
+    ${zonePick ? `<div class="ptab">PICK A cTOON</div><div class="tokgrid">${ownedIds.map(id => tokenHTML(BY_ID[id], { count: state.collection[id], action: 'zoneAdd' })).join('') || '<p class="note">Every cToon you own is already on display.</p>'}</div>` : ''}
+  </div>`;
+}
+function visitView() {
+  const zones = G.npcZones();
+  visitIndex = ((visitIndex % zones.length) + zones.length) % zones.length;
+  const z = zones[visitIndex];
+  return `<div class="panel">
+    <div class="zone-head"><div class="zone-pill"><i>c</i>cZONES</div><div class="zone-owner"><b>${esc(z.owner)}</b><span>${z.award ? z.award.toUpperCase() + ' AWARD' : 'ORBITER'}</span></div></div>
+    <div class="zone-strip"><span>cZONES:</span><button class="zbtn" data-action="visit" data-id="prev">PREVIOUS</button><button class="zbtn" data-action="visit" data-id="random">RANDOM</button><button class="zbtn" data-action="visit" data-id="next">NEXT</button><b>RATING ${fmt(z.rating)}</b></div>
+    <div class="badgegrid">${z.items.map(it => `<div class="badge" data-action="detail" data-id="${it.id}">${badgeSVG(BY_ID[it.id], 100)}<span>${esc(BY_ID[it.id].name).toUpperCase()}</span></div>`).join('')}
+      ${z.award ? `<div class="badge award"><div class="award-ring">${characterSVG(BY_ID[z.items[0].id], 70)}</div><span class="award-lbl">${esc(z.award).toUpperCase()} AWARD</span></div>` : ''}</div>
+    <p class="note">Tap a cToon to see its details. cZones refresh every day.</p>
+  </div>`;
 }
 function bgModal() {
-  showModal(`<h2>cZone Backgrounds</h2><div class="bg-grid">${BACKGROUNDS.map(b => { const un = state.unlockedBgs.includes(b.id);
-    return `<button class="bg-opt ${state.czone.bg === b.id ? 'on' : ''}" data-action="${un ? 'setBg' : 'buyBg'}" data-id="${b.id}" style="background:${b.css}"><span>${esc(b.name)}${un ? '' : ` · ● ${b.cost}`}</span></button>`; }).join('')}</div>
-    <button class="btn ghost block" data-action="closeModal">Close</button>`);
+  showModal(`<div class="ptab">cZONE BACKGROUNDS</div><div class="bg-grid">${BACKGROUNDS.map(b => { const un = state.unlockedBgs.includes(b.id);
+    return `<button class="bg-opt ${state.czone.bg === b.id ? 'on' : ''}" data-action="${un ? 'setBg' : 'buyBg'}" data-id="${b.id}" style="background:${b.css}"><span>${esc(b.name).toUpperCase()}${un ? '' : ` · ${b.cost} PTS`}</span></button>`; }).join('')}</div>
+    <button class="obtn grey block" data-action="closeModal">CLOSE</button>`);
 }
 let drag = null;
 function bindStage() {
@@ -336,158 +464,152 @@ function bindStage() {
   });
   stage.addEventListener('pointermove', (e) => {
     if (!drag) return;
-    const x = Math.min(0.95, Math.max(0.02, (e.clientX - drag.rect.left) / drag.rect.width - 0.07));
-    const y = Math.min(0.9, Math.max(0.02, (e.clientY - drag.rect.top) / drag.rect.height - 0.1));
-    drag.el.style.left = (x * 100) + '%'; drag.el.style.top = (y * 100) + '%';
-    drag.pos = { x, y };
+    const x = Math.min(0.9, Math.max(0.0, (e.clientX - drag.rect.left) / drag.rect.width - 0.08));
+    const y = Math.min(0.82, Math.max(0.0, (e.clientY - drag.rect.top) / drag.rect.height - 0.12));
+    drag.el.style.left = (x * 100) + '%'; drag.el.style.top = (y * 100) + '%'; drag.pos = { x, y };
   });
   const end = () => { if (!drag) return; drag.el.classList.remove('dragging'); if (drag.pos) G.moveInZone(drag.i, drag.pos.x, drag.pos.y); drag = null; };
   stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
 }
 
-// ---- More: trade / codes / backup / install / settings ----
-let moreSub = 'trade';
-function moreScreen() {
-  const subs = [['trade', 'Trading Post'], ['codes', 'Orbit Codes'], ['backup', 'Backup'], ['install', 'Install'], ['settings', 'Settings']];
-  return `${topbar()}
-  <section class="screen">
-    <div class="tabs scroll">${subs.map(([k, n]) => `<button class="tab ${moreSub === k ? 'on' : ''}" data-action="moreSub" data-id="${k}">${n}</button>`).join('')}</div>
-    ${{ trade: tradeView, codes: codesView, backup: backupView, install: installView, settings: settingsView }[moreSub]()}
-  </section>`;
-}
-function tradeView() {
-  const offers = G.todaysTrades();
-  return `<p class="muted small-note">Traders swap fresh offers every day. Give duplicates, get upgrades.</p>
-    ${offers.map(o => { const give = BY_ID[o.give], get = BY_ID[o.get]; const have = G.ownedCount(o.give); const done = G.tradeDoneToday(o.idx);
-      return `<div class="card trade ${done ? 'done' : ''}">
-        <div class="trader">${esc(o.trader.name)}</div>
-        <div class="trade-row">
-          <div class="trade-side">${cardHTML(give, { count: 0, badge: `${o.giveN}× · ${give.points}` })}<div class="muted">You give (have ${have})</div></div>
-          <div class="arrow">➜</div>
-          <div class="trade-side">${cardHTML(get, { count: 0 })}<div class="muted">You get</div></div>
-        </div>
-        ${done ? '<span class="chip ok">Traded</span>' : `<button class="btn ${have >= o.giveN ? 'glow' : ''}" data-action="trade" data-i="${o.idx}" ${have >= o.giveN ? '' : 'disabled'}>Trade</button>`}
-      </div>`; }).join('')}
-    <p class="muted small-note">Want to trade with a real friend? Open a cToon in your Binder and tap <b>Gift to a friend</b> to create a code they can redeem under Orbit Codes.</p>`;
-}
+// ---------- ORBIT HELP ----------
 function codesView() {
-  return `<div class="card"><b>Redeem an Orbit Code</b><p class="muted">Promo codes give points, packs or cToons. Gift codes from friends move a cToon into your binder.</p>
-    <div class="row"><input id="codeInput" class="input" placeholder="e.g. ORBIT2000" autocapitalize="characters" autocomplete="off"><button class="btn" data-action="redeem">Redeem</button></div></div>
-    <p class="muted small-note">Psst: there are a few codes hiding in the game's README on GitHub.</p>`;
+  return `<div class="panel"><div class="ptab">ORBIT CODES</div>
+    <p class="note">Promo codes give points, packs or cToons. Gift codes from friends move a cToon into your binder. Each code works once.</p>
+    <div class="row"><input id="codeInput" class="oinput" placeholder="ENTER CODE" autocapitalize="characters" autocomplete="off"><button class="obtn" data-action="redeem">SUBMIT</button></div>
+    <div class="featured">FEATURED CODE: <b>${G.featuredCode()}</b> <span class="small">(new every day, worth 150 points)</span></div>
+    <p class="note">Psst: a few more codes are hiding in the game's README on GitHub.</p></div>`;
 }
 function backupView() {
-  return `<div class="card"><b>Automatic saving</b><p class="muted">Your binder, points, cZone and progress are saved on this device automatically after every action. Last saved: ${state.savedAt ? new Date(state.savedAt).toLocaleString() : 'never'}.</p></div>
-    <div class="card"><b>Backup code</b><p class="muted">Copy this code somewhere safe (Notes, email) or share it to your other device. It contains your whole save.</p>
-      <div class="row"><button class="btn" data-action="copySave">Copy code</button>${navigator.share ? '<button class="btn ghost" data-action="shareSave">Share…</button>' : ''}</div></div>
-    <div class="card"><b>Restore from code</b><p class="muted">Paste a backup code below. This replaces the save on this device.</p>
-      <textarea id="restoreInput" class="input" rows="3" placeholder="ORBITSAVE1.…"></textarea>
-      <button class="btn ghost" data-action="restoreSave">Restore</button></div>`;
+  return `<div class="panel"><div class="ptab">AUTOMATIC SAVING</div>
+    <p class="note">Your binder, points, cZone and progress are saved on this device after every action. Last saved: ${state.savedAt ? new Date(state.savedAt).toLocaleString() : 'never'}.</p>
+    <div class="ptab">BACKUP CODE</div>
+    <p class="note">Copy this code somewhere safe (Notes, email) or share it to your other device. It contains your whole save.</p>
+    <div class="row"><button class="obtn" data-action="copySave">COPY CODE</button>${navigator.share ? '<button class="obtn grey" data-action="shareSave">SHARE…</button>' : ''}</div>
+    <div class="ptab">RESTORE</div>
+    <p class="note">Paste a backup code below. This replaces the save on this device.</p>
+    <textarea id="restoreInput" class="oinput" rows="3" placeholder="ORBITSAVE1.…"></textarea>
+    <button class="obtn grey" data-action="restoreSave">RESTORE</button></div>`;
 }
 function installView() {
-  return `<div class="card">
-    <b>Install on iPhone or iPad (no computer needed)</b>
+  return `<div class="panel"><div class="ptab">INSTALL ON iPHONE OR iPAD</div>
     <ol class="steps">
       <li>Open this page in <b>Safari</b> (other browsers can't add web apps on iOS).</li>
       <li>Tap the <b>Share</b> button (the square with an arrow, at the bottom of the screen).</li>
       <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
-      <li>Tap <b>Add</b>. Cartoon Orbit now has its own icon, opens full-screen and works offline.</li>
+      <li>Tap <b>Add</b>. Cartoon Orbit gets its own icon, opens full-screen and works offline.</li>
     </ol>
-    <p class="muted">Your save lives inside the installed app. Use <b>Backup</b> to copy it before switching devices.</p>
-    ${isStandalone() ? '<span class="chip ok">Installed — you are running the Home Screen app.</span>' : ''}
-  </div>
-  <div class="card"><b>Android</b><p class="muted">Open the page in Chrome, tap the ⋮ menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</p></div>`;
+    <p class="note">Your save lives inside the installed app. Use <b>Backup</b> to copy it before switching devices.</p>
+    ${isStandalone() ? '<span class="okchip">INSTALLED — YOU ARE RUNNING THE HOME SCREEN APP</span>' : ''}
+    <div class="ptab">ANDROID</div><p class="note">Open the page in Chrome, tap the ⋮ menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</p></div>`;
 }
 function settingsView() {
-  return `<div class="card"><b>Orbiter name</b><div class="row"><input id="nameInput" class="input" value="${esc(state.name)}" maxlength="16"><button class="btn" data-action="saveName">Save</button></div></div>
-    <div class="card row between"><b>Sound effects</b><button class="btn small ${state.settings.sound ? '' : 'ghost'}" data-action="toggleSound">${state.settings.sound ? 'On' : 'Off'}</button></div>
-    <div class="card"><b>Stats</b><div class="muted">Battles ${state.stats.battles} · Wins ${state.stats.wins} · Packs ${state.stats.packs} · Trades ${state.stats.trades} · Recycled ${state.stats.recycled}</div><div class="muted">Playing since ${new Date(state.created).toLocaleDateString()}</div></div>
-    <div class="card danger"><b>Reset everything</b><p class="muted">Deletes your binder and progress on this device. Make a backup first!</p><button class="btn ghost" data-action="resetConfirm">Reset game</button></div>
-    <p class="muted small-note">Cartoon Orbit is a fan-made tribute to the classic collect-and-battle web game. All characters here are original.</p>`;
+  return `<div class="panel"><div class="ptab">ORBIT NAME</div>
+    <div class="row"><input id="nameInput" class="oinput" value="${esc(state.name)}" maxlength="16"><button class="obtn" data-action="saveName">SAVE</button></div>
+    <div class="ptab">SOUND</div><button class="obtn ${state.settings.sound ? '' : 'grey'}" data-action="toggleSound">SOUND EFFECTS: ${state.settings.sound ? 'ON' : 'OFF'}</button>
+    <div class="ptab">STATS</div><p class="note">Battles ${state.stats.battles} · Wins ${state.stats.wins} · Packs ${state.stats.packs} · Trades ${state.stats.trades} · Recycled ${state.stats.recycled} · Orbiter since ${new Date(state.created).toLocaleDateString()}</p>
+    <div class="ptab danger">RESET</div><p class="note">Deletes your binder and progress on this device. Make a backup first!</p><button class="obtn grey" data-action="resetConfirm">RESET GAME</button>
+    <p class="fine">Cartoon Orbit is a fan-made homage to the classic collect-and-battle web game. It is free, not for sale, and every character, series and piece of artwork here is original. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p></div>`;
 }
 
 function onboardingScreen() {
-  return `<section class="screen onboard">
-    <div class="logo-big">◉</div>
-    <h1>Cartoon Orbit</h1>
-    <p>Collect cToons. Battle in gToons. Decorate your cZone. Everything saves automatically on this device.</p>
-    <label class="muted">What should we call you?</label>
-    <input id="nameInput" class="input big" placeholder="Orbiter" maxlength="16" autocomplete="off">
-    <button class="btn glow block" data-action="start">Launch into Orbit</button>
-  </section>`;
+  return `<div class="cn-bar"><div class="cn-strip"><span class="cn-strip-hot">WHAT'S ON IN ORBIT</span><span class="cn-strip-txt">Membership is FREE!</span></div></div>
+  <div class="frame onboard">
+    <div class="orbit-head"><div class="orbit-logo">CARTOON <span class="o">O</span>RBIT<i>®</i></div></div>
+    <div class="content">
+      <div class="panel join">
+        <div class="ptab">JOIN ORBIT NOW</div>
+        <div class="join-toks">${['rr01', 'gw07', 'ss06', 'mm06', 'cc06', 'rd06'].map(id => tokenSVG(BY_ID[id], 64)).join('')}</div>
+        <p>Start collecting, trading and competing today! Collect <b>cToons</b>, play <b>gToons</b>, build your <b>cZone</b>. Everything saves automatically on this device.</p>
+        <label class="small">ORBIT NAME</label>
+        <input id="nameInput" class="oinput big" placeholder="Orbiter" maxlength="16" autocomplete="off">
+        <button class="obtn hot block" data-action="start">LOG IN NOW ›</button>
+        <div class="free-burst">MEMBERSHIP IS FREE!</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 // ---------- render ----------
-const NAV = [['home', '🏠', 'Orbit'], ['binder', '📒', 'Binder'], ['vendor', '🎁', 'Vendor'], ['gtoons', '⚔️', 'gToons'], ['czone', '🪐', 'cZone'], ['more', '⋯', 'More']];
 export function render() {
   const app = $('#app');
+  document.body.classList.toggle('in-match', !!match && state.onboarded);
   if (!state.onboarded) { app.innerHTML = onboardingScreen(); return; }
   G.ensureQuests(state);
-  const body = { home: homeScreen, binder: binderScreen, vendor: vendorScreen, gtoons: gtoonsScreen, czone: czoneScreen, more: moreScreen }[screen]();
-  const inMatch = screen === 'gtoons' && gtoonsView === 'match';
-  app.innerHTML = body + (inMatch ? '' : `<nav class="tabbar">${NAV.map(([k, ic, n]) => `<button class="nav ${screen === k ? 'on' : ''}" data-action="nav" data-to="${k}"><span>${ic}</span>${n}</button>`).join('')}</nav>`);
-  if (screen === 'czone') bindStage();
+  if (match) { app.innerHTML = matchScreen(); return; }
+  const views = {
+    orbit: { home: homeView, quests: questsView, updates: updatesView },
+    collect: { binder: binderView, cmart: cmartView, auction: auctionView },
+    compete: { arena: arenaView, deck: deckView, rules: rulesView },
+    czone: { mine: myZoneView, visit: visitView },
+    help: { codes: codesView, backup: backupView, install: installView, settings: settingsView },
+  };
+  app.innerHTML = orbitFrame(views[section][subs[section]]());
+  if (section === 'czone' && subs.czone === 'mine') bindStage();
 }
 
 // ---------- actions ----------
 const actions = {
-  nav(d) { screen = d.to; if (d.sub) moreSub = d.sub; if (screen === 'gtoons' && gtoonsView === 'match' && !match) gtoonsView = 'lobby'; zonePick = false; window.scrollTo(0, 0); },
+  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; window.scrollTo(0, 0); },
+  sub(d) { subs[section] = d.id; zonePick = false; window.scrollTo(0, 0); },
   none() {},
   closeModal() { closeModal(); },
   dismissInstall() { installDismissed = true; try { sessionStorage.setItem('installDismissed', '1'); } catch { /* ignore */ } },
-  start() { const name = $('#nameInput')?.value; G.startNewPlayer(name); sfx.great(); screen = 'home';
-    setTimeout(() => showModal(`<div class="reveal"><h2>Welcome, ${esc(state.name)}!</h2><p>Your starter binder has 15 cToons and 500 points. Claim your daily bonus, then open a cPack at the Vendor.</p><button class="btn block" data-action="closeModal">Let's go</button></div>`), 50); },
-  claimDaily() { const r = G.claimDaily(); if (r) { sfx.good(); toast(`+${r.amount} points! Day ${r.streak} streak.`); if (r.prize) setTimeout(() => revealModal([r.prize], 'PRIZE unlocked!'), 300); } },
+  start() { G.startNewPlayer($('#nameInput')?.value); sfx.great(); section = 'orbit';
+    setTimeout(() => showModal(`<div class="reveal"><div class="ptab">WELCOME, ${esc(state.name).toUpperCase()}!</div><p>Your starter binder has 15 cToons and 500 points. Claim your daily bonus, then open a cPack at the cMart.</p><button class="obtn block" data-action="closeModal">LET'S GO</button></div>`), 50); },
+  claimDaily() { const r = G.claimDaily(); if (r) { sfx.good(); toast(`+${r.amount} points! Day ${r.streak} streak.`); if (r.prize) setTimeout(() => revealModal([r.prize], 'PRIZE UNLOCKED!'), 300); } },
   claimQuest(d) { const v = G.claimQuest(d.id); if (v) { sfx.good(); toast(`Quest complete! +${v} points.`); } },
   binderFilter(d) { binderFilter = d.id; },
+  binderSeries(d) { binderFilter = d.id; section = 'collect'; subs.collect = 'binder'; window.scrollTo(0, 0); },
   detail(d) { sfx.tap(); detailModal(d.id); return false; },
   deckAdd(d) { commit(s => { if (s.deck.length < 12) s.deck.push(d.id); }); toast('Added to deck.'); detailModal(d.id); return false; },
   deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from deck.'); detailModal(d.id); return false; },
   recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} points.`); } detailModal(d.id); return false; },
   gift(d) { const t = BY_ID[d.id];
-    showModal(`<h2>Gift ${esc(t.name)}?</h2><p class="muted">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under More → Orbit Codes. Each code works once.</p>
-      <div class="row center"><button class="btn" data-action="giftConfirm" data-id="${d.id}">Create gift code</button><button class="btn ghost" data-action="closeModal">Cancel</button></div>`); return false; },
+    showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Orbit Help → Codes. Each code works once.</p>
+      <div class="row center"><button class="obtn" data-action="giftConfirm" data-id="${d.id}">CREATE GIFT CODE</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
   giftConfirm(d) { const code = G.giftCtoon(d.id); if (!code) return;
-    showModal(`<h2>Gift code</h2><p class="muted">Send this to your friend:</p><div class="code">${code}</div>
-      <div class="row center"><button class="btn" data-action="copyText" data-text="${code}">Copy</button>${navigator.share ? `<button class="btn ghost" data-action="shareText" data-text="${code}">Share…</button>` : ''}<button class="btn ghost" data-action="closeModal">Done</button></div>`); return false; },
+    showModal(`<div class="ptab">GIFT CODE</div><p class="note">Send this to your friend:</p><div class="code">${code}</div>
+      <div class="row center"><button class="obtn" data-action="copyText" data-text="${code}">COPY</button>${navigator.share ? `<button class="obtn grey" data-action="shareText" data-text="${code}">SHARE…</button>` : ''}<button class="obtn grey" data-action="closeModal">DONE</button></div>`); return false; },
   copyText(d) { copy(d.text); return false; },
   shareText(d) { navigator.share({ text: `A cToon gift for you in Cartoon Orbit! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
-  claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'Free cToon!'); },
-  buyPack(d) { const ids = G.buyPack(d.id); if (ids) revealModal(ids, 'cPack opened!'); else toast('Not enough points.'); },
-  gtoonsView(d) { gtoonsView = d.id; },
-  autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Deck auto-filled with your best cToons.'); },
+  claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'FREE cTOON!'); },
+  buyPack(d) { const ids = G.buyPack(d.id); if (ids) revealModal(ids, 'cPACK OPENED!'); else toast('Not enough points.'); },
+  autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Deck auto-filled with your best gToons.'); },
   deckToggle(d) { commit(s => { const inDeck = s.deck.filter(x => x === d.id).length; const own = s.collection[d.id] || 0;
     if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Deck is full (12).'); }); sfx.tap(); },
   battle(d) { startBattle(d.id); return false; },
   pickHand(d) { if (!match || match.turn !== 'p' || match.done) return; selectedHand = selectedHand === +d.i ? -1 : +d.i; sfx.tap(); },
   placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0) return;
-    if (B.place(match, 'p', selectedHand, +d.i)) { selectedHand = -1; sfx.tap(); render(); if (match.done) setTimeout(finishMatch, 500); else setTimeout(aiTurn, 650); } return false; },
+    if (B.place(match, 'p', selectedHand, +d.i)) { selectedHand = -1; sfx.tap(); render(); if (match.done) setTimeout(finishMatch, 700); else setTimeout(aiTurn, 800); } return false; },
+  swapCard() { if (!match || match.turn !== 'p' || match.done || selectedHand < 0) return; if (B.swap(match, 'p', selectedHand)) { sfx.bad(); toast('Swapped. -10 points.'); } },
   slotInfo(d) { const side = match[d.who]; const id = side.slots[+d.i]; if (!id) return; const ev = B.evaluate(match.p, match.ai); const v = (d.who === 'p' ? ev.a : ev.b)[+d.i]; const t = BY_ID[id];
-    showModal(`<div class="detail" style="--rc:${RARITY[t.rarity].color}"><div class="big-art">${ctoonSVG(t)}</div><h2>${esc(t.name)}</h2><div class="ability"><b>Ability:</b> ${esc(abilityText(t.ability, t.series))}</div>
-      <div class="mods"><div>Base <b>${v.base}</b></div>${v.mods.map(m => `<div>${m.v > 0 ? '+' : ''}${m.v} <span class="muted">${esc(m.why)}</span></div>`).join('')}<div>Total <b>${v.total}</b></div></div>
-      <button class="btn ghost block" data-action="closeModal">Close</button></div>`); return false; },
-  forfeit() { if (match && !match.done) { if (!confirm('Forfeit this match? It counts as a loss.')) return false; G.recordBattle(match.opponent, false, 0); } match = null; gtoonsView = 'lobby'; },
+    showModal(`<div class="detail"><div class="ptab">${esc(t.name).toUpperCase()}</div><div class="detail-tok center">${tokenSVG(t, 120)}</div><div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
+      <div class="mods"><div>BASE <b>${v.base}</b></div>${v.mods.map(m => `<div>${m.v > 0 ? '+' : ''}${m.v} <span class="small">${esc(m.why)}</span></div>`).join('')}<div>TOTAL <b>${v.total}</b></div></div>
+      <button class="obtn grey block" data-action="closeModal">CLOSE</button></div>`); return false; },
+  forfeit() { if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; G.recordBattle(match.opponent, false, 0); } match = null; closeModal(); },
   rematch() { const op = match.opponent; closeModal(); startBattle(op.id); return false; },
-  leaveMatch() { closeModal(); match = null; gtoonsView = 'lobby'; },
+  leaveMatch() { closeModal(); match = null; },
   zonePicker() { zonePick = !zonePick; },
-  zoneAdd(d) { const ok = G.placeInZone(d.id, 0.1 + Math.random() * 0.7, 0.1 + Math.random() * 0.6); if (ok) { toast('Placed in your cZone.'); sfx.tap(); closeModal(); screen = 'czone'; zonePick = false; } else toast('cZone is full or you have no spare copy.'); },
+  zoneAdd(d) { const ok = G.placeInZone(d.id, 0.05 + Math.random() * 0.7, 0.05 + Math.random() * 0.6); if (ok) { toast('Placed in your cZone.'); sfx.tap(); closeModal(); section = 'czone'; subs.czone = 'mine'; zonePick = false; } else toast('cZone is full or you have no spare copy.'); },
   bgPicker() { bgModal(); return false; },
   setBg(d) { commit(s => { s.czone.bg = d.id; }); closeModal(); },
   buyBg(d) { if (G.buyBackground(d.id)) { sfx.good(); toast('Background unlocked!'); closeModal(); } else toast('Not enough points.'); return false; },
-  moreSub(d) { moreSub = d.id; },
-  trade(d) { const o = G.todaysTrades()[+d.i]; if (G.doTrade(o)) { revealModal([o.get], 'Trade complete!'); } },
-  redeem() { const r = G.redeemCode($('#codeInput')?.value); if (r.ok) { sfx.great(); if (r.ctoons?.length) revealModal(r.ctoons, r.text); else toast(r.text); } else { sfx.bad(); toast(r.text); } },
+  visit(d) { const n = G.npcZones().length; if (d.id === 'prev') visitIndex--; else if (d.id === 'next') visitIndex++; else visitIndex = Math.floor(Math.random() * n); sfx.tap(); },
+  trade(d) { const o = G.todaysTrades()[+d.i]; if (G.doTrade(o)) revealModal([o.get], 'TRADE COMPLETE!'); },
+  redeem() { const r = G.redeemCode($('#codeInput')?.value); if (r.ok) { sfx.great(); if (r.ctoons?.length) revealModal(r.ctoons, r.text.toUpperCase()); else toast(r.text); } else { sfx.bad(); toast(r.text); } },
   copySave() { copy(exportCode()); return false; },
   shareSave() { navigator.share({ title: 'Cartoon Orbit save', text: exportCode() }).catch(() => {}); return false; },
-  restoreSave() { try { const obj = parseSaveCode($('#restoreInput').value); if (!confirm('Replace the save on this device with this backup?')) return false; replaceState(obj); sfx.great(); toast('Save restored!'); screen = 'home'; } catch (e) { sfx.bad(); toast(e.message); return false; } },
+  restoreSave() { try { const obj = parseSaveCode($('#restoreInput').value); if (!confirm('Replace the save on this device with this backup?')) return false; replaceState(obj); sfx.great(); toast('Save restored!'); section = 'orbit'; } catch (e) { sfx.bad(); toast(e.message); return false; } },
   saveName() { const v = ($('#nameInput')?.value || '').trim().slice(0, 16); if (v) { commit(s => { s.name = v; }); toast('Name saved.'); } },
   toggleSound() { commit(s => { s.settings.sound = !s.settings.sound; }); sfx.tap(); },
-  resetConfirm() { showModal(`<h2>Reset game?</h2><p class="muted">This permanently deletes your binder, points and cZone on this device.</p><div class="row center"><button class="btn danger-btn" data-action="resetDo">Yes, reset</button><button class="btn ghost" data-action="closeModal">Cancel</button></div>`); return false; },
-  resetDo() { resetState(); closeModal(); match = null; gtoonsView = 'lobby'; screen = 'home'; toast('Game reset.'); },
+  resetConfirm() { showModal(`<div class="ptab danger">RESET GAME?</div><p class="note">This permanently deletes your binder, points and cZone on this device.</p><div class="row center"><button class="obtn danger-btn" data-action="resetDo">YES, RESET</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
+  resetDo() { resetState(); closeModal(); match = null; section = 'orbit'; toast('Game reset.'); },
 };
 
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast('Copied to clipboard.'); }
-  catch { showModal(`<h2>Copy this</h2><textarea class="input" rows="6" readonly>${esc(text)}</textarea><button class="btn block" data-action="closeModal">Done</button>`); }
+  catch { showModal(`<div class="ptab">COPY THIS</div><textarea class="oinput" rows="6" readonly>${esc(text)}</textarea><button class="obtn block" data-action="closeModal">DONE</button>`); }
 }
 
 export function bind() {
@@ -499,7 +621,7 @@ export function bind() {
     if (r !== false) render();
   });
   document.body.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.id === 'codeInput') actions.redeem() !== false && render();
+    if (e.key === 'Enter' && e.target.id === 'codeInput') { if (actions.redeem() !== false) render(); }
     if (e.key === 'Enter' && e.target.id === 'nameInput' && !state.onboarded) { actions.start(); render(); }
   });
 }
