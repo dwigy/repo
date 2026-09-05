@@ -163,6 +163,14 @@ const CHARS = {
 };
 
 const HOLO = ['#ff5f6d', '#ffc371', '#f9f871', '#7bed9f', '#70a1ff', '#c56cf0'];
+// Duotone ramps that turn the whole portrait into a metal (or dark matter).
+const METAL = {
+  silver:   { bg: ['#f7f9fb', '#c9d3dd', '#8d9aa8', '#e6ecf2'], r: '0.18 0.48 0.80 1', g: '0.20 0.51 0.83 1', b: '0.24 0.56 0.88 1', ring: ['#ffffff', '#b7c3cf', '#6f7f90'] },
+  gold:     { bg: ['#fff4c2', '#f2c34a', '#b8780c', '#ffe08a'], r: '0.30 0.62 0.90 1', g: '0.16 0.42 0.72 0.96', b: '0.02 0.08 0.25 0.62', ring: ['#fff2b0', '#f0b429', '#8a5a00'] },
+  platinum: { bg: ['#ffffff', '#dbe9f4', '#a9c4d8', '#f2f8fc'], r: '0.34 0.66 0.90 1', g: '0.40 0.72 0.94 1', b: '0.48 0.80 0.97 1', ring: ['#ffffff', '#d5e6f2', '#8fb0c8'] },
+  dark:     { bg: ['#05060f'], r: '0.02 0.10 0.32 0.72', g: '0.02 0.07 0.26 0.66', b: '0.10 0.28 0.58 0.98', ring: ['#5b3fb0', '#1a1440', '#7c4dff'] },
+};
+const TIER_RING = { 0: ['#ffffff', '#c9d2dc', '#7f8a98'], 1: ['#c9ffd9', '#2fbf5a', '#166b33'], 2: ['#bfe0ff', '#1e8fff', '#0b4fa8'], 3: ['#e6d2ff', '#9b4dff', '#4d1a9e'], 4: ['#fff2b0', '#f5a623', '#8a5a00'], 5: ['#ffd3e6', '#f06aa8', '#8a2a5a'] };
 
 function scene(t, id) {
   const [d, l] = SERIES[t.series]?.bg || ['#333', '#777'];
@@ -177,6 +185,13 @@ function scene(t, id) {
   } else if (v === 'holo') {
     deco = HOLO.map((c, i) => `<path d="M50 50 L${(50 + 70 * Math.cos(i * Math.PI / 3)).toFixed(1)} ${(50 + 70 * Math.sin(i * Math.PI / 3)).toFixed(1)} L${(50 + 70 * Math.cos((i + 1) * Math.PI / 3)).toFixed(1)} ${(50 + 70 * Math.sin((i + 1) * Math.PI / 3)).toFixed(1)} Z" fill="${c}"/>`).join('') +
       `<circle cx="50" cy="50" r="46" fill="url(#hl${id})"/>`;
+  } else if (v === 'silver' || v === 'gold' || v === 'platinum') {
+    deco = `<rect x="0" y="0" width="100" height="100" fill="url(#met${id})"/><rect x="0" y="0" width="100" height="100" fill="url(#sheen${id})"/>
+      <path d="M-10 70 L110 20" stroke="#fff" stroke-width="6" opacity=".35"/><path d="M-10 84 L110 34" stroke="#fff" stroke-width="2" opacity=".3"/>`;
+  } else if (v === 'dark') {
+    const stars = [[14, 22, 1.2], [30, 12, .8], [78, 18, 1.4], [88, 44, .9], [70, 80, 1.1], [22, 76, .8], [50, 8, .7], [92, 70, .7], [8, 50, 1], [60, 92, .9]]
+      .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".9"/>`).join('');
+    deco = `<rect x="0" y="0" width="100" height="100" fill="url(#neb${id})"/>${stars}<path d="M20 30 L22 32 M80 60 L82 62" stroke="#fff" stroke-width="1" opacity=".6"/>`;
   } else {
     deco = `<rect x="0" y="0" width="100" height="100" fill="url(#bg${id})"/><rect x="0" y="0" width="100" height="100" fill="url(#dots${id})"/>`;
   }
@@ -189,6 +204,10 @@ function scene(t, id) {
       <linearGradient id="bv${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9d7e5"/><stop offset="1" stop-color="#5b7fa6"/></linearGradient>
       <linearGradient id="au${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#f5c342"/><stop offset="1" stop-color="#9a6b00"/></linearGradient>
       <radialGradient id="vig${id}" cx="50%" cy="40%" r="60%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".75"/></radialGradient>
+      <linearGradient id="met${id}" x1="0" y1="0" x2="1" y2="1">${METAL[v] ? METAL[v].bg.map((c, i, a) => `<stop offset="${a.length > 1 ? i / (a.length - 1) : 0}" stop-color="${c}"/>`).join('') : ''}</linearGradient>
+      <linearGradient id="sheen${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity=".55"/><stop offset=".55" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <radialGradient id="neb${id}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#3b1d7a"/><stop offset=".45" stop-color="#151238"/><stop offset="1" stop-color="#05060f"/></radialGradient>
+      ${METAL[v] ? `<filter id="tone${id}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="${METAL[v].r}"/><feFuncG type="table" tableValues="${METAL[v].g}"/><feFuncB type="table" tableValues="${METAL[v].b}"/></feComponentTransfer></filter>` : ''}
       <clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath>
     </defs>
     <g clip-path="url(#clip${id})">${deco}</g>`;
@@ -224,13 +243,12 @@ export function tokenSVG(t, size = 100, opts = {}) {
   const ring = opts.ring !== false;
   const bubble = opts.bubble !== false;
   const label = opts.label != null ? opts.label : t.pts;
-  const gold = t.rarity >= 3 && t.rarity <= 4;
-  const holo = t.rarity >= 5;
-  const outer = holo ? `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#au${id})" stroke-width="4"/><circle cx="50" cy="50" r="47" fill="none" stroke="#fff" stroke-width="1.2" opacity=".8" stroke-dasharray="3 5"/>`
-    : gold ? `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#au${id})" stroke-width="4"/>` : `<circle cx="50" cy="50" r="47" fill="none" stroke="url(#bv${id})" stroke-width="4"/>`;
+  const ringCols = (METAL[t.variant] && METAL[t.variant].ring) || TIER_RING[t.rarity] || TIER_RING[0];
+  const outer = `<defs><linearGradient id="rr${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${ringCols[0]}"/><stop offset=".5" stop-color="${ringCols[1]}"/><stop offset="1" stop-color="${ringCols[2]}"/></linearGradient></defs>
+    <circle cx="50" cy="50" r="47" fill="none" stroke="url(#rr${id})" stroke-width="4"/>${t.rarity >= 4 ? `<circle cx="50" cy="50" r="47" fill="none" stroke="#fff" stroke-width="1.2" opacity=".85" stroke-dasharray="3 5"/>` : ''}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${t.name}">
     ${scene(t, id)}
-    <g clip-path="url(#clip${id})"><g transform="translate(50 50) scale(.8) translate(-50 -50) ${pose(t)}">${draw()}</g>${photo(t, id)}${t.variant === 'holo' || t.rarity >= 5 ? sparkles : ''}</g>
+    <g clip-path="url(#clip${id})"><g ${METAL[t.variant] ? `filter="url(#tone${id})"` : ''}><g transform="translate(50 50) scale(.8) translate(-50 -50) ${pose(t)}">${draw()}</g>${photo(t, id)}</g>${t.rarity >= 3 || t.variant === 'holo' ? sparkles : ''}</g>
     <g clip-path="url(#clip${id})"><ellipse cx="36" cy="26" rx="28" ry="15" fill="url(#gl${id})" transform="rotate(-18 36 26)"/><path d="M18 74 Q50 96 82 74" fill="none" stroke="#fff" stroke-width="5" opacity=".22"/></g>
     ${outer}
     ${ring ? `<circle cx="50" cy="50" r="43.5" fill="none" stroke="${col.hex}" stroke-width="3.2"/>` : ''}
@@ -281,8 +299,58 @@ export function badgeSVG(t, size = 100) {
   const pts = [];
   for (let i = 0; i < 32; i++) { const r = i % 2 ? 50 : 44; const ang = i * Math.PI / 16; pts.push(`${(50 + r * Math.cos(ang)).toFixed(2)},${(50 + r * Math.sin(ang)).toFixed(2)}`); }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
-    <polygon points="${pts.join(' ')}" fill="${t.rarity >= 3 ? '#f5c342' : '#2f6fd0'}" stroke="#1c3f7a" stroke-width="1.5"/>
+    <polygon points="${pts.join(' ')}" fill="${RARITY[t.rarity]?.color || '#2f6fd0'}" stroke="#1c3f7a" stroke-width="1.5"/>
     <g transform="translate(50 50) scale(.84) translate(-50 -50)">${tokenSVG(t, 100, { bubble: false, ring: false })}</g>
+  </svg>`;
+}
+
+// Face-down chip used in the pack reveal.
+export function chipBackSVG(size = 100, tint = '#1a3d78') {
+  const id = 'k' + (uid++);
+  const rays = [];
+  for (let i = 0; i < 24; i++) rays.push(`<path d="M50 50 L${(50 + 46 * Math.cos(i * Math.PI / 12)).toFixed(2)} ${(50 + 46 * Math.sin(i * Math.PI / 12)).toFixed(2)} L${(50 + 46 * Math.cos((i + .5) * Math.PI / 12)).toFixed(2)} ${(50 + 46 * Math.sin((i + .5) * Math.PI / 12)).toFixed(2)} Z" fill="#fff" opacity=".12"/>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+    <defs><radialGradient id="bk${id}" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#4d7cc8"/><stop offset=".6" stop-color="${tint}"/><stop offset="1" stop-color="#0d1f45"/></radialGradient>
+    <linearGradient id="gl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="bv${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9d7e5"/><stop offset="1" stop-color="#5b7fa6"/></linearGradient>
+    <clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath></defs>
+    <circle cx="50" cy="50" r="46" fill="url(#bk${id})"/>
+    <g clip-path="url(#clip${id})">${rays.join('')}<circle cx="50" cy="50" r="30" fill="none" stroke="#fff" stroke-width="2" opacity=".35"/><circle cx="50" cy="50" r="22" fill="none" stroke="#fff" stroke-width="1" opacity=".25"/>
+      <ellipse cx="36" cy="26" rx="28" ry="15" fill="url(#gl${id})" transform="rotate(-18 36 26)"/></g>
+    <text x="50" y="55" text-anchor="middle" font-size="14" font-family="Michroma, 'Arial Black', sans-serif" font-style="italic" fill="#fff" opacity=".9">ORBIT</text>
+    <circle cx="50" cy="50" r="47" fill="none" stroke="url(#bv${id})" stroke-width="4"/>
+    <circle cx="50" cy="50" r="49" fill="none" stroke="#3d5a80" stroke-width="1.4"/>
+  </svg>`;
+}
+
+// Foil booster pack. `tear` (0..1) slides the crimped top strip off.
+export function packSVG(pack, opts = {}) {
+  const id = 'k' + (uid++);
+  const w = 220, h = 300;
+  const tint = { std: ['#5b8def', '#1a3d78'], prem: ['#b06cff', '#4d1a9e'], mega: ['#ffd76a', '#b8780c'] }[pack.id] || ['#5b8def', '#1a3d78'];
+  const crimp = Array.from({ length: 22 }, (_, i) => `${i * 10},${i % 2 ? 0 : 6}`).join(' ');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${opts.size || w}" height="${Math.round((opts.size || w) * h / w)}" class="packsvg">
+    <defs>
+      <linearGradient id="foil${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".18" stop-color="${tint[0]}"/><stop offset=".5" stop-color="${tint[1]}"/><stop offset=".8" stop-color="${tint[0]}"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+      <linearGradient id="holo${id}" x1="0" y1="0" x2="1" y2="0">${HOLO.map((c, i) => `<stop offset="${i / (HOLO.length - 1)}" stop-color="${c}" stop-opacity=".35"/>`).join('')}</linearGradient>
+      <linearGradient id="shine${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".42" stop-color="#fff" stop-opacity=".6"/><stop offset=".5" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    </defs>
+    <g class="pack-body">
+      <rect x="6" y="30" width="${w - 12}" height="${h - 36}" rx="10" fill="url(#foil${id})" stroke="#1c3f7a" stroke-width="2"/>
+      <rect x="6" y="30" width="${w - 12}" height="${h - 36}" rx="10" fill="url(#holo${id})"/>
+      <rect x="6" y="30" width="${w - 12}" height="${h - 36}" rx="10" fill="url(#shine${id})"/>
+      <polygon points="${crimp}" transform="translate(6 ${h - 12})" fill="#fff" opacity=".7"/>
+      <circle cx="${w / 2}" cy="150" r="58" fill="#fff" opacity=".18"/>
+      <g transform="translate(${w / 2 - 48} 102)">${chipBackSVG(96, tint[1])}</g>
+      <text x="${w / 2}" y="238" text-anchor="middle" font-family="Michroma, 'Arial Black', sans-serif" font-style="italic" font-size="15" fill="#fff" letter-spacing="2">cPACK</text>
+      <text x="${w / 2}" y="262" text-anchor="middle" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-style="italic" font-weight="800" font-size="16" fill="#fff" opacity=".9">${(pack.name || '').toUpperCase().replace(' CPACK', '')} · ${pack.size} cTOONS</text>
+      <line x1="10" y1="40" x2="${w - 10}" y2="40" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 4" opacity=".8"/>
+    </g>
+    <g class="pack-top">
+      <rect x="6" y="6" width="${w - 12}" height="34" rx="6" fill="url(#foil${id})" stroke="#1c3f7a" stroke-width="2"/>
+      <polygon points="${crimp}" transform="translate(6 6)" fill="#fff" opacity=".7"/>
+      <text x="${w / 2}" y="29" text-anchor="middle" font-family="'Barlow Condensed', sans-serif" font-style="italic" font-weight="800" font-size="12" fill="#fff" letter-spacing="3">RIP HERE ›››</text>
+    </g>
   </svg>`;
 }
 
