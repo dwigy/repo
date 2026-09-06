@@ -64,9 +64,9 @@ Open that link on your iPhone and follow the install steps above.
 
 | Feature | Details |
 | --- | --- |
-| Binder | 126 cToons: 15 public-domain stars × 8 editions across 5 series, plus 6 earn-only Prize cToons. Five rarity tiers (Common, Uncommon, Rare, Mythic, Legendary) with per-character set meters. Duplicates can be recycled for points. |
+| Binder | 221 cToons: 26 public-domain stars × 8 editions across 6 series, 7 Keeper's Frame chips won only on the Tour, and 6 earn-only Prize cToons. Five rarity tiers (Common, Uncommon, Rare, Mythic, Legendary) with per-character set meters. Duplicates can be recycled for points. |
 | cMart | Free daily cToon plus Standard, Premium and Mega cPacks with published odds. Opening a pack is a rip: drag across the foil, it bursts, and the chips flip one at a time from least rare to most rare, with bigger effects for Mythic and Legendary pulls and NEW badges for first-time pulls. |
-| gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and a power (x2 to a buddy, bonuses per colour, penalties to the rival across the line, back/front row bonuses…). Three of a colour scores a bonus; swapping a hand gToon costs 10. Chips flip through the air from your hand to the board, land with a shockwave, and rival chips flash or shake when powers hit them. Five unlockable opponents, deck builder with auto-fill. |
+| gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and one of 22 named powers (Buddy, Rally, Hex, Jab, Pickpocket, Mirror, Backstage, Spotlight, Opener, Closer, Encore, Loner, Twins, Chorus Line, Crown, Underdog, Brick, Shield, Veto…). Mythic and Legendary chips also carry a secret power that wakes after three wins on the board. Three of a colour scores a bonus; swapping a hand gToon costs 10. Chips flip through the air from your hand to the board, land with a shockwave, and rival chips flash or shake when powers hit them. Five unlockable opponents, deck builder with auto-fill. |
 | cZones | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC cZones to visit (Previous / Random / Next) with awards. |
 | Auction | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
 | Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
@@ -76,7 +76,8 @@ Open that link on your iPhone and follow the install steps above.
 | Navigation | Five tabs along the bottom: Home, Collection, Battle (the big centre button), Market and Profile. Each tab has at most three folder sub-tabs. |
 | Home | A poster of this week's featured series, the day's ritual (bonus, free chip, a battle, three goals), the main menu as glossy tiles, and a What's New card with the version log and what is coming next. |
 | Collection | Binder (all chips, grouped by star, with series and tier filters), Sets (one card per star with its eight-edition meter) and your cZone, with a Visit button for the daily NPC cZones. |
-| Battle | Opens on your next challenger with one PLAY button, then your deck and the full ladder. My Deck and How to Play sit beside it. |
+| Battle | The Orbit Tour (below), the quick-play Ladder of five opponents, My Deck and How to Play. |
+| The Orbit Tour | A seven-zone campaign that leaves Orbit Station and returns to it: Inkwell Alley, Sweethaven Docks, Kokonino Kounty, Slumberland, The Studio Lot, The Funny Pages and the Projection Room. Each zone has two challenges with house rules and goals, a sparring partner for practice, and a Keeper who holds one of the seven Frames. Story title cards follow a rival collector, Cyril Spool, around the loop. House rules include no swaps, no powers, flipped rows, a hand of four, double sets, an open hand, a mid-match reel change and awakened secret powers. Some challenges constrain your deck (nothing above Uncommon, at most one Blue, no Silver, three Keeper's Frames) and a BUILD ONE button assembles a legal deck from your binder. |
 | Market | cMart packs and the free chip of the day, the Auction, and Orbit Codes. |
 | Profile | Your featured chip, stats, awards and Orbit log; Settings (name, sound, real artwork, reset); Device (install steps, backup code, restore). |
 | Chip details | Tilt the chip with your finger, flip it to see its mint number, date and where it came from. Completing all eight editions of a character shows a set poster. |
@@ -107,7 +108,9 @@ js/sound.js           synthesised sound kit (WebAudio)
 js/news.js            version log and roadmap shown on Home
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
-js/gtoons.js          battle engine and AI
+js/gtoons.js          battle engine (house rules, powers, secrets) and AI
+js/campaign.js        the Orbit Tour: zones, keepers, challenges, rules, rewards
+js/story.js           Tour story cards
 js/ui.js              screens and interactions
 icons/                app icons
 docs/                 UX philosophy, evaluation and research notes

@@ -154,6 +154,160 @@ const CHARS = {
     <path d="M44 66 C47 70 53 70 56 66" fill="none" ${O}/>
     <circle cx="36" cy="62" r="3" fill="#f4a3a3" opacity=".7"/><circle cx="64" cy="62" r="3" fill="#f4a3a3" opacity=".7"/>`,
   // ---- prize emblems ----
+  bobby: () => `
+    <ellipse cx="80" cy="72" rx="11" ry="10" fill="#fff" ${O}/><ellipse cx="70" cy="74" rx="4.5" ry="9" fill="${K}" transform="rotate(14 70 74)" ${O}/>
+    <ellipse cx="88" cy="76" rx="7" ry="5" fill="#fff" ${O}/><circle cx="92" cy="75" r="2.6" fill="${K}"/><circle cx="82" cy="69" r="2" fill="${K}"/>
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="#3b5aa6"/>
+    <path d="M38 84 L50 92 L62 84 L64 92 L50 98 L36 92 Z" fill="#fff" ${O} stroke-width="1.8"/>
+    <circle cx="28" cy="58" r="5" fill="#f2c9a0" ${O}/><circle cx="72" cy="58" r="5" fill="#f2c9a0" ${O}/>
+    <circle cx="50" cy="56" r="23" fill="#f2c9a0" ${O}/>
+    ${eye(42, 52, 4.5, 2.2, 0.2, 0.2)}${eye(58, 52, 4.5, 2.2, 0.2, 0.2)}
+    <circle cx="50" cy="60" r="3" fill="#e8a889" ${O} stroke-width="1.8"/>
+    <path d="M36 65 C42 80 58 80 64 65 Z" fill="#fff" ${O}/><path d="M39 69 L61 69" ${O} stroke-width="1.8"/>
+    <circle cx="32" cy="61" r="1.3" fill="#c47a4a"/><circle cx="35" cy="64" r="1.3" fill="#c47a4a"/><circle cx="31" cy="66" r="1.3" fill="#c47a4a"/><circle cx="68" cy="61" r="1.3" fill="#c47a4a"/><circle cx="65" cy="64" r="1.3" fill="#c47a4a"/><circle cx="69" cy="66" r="1.3" fill="#c47a4a"/>
+    <path d="M22 40 C22 14 78 14 78 40 Z" fill="#8b5e3c" ${O}/><path d="M50 16 L36 40 M50 16 L64 40" stroke="#5c3a20" stroke-width="1.8"/>
+    <path d="M22 40 L84 40 L80 46 L24 44 Z" fill="#5c3a20" ${O}/><circle cx="50" cy="17" r="2.5" fill="#5c3a20" ${O} stroke-width="1.8"/>`,
+  heeza: () => `
+    <path d="M8 100 C8 76 30 72 50 72 C70 72 92 76 92 100 Z" fill="#b8975a"/>
+    <path d="M50 72 L40 84 L50 100 L60 84 Z" fill="#8a6d3a"/>
+    <path d="M14 80 L30 78 L32 84 L18 88 Z" fill="#f5c342" ${O} stroke-width="1.8"/><path d="M86 80 L70 78 L68 84 L82 88 Z" fill="#f5c342" ${O} stroke-width="1.8"/>
+    <path d="M22 86 L74 100" stroke="#c62828" stroke-width="6"/>
+    <circle cx="30" cy="94" r="3.2" fill="#f5c342" ${O} stroke-width="1.4"/><circle cx="36" cy="98" r="3.2" fill="#f5c342" ${O} stroke-width="1.4"/>
+    <circle cx="28" cy="54" r="5" fill="#f3bfa4" ${O}/><circle cx="72" cy="54" r="5" fill="#f3bfa4" ${O}/>
+    <circle cx="50" cy="52" r="22" fill="#f3bfa4" ${O}/>
+    <circle cx="36" cy="60" r="4" fill="#f4a3a3" opacity=".7"/><circle cx="64" cy="60" r="4" fill="#f4a3a3" opacity=".7"/>
+    ${eye(41, 48, 4, 2, 0.2, 0.2)}${eye(59, 48, 4, 2, 0.2, 0.2)}
+    <circle cx="59" cy="48" r="6.5" fill="none" stroke="#f5c342" stroke-width="2.4"/><path d="M64 53 C69 58 66 66 70 72" fill="none" stroke="#f5c342" stroke-width="1.8"/>
+    <path d="M33 41 C37 36 44 37 47 40 M53 40 C56 37 63 36 67 41" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+    <path d="M50 62 C40 54 22 56 14 74 C26 68 36 78 42 70 C46 66 54 66 58 70 C64 78 74 68 86 74 C78 56 60 54 50 62 Z" fill="#fff" ${O}/>
+    <circle cx="50" cy="57" r="6" fill="#e07a6a" ${O}/>
+    <ellipse cx="50" cy="33" rx="32" ry="6" fill="#e8dcc0" ${O}/>
+    <path d="M28 33 C28 8 72 8 72 33 Z" fill="#e8dcc0" ${O}/><path d="M30 28 L70 28" stroke="#7a6a3a" stroke-width="3"/>`,
+  julius: () => `
+    <path d="M72 50 C68 34 94 32 94 48 C94 58 84 58 84 68" fill="none" stroke="${K}" stroke-width="6.5" stroke-linecap="round"/><circle cx="85" cy="79" r="3.8" fill="${K}"/>
+    <path d="M18 100 C22 70 78 70 82 100 Z" fill="${K}"/>
+    <path d="M32 40 L33 2 L48 30 Z" fill="${K}" ${O}/><path d="M68 40 L67 2 L52 30 Z" fill="${K}" ${O}/>
+    <circle cx="50" cy="54" r="25" fill="${K}" ${O}/>
+    <path d="M28 58 C32 80 68 80 72 58 C66 66 34 66 28 58 Z" fill="#fff" ${O}/>
+    <ellipse cx="40" cy="47" rx="9.5" ry="11" fill="#fff" ${O}/><ellipse cx="60" cy="47" rx="9.5" ry="11" fill="#fff" ${O}/>
+    ${pie(41, 48, 4.4, 5.6)}${pie(61, 48, 4.4, 5.6)}
+    <ellipse cx="50" cy="61" rx="5" ry="3.5" fill="${K}"/>
+    <path d="M40 66 C44 72 56 72 60 66" fill="none" ${O}/>
+    <path d="M16 60 L28 62 M16 68 L28 66 M84 60 L72 62 M84 68 L72 66" ${O}/>`,
+  pete: () => `
+    <g transform="rotate(-10 17 90)"><rect x="13" y="76" width="7" height="26" fill="#a0713d" ${O}/><rect x="11" y="94" width="11" height="4" fill="#8a8f96" ${O} stroke-width="1.8"/><path d="M13 82 L20 82" stroke="#5c3a20" stroke-width="2"/></g>
+    <path d="M8 100 C12 78 88 78 92 100 Z" fill="${K}"/>
+    <circle cx="28" cy="28" r="9" fill="${K}" ${O}/><circle cx="72" cy="28" r="9" fill="${K}" ${O}/>
+    <circle cx="50" cy="52" r="27" fill="${K}" ${O}/>
+    <path d="M26 64 L31 80 L38 74 L44 88 L50 80 L56 88 L62 74 L69 80 L74 64 Z" fill="#3a3a3a" ${O}/>
+    <ellipse cx="50" cy="63" rx="14" ry="10" fill="#fff" ${O}/>
+    ${eye(41, 48, 6, 2.6, 0.25, 0.25)}${eye(59, 48, 6, 2.6, -0.25, 0.25)}
+    <path d="M32 38 L50 49 L32 48 Z" fill="${K}"/><path d="M68 38 L50 49 L68 48 Z" fill="${K}"/>
+    <ellipse cx="50" cy="59" rx="6" ry="4.5" fill="${K}"/>
+    <path d="M42 71 C46 67 54 67 58 71" fill="none" ${O}/><path d="M55 70 L57 75 L59 70 Z" fill="#fff" ${O} stroke-width="1.4"/>
+    <path d="M38 27 C38 12 62 12 62 27 Z" fill="#3a3a3a" ${O}/><path d="M32 27 L68 27" ${O} stroke-width="3"/>`,
+  clara: () => `
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="${K}"/>
+    <path d="M30 84 C38 92 62 92 70 84" fill="none" stroke="#c62828" stroke-width="4" stroke-linecap="round"/>
+    <path d="M44 88 L56 88 L59 99 L41 99 Z" fill="#e5c76b" ${O} stroke-width="2"/><circle cx="50" cy="99" r="2.2" fill="${K}"/>
+    <ellipse cx="22" cy="48" rx="13" ry="5.5" fill="${K}" transform="rotate(-18 22 48)" ${O}/><ellipse cx="78" cy="48" rx="13" ry="5.5" fill="${K}" transform="rotate(18 78 48)" ${O}/>
+    <path d="M32 34 C24 30 24 20 32 18 C31 24 33 28 37 30 Z" fill="#fff" ${O}/><path d="M68 34 C76 30 76 20 68 18 C69 24 67 28 63 30 Z" fill="#fff" ${O}/>
+    <circle cx="50" cy="50" r="24" fill="${K}" ${O}/>
+    <ellipse cx="50" cy="66" rx="22" ry="13" fill="#f2c9a0" ${O}/>
+    <ellipse cx="43" cy="65" rx="3.4" ry="2.4" fill="${K}"/><ellipse cx="57" cy="65" rx="3.4" ry="2.4" fill="${K}"/>
+    <path d="M40 73 C46 77 54 77 60 73" fill="none" ${O}/>
+    <ellipse cx="42" cy="46" rx="6" ry="7" fill="#fff" ${O}/><ellipse cx="58" cy="46" rx="6" ry="7" fill="#fff" ${O}/>
+    <ellipse cx="43" cy="47" rx="3" ry="4" fill="${K}"/><ellipse cx="57" cy="47" rx="3" ry="4" fill="${K}"/>
+    <path d="M36 40 L32 36 M38 38 L35 33 M64 40 L68 36 M62 38 L65 33" ${O} stroke-width="1.8"/>
+    <ellipse cx="50" cy="28" rx="15" ry="4" fill="#4c9a8f" ${O}/><path d="M40 28 C40 16 60 16 60 28 Z" fill="#4c9a8f" ${O}/>
+    <circle cx="56" cy="17" r="4" fill="#e9748f" ${O} stroke-width="1.6"/><circle cx="64" cy="17" r="4" fill="#e9748f" ${O} stroke-width="1.6"/><circle cx="60" cy="12" r="4" fill="#e9748f" ${O} stroke-width="1.6"/><circle cx="60" cy="22" r="4" fill="#e9748f" ${O} stroke-width="1.6"/><circle cx="60" cy="17" r="3" fill="#f5c342" ${O} stroke-width="1.6"/>`,
+  horace: () => `
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="${K}"/>
+    <path d="M16 100 C16 76 84 76 84 100 Z" fill="#8d5a2b" ${O}/><path d="M30 100 C30 88 70 88 70 100 Z" fill="${K}" ${O}/>
+    <circle cx="23" cy="92" r="2.2" fill="#e5c76b"/><circle cx="77" cy="92" r="2.2" fill="#e5c76b"/>
+    <ellipse cx="34" cy="20" rx="5.5" ry="14" fill="${K}" transform="rotate(-10 34 20)" ${O}/><ellipse cx="66" cy="20" rx="5.5" ry="14" fill="${K}" transform="rotate(10 66 20)" ${O}/>
+    <ellipse cx="50" cy="52" rx="22" ry="25" fill="${K}" ${O}/>
+    <ellipse cx="50" cy="67" rx="17" ry="14" fill="#f2c9a0" ${O}/>
+    <circle cx="43" cy="63" r="2.6" fill="${K}"/><circle cx="57" cy="63" r="2.6" fill="${K}"/>
+    <path d="M38 74 C44 78 56 78 62 74" fill="none" ${O}/>
+    <path d="M44 75 L50 75 L50 84 L44 83 Z" fill="#fff" ${O} stroke-width="1.8"/><path d="M50 75 L56 75 L56 83 L50 84 Z" fill="#fff" ${O} stroke-width="1.8"/>
+    <ellipse cx="43" cy="45" rx="5.5" ry="7" fill="#fff" ${O}/><ellipse cx="57" cy="45" rx="5.5" ry="7" fill="#fff" ${O}/>
+    <ellipse cx="44" cy="46" rx="2.6" ry="3.6" fill="${K}"/><ellipse cx="56" cy="46" rx="2.6" ry="3.6" fill="${K}"/>
+    <ellipse cx="50" cy="28" rx="17" ry="4" fill="#4a4a4a" ${O}/><path d="M38 28 C38 12 62 12 62 28 Z" fill="#4a4a4a" ${O}/><path d="M39 24 L61 24" stroke="#8d5a2b" stroke-width="2.4"/>`,
+  minnie: () => `
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="${K}"/>
+    <path d="M34 84 L48 89 L48 97 L34 100 Z M66 84 L52 89 L52 97 L66 100 Z" fill="#e9748f" ${O} stroke-width="2"/><circle cx="50" cy="93" r="3.2" fill="#e9748f" ${O} stroke-width="2"/>
+    <circle cx="39" cy="89" r="1.5" fill="#fff"/><circle cx="42" cy="95" r="1.5" fill="#fff"/><circle cx="61" cy="89" r="1.5" fill="#fff"/><circle cx="58" cy="95" r="1.5" fill="#fff"/>
+    <circle cx="27" cy="28" r="13" fill="${K}" ${O}/><circle cx="73" cy="28" r="13" fill="${K}" ${O}/>
+    <circle cx="50" cy="54" r="25" fill="${K}" ${O}/>
+    <ellipse cx="50" cy="60" rx="20" ry="17" fill="#fff" ${O}/>
+    ${pie(44, 54, 3.6, 7)}${pie(56, 54, 3.6, 7)}
+    <path d="M39 49 L35 47 M41 47 L38 43 M61 49 L65 47 M59 47 L62 43" ${O} stroke-width="1.8"/>
+    <ellipse cx="50" cy="66" rx="5.5" ry="3.8" fill="${K}"/>
+    <path d="M40 71 C45 78 55 78 60 71" fill="none" ${O}/>
+    <path d="M30 40 C30 14 70 14 70 40 C62 34 38 34 30 40 Z" fill="#7fb2d8" ${O}/><path d="M26 42 C36 34 64 34 74 42" fill="none" ${O}/>
+    <circle cx="45" cy="18" r="4" fill="#fff" ${O} stroke-width="1.6"/><circle cx="55" cy="18" r="4" fill="#fff" ${O} stroke-width="1.6"/><circle cx="50" cy="12" r="4" fill="#fff" ${O} stroke-width="1.6"/><circle cx="50" cy="24" r="4" fill="#fff" ${O} stroke-width="1.6"/><circle cx="50" cy="18" r="3.2" fill="#f5c342" ${O} stroke-width="1.6"/>`,
+  mutt: () => `
+    <path d="M20 100 C24 88 76 88 80 100 Z" fill="${K}"/>
+    <rect x="44" y="68" width="12" height="20" fill="#f2c9a0" ${O}/>
+    <path d="M38 84 L62 84 L60 93 L40 93 Z" fill="#fff" ${O}/><path d="M46 93 L54 93 L52 100 L48 100 Z" fill="#c62828" ${O} stroke-width="2"/>
+    <circle cx="35" cy="40" r="4.5" fill="#f2c9a0" ${O}/><circle cx="65" cy="40" r="4.5" fill="#f2c9a0" ${O}/>
+    <path d="M36 30 C36 14 64 14 64 30 L64 52 C64 68 58 82 50 84 C42 82 36 68 36 52 Z" fill="#f2c9a0" ${O}/>
+    ${eye(44, 38, 3.6, 1.8, 0.2, 0.2)}${eye(56, 38, 3.6, 1.8, 0.2, 0.2)}
+    <path d="M39 31 L47 33 M61 31 L53 33" ${O} stroke-width="2.4"/>
+    <circle cx="50" cy="48" r="6.5" fill="#e8a889" ${O}/>
+    <path d="M43 57 C46 54 49 55 50 57 C51 55 54 54 57 57 C54 60 46 60 43 57 Z" fill="${K}"/>
+    <path d="M45 65 C48 66.5 52 66.5 55 65" fill="none" ${O} stroke-width="1.8"/>
+    <path d="M46 75 C48 73 52 73 54 75" fill="none" ${O} stroke-width="1.6"/><path d="M36 20 L40 20 C40 28 39 32 36 34 Z M64 20 L60 20 C60 28 61 32 64 34 Z" fill="${K}"/>
+    <ellipse cx="50" cy="16" rx="24" ry="5" fill="#4a4a4a" ${O}/><path d="M36 16 C36 -2 64 -2 64 16 Z" fill="#4a4a4a" ${O}/><path d="M37 12 L63 12" stroke="#222" stroke-width="2.4"/>`,
+  jeff: () => `
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="${K}"/>
+    <path d="M40 84 L50 96 L60 84 Z" fill="#fff"/>
+    <path d="M43 88 L50 90 L57 88 L57 94 L50 92 L43 94 Z" fill="#c62828" ${O} stroke-width="1.6"/>
+    <circle cx="50" cy="56" r="23" fill="#f8d7c4" ${O}/>
+    <path d="M30 44 C20 56 22 74 36 80 C43 76 40 60 38 44 Z" fill="#f4f4f4" ${O}/>
+    <path d="M70 44 C80 56 78 74 64 80 C57 76 60 60 62 44 Z" fill="#f4f4f4" ${O}/>
+    ${eye(43, 52, 5.5, 2.4, 0.1, 0.2)}${eye(57, 52, 5.5, 2.4, -0.1, 0.2)}
+    <path d="M37 44 C40 41 44 41 46 44 M54 44 C56 41 60 41 63 44" fill="none" ${O} stroke-width="2"/>
+    <circle cx="50" cy="62" r="5.5" fill="#e8a889" ${O}/>
+    <path d="M45 72 C48 75 52 75 55 72" fill="none" ${O}/>
+    <ellipse cx="50" cy="41" rx="34" ry="5" fill="${K}" ${O}/>
+    <path d="M24 41 L21 12 C30 8 42 15 50 10 C58 15 70 8 79 12 L76 41 Z" fill="${K}" ${O}/>
+    <path d="M23 34 L77 34" stroke="#555" stroke-width="3"/>`,
+  hooligan: () => `
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="#3f7fd8"/>
+    <path d="M42 84 L50 94 L58 84 Z" fill="#fff"/>
+    <path d="M42 84 L36 100 M58 84 L64 100" ${O} stroke-width="2"/>
+    <g transform="rotate(12 68 92)"><rect x="60" y="86" width="16" height="12" fill="#c9a227" ${O} stroke-width="2"/><path d="M60 89 L63 91 M60 95 L63 93 M76 89 L73 91 M76 95 L73 93" ${O} stroke-width="1.5"/></g>
+    <circle cx="27" cy="58" r="6" fill="#f8d7c4" ${O}/><circle cx="73" cy="58" r="6" fill="#f8d7c4" ${O}/>
+    <circle cx="50" cy="56" r="24" fill="#f8d7c4" ${O}/>
+    ${eye(42, 50, 5, 2.4, 0.2, 0.3)}${eye(58, 50, 5, 2.4, -0.2, 0.3)}
+    <path d="M36 43 C39 40 44 40 46 43 M54 43 C56 40 61 40 64 43" fill="none" ${O} stroke-width="2"/>
+    <path d="M34 66 C40 82 60 82 66 66 Z" fill="#fff" ${O}/>
+    <path d="M38 69 L62 69" ${O} stroke-width="1.8"/>
+    <rect x="47" y="69" width="6" height="5" fill="${K}"/>
+    <circle cx="50" cy="61" r="7" fill="#e05a4e" ${O}/>
+    <g transform="rotate(-14 50 26)"><rect x="41" y="16" width="18" height="16" fill="#b0bec5" ${O}/><rect x="41" y="22" width="18" height="5" fill="#c62828"/><ellipse cx="50" cy="16" rx="9" ry="3" fill="#cfd8dc" ${O}/></g>`,
+  buster: () => `
+    <path d="M18 100 C22 84 78 84 82 100 Z" fill="#c62828"/>
+    <path d="M28 88 C36 80 64 80 72 88 L72 96 C60 90 40 90 28 96 Z" fill="#fff" ${O}/>
+    <ellipse cx="34" cy="88" rx="13" ry="7" fill="${K}" transform="rotate(-14 34 88)" ${O}/><ellipse cx="66" cy="88" rx="13" ry="7" fill="${K}" transform="rotate(14 66 88)" ${O}/>
+    <circle cx="50" cy="88" r="4" fill="${K}" ${O}/>
+    <ellipse cx="50" cy="54" rx="20" ry="22" fill="#f8d7c4" ${O}/>
+    <path d="M28 62 C24 30 76 30 72 62 L64 62 L64 44 L36 44 L36 62 Z" fill="#e5c76b" ${O}/>
+    <ellipse cx="50" cy="33" rx="36" ry="5" fill="#d9a441" ${O}/>
+    <path d="M30 33 C30 14 70 14 70 33 Z" fill="#d9a441" ${O}/>
+    <path d="M31 27 L69 27" stroke="#c62828" stroke-width="3.5"/>
+    <circle cx="43" cy="53" r="3" fill="${K}"/><circle cx="57" cy="53" r="3" fill="${K}"/>
+    <path d="M48 60 C50 64 52 60 52 60" fill="none" ${O} stroke-width="2"/>
+    <path d="M42 67 C46 72 54 72 58 67" fill="none" ${O}/>
+    <circle cx="82" cy="75" r="13" fill="#a5754c" ${O}/>
+    <ellipse cx="70" cy="68" rx="4" ry="5.5" fill="#7a5233" transform="rotate(20 70 68)" ${O} stroke-width="2"/><ellipse cx="94" cy="68" rx="4" ry="5.5" fill="#7a5233" transform="rotate(-20 94 68)" ${O} stroke-width="2"/>
+    <path d="M70 80 C70 72 94 72 94 80 C94 88 70 88 70 80 Z" fill="#fff" ${O} stroke-width="2"/>
+    <ellipse cx="82" cy="76" rx="4" ry="2.8" fill="${K}"/>
+    <path d="M72 82 C76 89 88 89 92 82 Z" fill="${K}"/>
+    <path d="M76 83 L76 86 M80 84 L80 87 M84 84 L84 87 M88 83 L88 86" stroke="#fff" stroke-width="1.8"/>
+    <circle cx="77" cy="70" r="2" fill="${K}"/><circle cx="87" cy="70" r="2" fill="${K}"/>`,
   rookie: () => `<circle cx="50" cy="50" r="30" fill="#4f46e5" ${O}/><path d="M50 26 L56 42 L74 44 L60 55 L64 72 L50 63 L36 72 L40 55 L26 44 L44 42 Z" fill="#fff" ${O}/>`,
   comet: () => `<path d="M10 90 C30 70 40 60 62 42" stroke="#ffd166" stroke-width="10" stroke-linecap="round"/><path d="M14 96 C34 78 46 70 66 54" stroke="#ff8a1e" stroke-width="6" stroke-linecap="round"/><circle cx="68" cy="36" r="18" fill="#ffe66d" ${O}/><circle cx="62" cy="32" r="4" fill="#fff"/>`,
   crown: () => `<path d="M22 72 L18 30 L36 48 L50 22 L64 48 L82 30 L78 72 Z" fill="#f5c342" ${O}/><rect x="22" y="70" width="56" height="10" fill="#e0a010" ${O}/><circle cx="50" cy="56" r="5" fill="#d81b60"/><circle cx="32" cy="60" r="4" fill="#2f6fd0"/><circle cx="68" cy="60" r="4" fill="#2f6fd0"/>`,
@@ -253,10 +407,29 @@ export function tokenSVG(t, size = 100, opts = {}) {
     ${scene(t, id)}
     <g clip-path="url(#clip${id})"><g ${METAL[t.variant] ? `filter="url(#tone${id})"` : ''}><g transform="translate(50 50) scale(.8) translate(-50 -50) ${pose(t)}">${draw()}</g>${photo(t, id)}</g>${t.rarity >= 3 || t.variant === 'holo' ? sparkles : ''}</g>
     <g clip-path="url(#clip${id})"><ellipse cx="36" cy="26" rx="28" ry="15" fill="url(#gl${id})" transform="rotate(-18 36 26)"/><path d="M18 74 Q50 96 82 74" fill="none" stroke="#fff" stroke-width="5" opacity=".22"/></g>
-    ${outer}
+    ${outer}${t.series === 'tour' ? SPROCKETS : ''}
     ${ring ? `<circle cx="50" cy="50" r="43.5" fill="none" stroke="${col.hex}" stroke-width="3.2"/>` : ''}
     <circle cx="50" cy="50" r="49" fill="none" stroke="#3d5a80" stroke-width="1.4"/>
     ${bubble ? `<circle cx="76" cy="76" r="13" fill="${col.hex}" stroke="#fff" stroke-width="2.5"/><ellipse cx="72" cy="70" rx="7" ry="4" fill="#fff" opacity=".45"/><text x="76" y="81" text-anchor="middle" font-size="15" font-weight="800" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" fill="${t.color === 'yel' || t.color === 'slv' ? '#1c2f4a' : '#fff'}">${label}</text>` : ''}
+  </svg>`;
+}
+
+// Film sprockets around a Keeper's Frame chip.
+const SPROCKETS = Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8; const x = 50 + 47 * Math.cos(a), y = 50 + 47 * Math.sin(a);
+  return `<rect x="${(x - 2.4).toFixed(1)}" y="${(y - 1.5).toFixed(1)}" width="4.8" height="3" rx=".8" fill="#fff" stroke="#3d5a80" stroke-width=".7" transform="rotate(${(a * 180 / Math.PI + 90).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }).join('');
+
+// Zone badge for the Orbit Tour: a film frame on a coloured disc.
+export function zoneBadgeSVG(z, size = 56, lit = true) {
+  const id = 'z' + (uid++);
+  const hue = lit ? z.hue : '#8a97a8';
+  const holes = [34, 43, 52, 61].map(y => `<rect x="30" y="${y}" width="4" height="5" rx="1" fill="#fff" opacity=".8"/><rect x="66" y="${y}" width="4" height="5" rx="1" fill="#fff" opacity=".8"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${z.name || 'zone'}">
+    <defs><radialGradient id="zb${id}" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".22" stop-color="${hue}"/><stop offset="1" stop-color="#0d1a30"/></radialGradient></defs>
+    <circle cx="50" cy="50" r="46" fill="url(#zb${id})" stroke="#fff" stroke-width="3"/>
+    <rect x="27" y="30" width="46" height="40" rx="3" fill="#0d1a30" opacity=".78" stroke="#fff" stroke-width="1.6"/>${holes}
+    <text x="50" y="59" text-anchor="middle" font-size="24" font-style="italic" font-weight="800" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" fill="#fff">${z.n}</text>
+    <ellipse cx="40" cy="26" rx="22" ry="10" fill="#fff" opacity="${lit ? '.35' : '.15'}" transform="rotate(-18 40 26)"/>
+    ${lit ? '' : '<circle cx="50" cy="50" r="46" fill="#1c2f4a" opacity=".45"/>'}
   </svg>`;
 }
 

@@ -1,8 +1,17 @@
 // Version log and roadmap shown on the Home page and under Profile.
 // Newest first. Keep entries short: a title card, then a few lines.
-export const APP_VERSION = '0.6.0';
+export const APP_VERSION = '0.7.0';
 
 export const NEWS = [
+  { v: '0.7.0', date: '2026-09-06', title: 'The Orbit Tour',
+    items: [
+      'A seven-zone campaign that leaves Orbit Station and comes back to it. Two challenges, a sparring partner and a Keeper in every zone.',
+      'House rules bend each match: no swaps, no powers, a hand of three, double sets, open hands, secret powers awake.',
+      'Eleven new stars: Bobby Bumps, Colonel Heeza Liar, Julius the Cat, Pete, Clarabelle, Horace, Minnie (1928), Mutt, Jeff, Happy Hooligan and Buster Brown.',
+      'Eight new powers: Encore, Twins, Chorus Line, Crown, Underdog, Brick, Shield and Veto.',
+      'Secret powers on Mythic and Legendary chips wake up after three wins on the board.',
+      "Seven Keeper's Frame chips you can only win on the Tour.",
+    ] },
   { v: '0.6.0', date: '2026-09-06', title: 'A new front door',
     items: [
       'Five tabs: Home, Collection, Battle, Market, Profile. The old top tabs are gone.',
@@ -41,7 +50,6 @@ export const ROADMAP = [
   { k: 'next', title: 'Rarity tell on the card back', note: 'The face-down chip hints its tier before the flip.' },
   { k: 'next', title: 'Pick inside Premium and Mega packs', note: 'Three chips fan out; you keep one.' },
   { k: 'soon', title: 'Share card for Mythic and Legendary pulls', note: 'One tap makes a poster to send to a friend.' },
-  { k: 'soon', title: 'Weekly challenge', note: 'A seeded seven-day ladder with a lineup you can share.' },
   { k: 'soon', title: 'cZone reactions', note: 'Tap a displayed chip for a bounce and a quip.' },
   { k: 'idea', title: 'New series', note: 'More public-domain stars and editions.' },
   { k: 'idea', title: 'Music', note: 'A quiet theme for the Home page and the Game Zone.' },
