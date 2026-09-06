@@ -72,6 +72,13 @@ Open that link on your iPhone and follow the install steps above.
 | Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
 | Orbit Codes | A featured code on the front page rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
 | Look | The 2003 Orbit layout in a clean white, blue and grey finish with glossy highlights, so the chips are the most colourful thing on screen. |
+| Front page | A poster of your featured chip (pick any chip and tap FEATURE ON FRONT PAGE), the day's ritual card (bonus, free chip, a battle) and your streak. |
+| Chip details | Tilt the chip with your finger, flip it to see its mint number, date and where it came from. Completing all eight editions of a character shows a set poster. |
+| Sound | A small synthesised sound kit (rip, flip, clink, land, tally, win) generated in the browser, paired with visual pulses. Toggle in Settings. |
+
+The design thinking behind the app lives in `docs/UX-PHILOSOPHY.md` (north star, ten tenets,
+design system) and `docs/UX-EVALUATION.md` (screen-by-screen review and rework plan), with the
+research notes in `docs/research/`.
 
 ## Running locally
 
@@ -90,9 +97,11 @@ css/fonts.css, fonts/ bundled open-licensed fonts
 js/data.js            cToon catalog, packs, opponents, quests, codes
 js/art.js             vector portraits, glossy chips, metal/dark edition treatments, sockets, badges, pack foils
 js/pack.js            pack ripping and reveal overlay
+js/sound.js           synthesised sound kit (WebAudio)
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
 js/gtoons.js          battle engine and AI
 js/ui.js              screens and interactions
 icons/                app icons
+docs/                 UX philosophy, evaluation and research notes
 ```

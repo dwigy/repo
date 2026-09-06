@@ -29,7 +29,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
       root.innerHTML = `<div class="pk-back"></div>
         <div class="pk-stage">
           <div class="pk-hint">${esc(pack.name).toUpperCase()}</div>
-          <div class="pk-packwrap"><div class="pk-pack" id="pkPack">${packSVG(pack, { size: 230 })}</div><div class="pk-tear" id="pkTear"></div></div>
+          <div class="pk-packwrap"><div class="pk-peek" id="pkPeek">${chipBackSVG(110)}</div><div class="pk-pack" id="pkPack">${packSVG(pack, { size: 230 })}</div><div class="pk-tear" id="pkTear"></div></div>
           <div class="pk-sub">DRAG ACROSS THE TOP TO RIP IT OPEN</div>
           <button class="obtn pk-btn" id="pkRip">RIP IT</button>
           <button class="pk-x" id="pkSkip">SKIP</button>
@@ -42,6 +42,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
         t.setAttribute('transform', `translate(${(p * 140).toFixed(1)} ${(-p * 26).toFixed(1)}) rotate(${(-p * 14).toFixed(1)} 110 20)`);
         body().setAttribute('transform', `translate(${(Math.sin(p * 40) * p * 2).toFixed(1)} 0)`);
         root.querySelector('#pkTear').style.width = (p * 100) + '%';
+        const peek = root.querySelector('#pkPeek'); if (peek) peek.style.transform = `translateY(${(-p * 46).toFixed(1)}px) rotate(${(p * 6).toFixed(1)}deg)`;
       };
       el.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, w: el.getBoundingClientRect().width }; el.setPointerCapture(e.pointerId); if (!progress) sfx('grab'); });
       el.addEventListener('pointermove', (e) => { if (!drag) return; const p = Math.min(1, Math.max(0, (e.clientX - drag.x) / (drag.w * 0.6))); if (p > progress + 0.12) sfx('rip'); apply(p); });

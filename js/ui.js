@@ -3,6 +3,7 @@
 // data-action attributes.
 import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, powerText } from './data.js';
 import { openPack } from './pack.js';
+import { play as snd, setEnabled as setSound } from './sound.js';
 import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG } from './art.js';
 import { state, commit, exportCode, parseSaveCode, replaceState, resetState, todayKey } from './store.js';
 import * as G from './game.js';
@@ -29,39 +30,9 @@ let visitIndex = 0;
 let installDismissed = false;
 try { installDismissed = sessionStorage.getItem('installDismissed') === '1'; } catch { /* ignore */ }
 
-// ---------- sound ----------
-let audio = null;
-function beep(freq = 660, dur = 0.08, type = 'square', vol = 0.05) {
-  if (!state.settings.sound) return;
-  try {
-    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.type = type; o.frequency.value = freq; g.gain.value = vol;
-    o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + dur);
-  } catch { /* no audio */ }
-}
-const packSfx = (kind) => {
-  switch (kind) {
-    case 'grab': beep(220, 0.05, 'triangle', 0.04); break;
-    case 'rip': beep(160 + Math.random() * 80, 0.06, 'sawtooth', 0.05); break;
-    case 'burst': beep(90, 0.25, 'sawtooth', 0.07); setTimeout(() => beep(700, 0.15, 'triangle', 0.06), 80); setTimeout(() => beep(1100, 0.2, 'triangle', 0.05), 160); break;
-    case 'flip': beep(600, 0.06, 'square', 0.04); break;
-    case 'tension': beep(140, 0.5, 'sine', 0.05); break;
-    case 'drum': [0, 180, 360, 540].forEach((d, i) => setTimeout(() => beep(110 + i * 20, 0.12, 'square', 0.06), d)); break;
-    case 'reveal0': beep(520, 0.08); break;
-    case 'reveal1': beep(600, 0.08); setTimeout(() => beep(760, 0.1), 80); break;
-    case 'reveal2': [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.12, 'triangle', 0.06), i * 80)); break;
-    case 'reveal3': [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.14, 'triangle', 0.07), i * 90)); break;
-    case 'reveal4': [392, 523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => beep(f, 0.18, 'triangle', 0.08), i * 100)); break;
-    case 'done': beep(660, 0.08); setTimeout(() => beep(880, 0.12), 80); break;
-  }
-};
-const sfx = {
-  tap: () => beep(520, 0.05),
-  good: () => { beep(660, 0.08); setTimeout(() => beep(880, 0.12), 80); },
-  great: () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.12, 'triangle', 0.07), i * 90)); },
-  bad: () => beep(180, 0.2, 'sawtooth', 0.04),
-};
+// ---------- sound (see sound.js) ----------
+const packSfx = (kind) => snd(kind);
+const sfx = { tap: () => snd('tap'), good: () => snd('good'), great: () => snd('great'), bad: () => snd('bad') };
 
 // ---------- shared components ----------
 const rtag = (t) => `<span class="rtag" style="--rc:${RARITY[t.rarity].color}">${RARITY[t.rarity].name}</span>`;
@@ -80,26 +51,7 @@ function tokenHTML(t, opts = {}) {
   </div>`;
 }
 
-function siteHeader() {
-  return `<div class="cn-bar">
-    <div class="cn-strip"><span class="cn-strip-hot">WHAT'S ON IN ORBIT</span><span class="cn-strip-txt">${esc(headline())}</span></div>
-    <div class="cn-bar-row">
-      <div class="cn-tabs">
-        <span class="cn-tab t1" data-action="go" data-to="collect">COLLECT</span>
-        <span class="cn-tab t2" data-action="go" data-to="compete">COMPETE</span>
-        <span class="cn-tab t3" data-action="go" data-to="orbit">ORBIT</span>
-        <span class="cn-tab t4" data-action="go" data-to="czone">cZONE</span>
-      </div>
-      <div class="wallet" data-action="go" data-to="collect" data-sub="cmart"><span>POINTS</span><b>${fmt(state.points)}</b></div>
-    </div>
-  </div>`;
-}
-function headline() {
-  const today = todayKey();
-  if (state.daily.last !== today) return 'Your Daily Orbit Bonus is waiting on the front page!';
-  const next = OPPONENTS.find(o => !state.beaten.includes(o.id));
-  return next ? `${next.name} is waiting in the Challenge Zone.` : 'You are the Orbit Champion. Show off that cZone!';
-}
+function siteHeader() { return ''; }
 
 const SECTIONS = [
   ['orbit',   'ORBIT'],
@@ -118,10 +70,9 @@ const SUBTABS = {
 
 function orbitFrame(inner) {
   const tabs = SUBTABS[section].map(([k, n]) => `<button class="stab ${subs[section] === k ? 'on' : ''}" data-action="sub" data-id="${k}">${n}</button>`).join('');
-  return `${siteHeader()}
-  <div class="frame">
+  return `<div class="frame">
     <div class="orbit-head">
-      <div class="orbit-logo" data-action="go" data-to="orbit">CARTOON <span class="o">O</span>RBIT<i>®</i></div>
+      <div class="orbit-row"><div class="orbit-logo" data-action="go" data-to="orbit">CARTOON <span class="o">O</span>RBIT<i>®</i></div><div class="wallet" data-action="go" data-to="collect" data-sub="cmart"><span>POINTS</span><b>${fmt(state.points)}</b></div></div>
       <div class="subnav">${tabs}</div>
     </div>
     <div class="content">${inner}</div>
@@ -147,66 +98,46 @@ function isIOS() { return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navig
 function isStandalone() { return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches; }
 
 // ---------- ORBIT (front page) ----------
+function skyFor(h) {
+  if (h < 6) return ['#0b1b3a', '#1f3d7a', '#0d2350'];
+  if (h < 9) return ['#f7c9a6', '#8fb8e8', '#2f5fa8'];
+  if (h < 17) return ['#eaf4ff', '#9ac6f2', '#3a7fd6'];
+  if (h < 20) return ['#ffd2a1', '#b788d8', '#2e3f8a'];
+  return ['#0b1b3a', '#1f3d7a', '#0d2350'];
+}
+function streakOrbs() {
+  const n = state.daily.streak;
+  return `<div class="orbs">${Array.from({ length: 7 }, (_, i) => `<i class="${i < Math.min(7, n) ? 'on' : ''}"></i>`).join('')}<b>${n >= 7 ? n + ' DAYS' : n ? 'DAY ' + n : 'START'}</b></div>`;
+}
 function homeView() {
   const today = todayKey();
   const dailyDone = state.daily.last === today;
-  const prog = G.catalogProgress();
-  const free = G.dailyFreeCtoon(); const freeDone = state.dailyFree === today;
+  const freeDone = state.dailyFree === today;
+  const played = state.lastBattle === today;
+  const free = G.dailyFreeCtoon();
+  const show = BY_ID[G.showcaseId()];
   const nextOp = OPPONENTS.find(o => !state.beaten.includes(o.id));
-  const featured = G.featuredCode();
-  const install = (!isStandalone() && !installDismissed) ? `<div class="promo install-promo">
-      <div class="promo-title">ADD ORBIT TO YOUR HOME SCREEN</div>
-      <p>${isIOS() ? 'In Safari tap <b>Share</b>, then <b>Add to Home Screen</b>. Orbit installs like an app and works offline.' : 'Open this page in Safari on your iPhone and use Share → Add to Home Screen.'}</p>
-      <div class="row"><button class="obtn" data-action="go" data-to="help" data-sub="install">SHOW ME HOW</button><button class="obtn grey" data-action="dismissInstall">LATER</button></div>
-    </div>` : '';
-  return `<div class="cols">
-    <div class="col-main">
-      <div class="panel">
-        <div class="ptab">NOW IN ORBIT</div>
-        ${install}
-        <div class="promo daily-promo ${dailyDone ? 'done' : ''}">
-          <div class="promo-title">${dailyDone ? 'DAILY BONUS CLAIMED!' : 'YOUR DAILY ORBIT BONUS!'}</div>
-          <p>Log in every day to keep your streak. Day ${state.daily.streak} streak${state.daily.streak >= 7 ? ' 🔥' : ''}. Seven days in a row earns a Prize cToon.</p>
-          ${dailyDone ? '<span class="okchip">CLAIMED</span>' : '<button class="obtn hot" data-action="claimDaily">CLAIM BONUS</button>'}
-        </div>
-        <div class="promo free-promo ${freeDone ? 'done' : ''}">
-          <div class="row">
-            <div class="promo-tok">${tokenSVG(free, 84)}</div>
-            <div><div class="promo-title">FREE cTOON OF THE DAY</div><p>${esc(free.name)} · ${RARITY[free.rarity].name}. Every Orbiter gets one, every day.</p>
-            ${freeDone ? '<span class="okchip">COLLECTED</span>' : '<button class="obtn hot" data-action="claimFree">TAKE IT</button>'}</div>
-          </div>
-        </div>
-        <div class="orbit-badge">
-          <div class="ob-circle">${tokenSVG(BY_ID[state.deck[0] || 'pz01'], 96)}</div>
-          <div class="ob-text"><b>${esc(state.name).toUpperCase()}'S 24-HOUR ORBIT</b><div class="ob-stats">${prog.have}/${prog.total} cTOONS · ${state.stats.wins} gTOONS WINS · ${fmt(G.binderValue())} PTS BINDER</div>
-            <div class="ob-links"><span data-action="go" data-to="collect">cTOONS</span><span data-action="go" data-to="compete">gTOONS</span><span data-action="go" data-to="collect" data-sub="auction">TRADING</span></div></div>
-        </div>
+  const sky = skyFor(new Date().getHours());
+  const canPack = state.points >= PACKS[0].price;
+  const install = (!isStandalone() && !installDismissed) ? `<div class="panel slim row between"><div><b>ADD TO HOME SCREEN</b><div class="small">${isIOS() ? 'Share, then Add to Home Screen.' : 'Open in Safari on iPhone.'}</div></div><div class="row"><button class="obtn small" data-action="go" data-to="help" data-sub="install">HOW</button><button class="obtn small grey" data-action="dismissInstall">LATER</button></div></div>` : '';
+  return `<section class="poster" style="--s1:${sky[0]};--s2:${sky[1]};--s3:${sky[2]}">
+      <div class="poster-chip" data-action="detail" data-id="${show.id}">${tokenSVG(show, 230)}</div>
+      <div class="poster-name">${esc(show.short)}</div>
+      <div class="poster-ed"><span class="rtag" style="--rc:${RARITY[show.rarity].color}">${RARITY[show.rarity].name}</span>${show.series !== 'pz' && show.edShort !== 'Classic' ? `<span class="poster-sub">${esc(show.edShort || show.edition)}</span>` : ''}</div>
+      ${canPack && !played ? `<button class="obtn primary big" data-action="go" data-to="collect" data-sub="cmart">RIP A PACK</button>` : `<button class="obtn primary big" data-action="go" data-to="compete">BATTLE${nextOp ? ' · ' + esc(nextOp.name).toUpperCase() : ''}</button>`}
+    </section>
+    ${install}
+    <div class="panel today">
+      <div class="row between"><div class="ptab">TODAY</div>${streakOrbs()}</div>
+      <div class="ritual">
+        <div class="rit ${dailyDone ? 'done' : ''}"><i>${dailyDone ? '✓' : '1'}</i><div><b>Daily bonus</b><span>${dailyDone ? 'Claimed' : '+' + Math.min(G.DAILY_STREAK_CAP, G.DAILY_BASE + G.DAILY_STREAK_BONUS * Math.max(0, state.daily.streak)) + ' points'}</span></div>${dailyDone ? '' : '<button class="obtn small primary" data-action="claimDaily">CLAIM</button>'}</div>
+        <div class="rit ${freeDone ? 'done' : ''}"><i>${freeDone ? '✓' : '2'}</i><div class="mini-tok">${tokenSVG(free, 40, { bubble: false })}</div><div><b>Free chip</b><span>${esc(free.short)}</span></div>${freeDone ? '' : '<button class="obtn small primary" data-action="claimFree">TAKE</button>'}</div>
+        <div class="rit ${played ? 'done' : ''}"><i>${played ? '✓' : '3'}</i><div><b>One battle</b><span>${played ? 'Played' : nextOp ? 'vs ' + esc(nextOp.name) : 'Champion'}</span></div>${played ? '' : '<button class="obtn small" data-action="go" data-to="compete">GO</button>'}</div>
       </div>
-      <div class="getstarted">
-        <div class="gs-tabs"><span class="on">GET STARTED</span><span data-action="go" data-to="collect">COLLECT</span><span data-action="go" data-to="compete">COMPETE</span><span data-action="go" data-to="collect" data-sub="auction">AUCTION</span><span data-action="go" data-to="czone" data-sub="visit">EXPLORE</span></div>
-        <div class="gs-body">
-          <div><div class="gs-head">‹ PLAY NOW</div><ul><li data-action="go" data-to="compete">Play gToons${nextOp ? ' vs ' + esc(nextOp.name) : ''}</li><li data-action="go" data-to="collect" data-sub="cmart">Open cPacks at the cMart</li><li data-action="go" data-to="czone">Build your cZone</li></ul></div>
-          <div><div class="gs-head">TODAY'S QUESTS ›</div><ul>${G.todaysQuests().map(q => { const p = G.questProgress(q); const done = state.quests.claimed.includes(q.id); return `<li data-action="go" data-to="orbit" data-sub="quests">${done ? '✔ ' : ''}${esc(q.text)} <em>${p}/${q.goal}</em></li>`; }).join('')}</ul></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-side">
-      <div class="panel side">
-        <div class="ptab">COMPETE</div>
-        <button class="gtoons-card" data-action="go" data-to="compete"><span class="gt-logo">gTOONS</span><span class="gt-sub">TRADING CARD GAME</span></button>
-      </div>
-      <div class="panel side">
-        <div class="ptab">ORBIT CENTERS</div>
-        <ul class="centers">${Object.entries(SERIES).filter(([k]) => k !== 'pz').map(([k, s]) => `<li data-action="binderSeries" data-id="${k}">${esc(s.name).toUpperCase()}</li>`).join('')}<li class="muted-li">CLICK ON A LINK ABOVE</li></ul>
-      </div>
-      <div class="panel side code-panel">
-        <div class="ptab">GOT A CODE?</div>
-        <div class="row"><input id="codeInput" class="oinput" placeholder="ENTER IT HERE" autocapitalize="characters" autocomplete="off"><button class="obtn" data-action="redeem">SUBMIT</button></div>
-        <div class="featured">FEATURED CODE: <b>${featured}</b></div>
-      </div>
-    </div>
-  </div>`;
+      <div class="goals">${G.todaysQuests().map(q => { const p = G.questProgress(q); const done = state.quests.claimed.includes(q.id); return `<div class="goal ${done ? 'done' : ''}" data-action="go" data-to="orbit" data-sub="quests"><span>${esc(q.text)}</span><b>${done ? '✓' : p + '/' + q.goal}</b></div>`; }).join('')}</div>
+    </div>`;
 }
+
 function questsView() {
   return `<div class="panel">
     <div class="ptab">TODAY'S QUESTS</div>
@@ -266,10 +197,13 @@ function detailModal(id) {
     if (n > 1 && t.series !== 'pz') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
     if (t.series !== 'pz') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
   }
+  const prov = (state.prov || {})[id];
+  const srcName = { pack: 'a cPack', free: 'the free daily chip', trade: 'the Auction', gift: 'a gift', code: 'an Orbit Code', starter: 'your starter pack', prize: 'a prize' };
+  if (n > 0 && t.series !== 'pz') actions.push(`<button class="obtn small ${state.showcase === id ? '' : 'grey'}" data-action="showcase" data-id="${id}">${state.showcase === id ? 'ON FRONT PAGE' : 'FEATURE ON FRONT PAGE'}</button>`);
   showModal(`<div class="detail">
       <div class="ptab">cTOON DETAILS</div>
       <div class="detail-top">
-        <div class="detail-tok">${n ? tokenSVG(t, 150) : shadowTokenSVG(t, 150)}</div>
+        <div class="tilt" id="tilt"><div class="tilt-in"><div class="tilt-face">${n ? tokenSVG(t, 150) : shadowTokenSVG(t, 150)}</div><div class="tilt-back">${n ? `<div class="back-card" style="--rc:${RARITY[t.rarity].color}"><b>No. ${prov ? String(prov.mint).padStart(4, '0') : '----'}</b><span>${prov ? new Date(prov.t).toLocaleDateString() : ''}</span><span>${prov ? 'from ' + (srcName[prov.src] || prov.src) : ''}</span><em>ORBIT</em></div>` : ''}</div></div>${n ? '<button class="flipbtn" data-action="flipDetail">FLIP</button>' : ''}</div>
         <div class="detail-info">
           <h2>${n ? esc(t.name) : '???'}</h2>
           <div class="row wrap"><span class="stag">${esc(s.name)}</span>${rtag(t)}${t.edition && t.edition !== 'Prize' ? `<span class="etag">${esc(t.edition)}</span>` : ''}</div>
@@ -281,8 +215,24 @@ function detailModal(id) {
       <div class="small">Owned ${n} · In deck ${inDeck} · In cZone ${inZone}</div>
       <div class="row wrap">${actions.join('')}</div>
       ${artSection(t)}
+      <div class="byline">Portrait drawn for Cartoon Orbit · ${esc(SERIES[t.series].name)} · ${t.year}</div>
       <button class="obtn grey block" data-action="closeModal">CLOSE</button>
     </div>`);
+  bindTilt();
+}
+function bindTilt() {
+  const el = $('#tilt'); if (!el) return;
+  const inner = el.querySelector('.tilt-in');
+  let down = false, moved = false;
+  el.addEventListener('pointerdown', (e) => { if (e.target.closest('.flipbtn')) return; down = true; moved = false; el.setPointerCapture(e.pointerId); });
+  el.addEventListener('pointermove', (e) => {
+    if (!down) return; moved = true;
+    const r = el.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    inner.style.transform = `rotateY(${(x * 40).toFixed(1)}deg) rotateX(${(-y * 40).toFixed(1)}deg)`;
+    inner.style.setProperty('--gx', `${50 + x * 60}%`); inner.style.setProperty('--gy', `${50 + y * 60}%`);
+  });
+  const up = () => { if (!down) return; down = false; inner.style.transform = ''; if (!moved) { inner.classList.remove('bounce'); void inner.offsetWidth; inner.classList.add('bounce'); snd('clink'); } };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
 function artSection(t) {
   if (!t.char || t.series === 'pz') return '';
@@ -469,8 +419,8 @@ function flyChip(t, from, to, opts = {}) {
     anim.onfinish = () => { el.remove(); resolve(); };
   });
 }
-function whoosh() { if (!state.settings.sound) return; beep(300, 0.12, 'sine', 0.05); setTimeout(() => beep(900, 0.1, 'triangle', 0.06), 120); }
-function slam() { if (!state.settings.sound) return; beep(120, 0.15, 'square', 0.07); setTimeout(() => beep(60, 0.2, 'sawtooth', 0.05), 40); }
+function whoosh() { snd('whoosh'); }
+function slam() { snd('land'); }
 
 // Which sockets changed value because of the last play? (for flash/shake effects)
 function diffHits(before, after, landedWho, landedSlot) {
@@ -508,19 +458,49 @@ function aiTurn() {
     if (match.done) setTimeout(finishMatch, 900);
   });
 }
-function finishMatch() {
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+// End of match: every socket adds to its side's total in turn, then colour
+// bonuses and swap penalties, then the result. Numbers become a moment.
+async function tally(ev) {
+  busy = true;
+  const pts = { p: $('.sbox.p .sbox-points'), ai: $('.sbox.ai .sbox-points') };
+  const run = { p: 0, ai: 0 };
+  const setPts = (who, v) => { if (pts[who]) { pts[who].textContent = v; pts[who].classList.remove('bump'); void pts[who].offsetWidth; pts[who].classList.add('bump'); } };
+  setPts('ai', 0); setPts('p', 0);
+  const pill = $('.gz-pill'); if (pill) pill.textContent = 'SCORING…';
+  for (const who of ['ai', 'p']) {
+    const vals = who === 'p' ? ev.a : ev.b;
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals[i]; if (!v) continue;
+      const sock = $(`.gz-side.${who} .sock[data-i="${i}"]`);
+      if (sock) { sock.classList.add('tally'); setTimeout(() => sock.classList.remove('tally'), 300); }
+      run[who] += v.total; setPts(who, run[who]); snd('tick', run[who]);
+      await wait(130);
+    }
+    const bonus = who === 'p' ? ev.aBonus : ev.bBonus; const swaps = (who === 'p' ? ev.aSwaps : ev.bSwaps) * B.SWAP_COST;
+    if (bonus) { run[who] += bonus; setPts(who, run[who]); snd('hitUp'); await wait(260); }
+    if (swaps) { run[who] = Math.max(0, run[who] - swaps); setPts(who, run[who]); snd('hitDown'); await wait(260); }
+    await wait(200);
+  }
+  busy = false;
+}
+async function finishMatch() {
   if (!match || !match.done) return;
   const ev = B.evaluate(match.p, match.ai);
+  await tally(ev);
   const won = ev.aTotal > ev.bTotal; const draw = ev.aTotal === ev.bTotal;
   const res = draw ? { points: 0, firstWin: false, bonus: [], prize: null } : G.recordBattle(match.opponent, won, ev.aTotal - ev.bTotal);
-  won ? sfx.great() : draw ? sfx.good() : sfx.bad();
-  showModal(`<div class="reveal"><div class="ptab">${won ? 'VICTORY!' : draw ? 'DRAW' : 'DEFEAT'}</div>
-    <p class="big-score">${ev.aTotal} – ${ev.bTotal}</p>
-    <div class="small">Colour bonus ${ev.aBonus} vs ${ev.bBonus}${ev.aSwaps ? ` · swaps −${ev.aSwaps * B.SWAP_COST}` : ''}</div>
-    ${draw ? '<p>No points this time. Rematch?</p>' : `<p><b>+${res.points} POINTS</b>${res.firstWin ? ' · FIRST WIN BONUS!' : ''}</p>`}
-    ${res.bonus.length ? `<p><b>PREMIUM cPACK UNLOCKED:</b></p><div class="reveal-toks">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
-    ${res.prize ? `<p><b>PRIZE cTOON UNLOCKED: ${esc(BY_ID[res.prize].name).toUpperCase()}!</b></p>` : ''}
-    <div class="row center"><button class="obtn hot" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">CHALLENGE ZONE</button></div></div>`);
+  snd(won ? 'win' : draw ? 'good' : 'lose');
+  const lineup = (side) => `<div class="lineup">${side.slots.filter(Boolean).map(id => `<div class="mini">${tokenSVG(BY_ID[id], 40)}</div>`).join('')}</div>`;
+  showModal(`<div class="reveal result ${won ? 'won' : draw ? 'drew' : 'lost'}">
+    <div class="result-title">${won ? 'VICTORY' : draw ? 'DRAW' : 'DEFEAT'}</div>
+    <div class="result-score"><span class="me">${ev.aTotal}</span><i>–</i><span class="them">${ev.bTotal}</span></div>
+    <div class="result-names"><span>${esc(state.name)}</span><span>${esc(match.opponent.name)}</span></div>
+    <div class="result-lineups">${lineup(match.p)}${lineup(match.ai)}</div>
+    ${draw ? '<div class="small">No points this time.</div>' : `<div class="result-pts">+${res.points} POINTS${res.firstWin ? ' · FIRST WIN' : ''}</div>`}
+    ${res.bonus.length ? `<div class="small">PREMIUM cPACK</div><div class="reveal-toks">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
+    ${res.prize ? `<div class="result-pts">PRIZE: ${esc(BY_ID[res.prize].name).toUpperCase()}</div>` : ''}
+    <div class="row center"><button class="obtn primary" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">ARENA</button></div></div>`);
 }
 
 // ---------- cZONES ----------
@@ -644,6 +624,21 @@ function onboardingScreen() {
 
 export function rerender() { if (!busy) render(); }
 
+function showSetPoster(charKey) {
+  const c = CHARACTERS[charKey]; if (!c) return;
+  const eds = CTOONS.filter(t => t.char === charKey);
+  const el = document.createElement('div'); el.className = 'setpost';
+  el.innerHTML = `<div class="setpost-in">
+      <div class="setpost-kicker">SET COMPLETE</div>
+      <div class="setpost-name">${esc(c.name)}</div>
+      <div class="setpost-grid">${eds.map((t, i) => `<div style="animation-delay:${i * 90}ms">${tokenSVG(t, 100, { bubble: false })}</div>`).join('')}</div>
+      <div class="setpost-sub">ALL EIGHT EDITIONS · ${esc(SERIES[c.series].name).toUpperCase()} · ${c.year}</div>
+      <button class="obtn primary" data-action="none">KEEP COLLECTING</button>
+    </div>`;
+  el.addEventListener('click', () => { el.classList.add('out'); setTimeout(() => el.remove(), 350); });
+  document.body.appendChild(el); snd('set');
+}
+
 // ---------- render ----------
 export function render() {
   const app = $('#app');
@@ -660,16 +655,26 @@ export function render() {
   };
   app.innerHTML = orbitFrame(views[section][subs[section]]());
   if (section === 'czone' && subs.czone === 'mine') bindStage();
+  if ((state.pendingSets || []).length && !document.body.classList.contains('pk-open') && !document.querySelector('.setpost')) {
+    const c = G.popPendingSet(); if (c) setTimeout(() => showSetPoster(c), 400);
+  }
 }
 
+function quipFor(id) { const c = CHARACTERS[BY_ID[id]?.char]; const q = c && c.quips; return q ? q[Math.floor(Math.random() * q.length)] : null; }
 function afterMatchRender() {
   const ev = B.evaluate(match.p, match.ai);
+  if (pendingLand) {
+    const sock = $(`.gz-side.${pendingLand.who} .sock[data-i="${pendingLand.slot}"]`);
+    const id = match[pendingLand.who].slots[pendingLand.slot];
+    const q = id && quipFor(id);
+    if (sock && q) { const b = document.createElement('div'); b.className = 'quip'; b.textContent = q; sock.appendChild(b); snd('quip'); setTimeout(() => b.remove(), 1500); }
+  }
   document.querySelectorAll('.sbox-points').forEach(el => {
     const target = +el.dataset.total; const start = +el.textContent || 0;
     if (start === target) { el.textContent = target; return; }
     el.classList.add('bump');
-    const t0 = performance.now(), dur = 550;
-    const step = (now) => { const k = Math.min(1, (now - t0) / dur); const e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(start + (target - start) * e); if (k < 1) requestAnimationFrame(step); };
+    const t0 = performance.now(), dur = 550; let lastShown = start;
+    const step = (now) => { const k = Math.min(1, (now - t0) / dur); const e = 1 - Math.pow(1 - k, 3); const v = Math.round(start + (target - start) * e); if (v !== lastShown) { lastShown = v; snd('tick', v); } el.textContent = v; if (k < 1) requestAnimationFrame(step); };
     requestAnimationFrame(step);
   });
   lastTotals = { a: ev.aTotal, b: ev.bTotal };
@@ -683,14 +688,15 @@ const actions = {
   none() {},
   closeModal() { closeModal(); },
   dismissInstall() { installDismissed = true; try { sessionStorage.setItem('installDismissed', '1'); } catch { /* ignore */ } },
-  start() { G.startNewPlayer($('#nameInput')?.value); sfx.great(); section = 'orbit';
-    setTimeout(() => showModal(`<div class="reveal"><div class="ptab">WELCOME, ${esc(state.name).toUpperCase()}!</div><p>Your starter binder has 15 cToons and 500 points. Claim your daily bonus, then open a cPack at the cMart.</p><button class="obtn block" data-action="closeModal">LET'S GO</button></div>`), 50); },
+  start() { const r = G.startNewPlayer($('#nameInput')?.value); section = 'orbit'; render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
+  flipDetail() { const t = $('#tilt .tilt-in'); if (t) { t.classList.toggle('flipped'); snd('flip'); } return false; },
+  showcase(d) { G.setShowcase(d.id); snd('clink'); toast('Featured on your front page.'); detailModal(d.id); return false; },
   claimDaily() { const r = G.claimDaily(); if (r) { sfx.good(); toast(`+${r.amount} points! Day ${r.streak} streak.`); if (r.prize) setTimeout(() => revealModal([r.prize], 'PRIZE UNLOCKED!'), 300); } },
   claimQuest(d) { const v = G.claimQuest(d.id); if (v) { sfx.good(); toast(`Quest complete! +${v} points.`); } },
   binderFilter(d) { binderFilter = d.id; },
   binderTier(d) { binderTier = d.id; },
   binderSeries(d) { binderFilter = d.id; section = 'collect'; subs.collect = 'binder'; window.scrollTo(0, 0); },
-  detail(d) { sfx.tap(); detailModal(d.id); return false; },
+  detail(d) { snd('clink'); detailModal(d.id); return false; },
   deckAdd(d) { commit(s => { if (s.deck.length < 12) s.deck.push(d.id); }); toast('Added to deck.'); detailModal(d.id); return false; },
   deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from deck.'); detailModal(d.id); return false; },
   recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} points.`); } detailModal(d.id); return false; },
@@ -708,7 +714,7 @@ const actions = {
   deckToggle(d) { commit(s => { const inDeck = s.deck.filter(x => x === d.id).length; const own = s.collection[d.id] || 0;
     if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Deck is full (12).'); }); sfx.tap(); },
   battle(d) { startBattle(d.id); return false; },
-  pickHand(d) { if (!match || match.turn !== 'p' || match.done || busy) return false; selectedHand = selectedHand === +d.i ? -1 : +d.i; sfx.tap(); },
+  pickHand(d) { if (!match || match.turn !== 'p' || match.done || busy) return false; selectedHand = selectedHand === +d.i ? -1 : +d.i; snd('pick'); },
   placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false;
     const slot = +d.i; if (match.p.slots[slot]) return false;
     const hi = selectedHand; const t = BY_ID[match.p.hand[hi]];
@@ -744,7 +750,7 @@ const actions = {
   shareSave() { navigator.share({ title: 'Cartoon Orbit save', text: exportCode() }).catch(() => {}); return false; },
   restoreSave() { try { const obj = parseSaveCode($('#restoreInput').value); if (!confirm('Replace the save on this device with this backup?')) return false; replaceState(obj); G.sanitize(); sfx.great(); toast('Save restored!'); section = 'orbit'; } catch (e) { sfx.bad(); toast(e.message); return false; } },
   saveName() { const v = ($('#nameInput')?.value || '').trim().slice(0, 16); if (v) { commit(s => { s.name = v; }); toast('Name saved.'); } },
-  toggleSound() { commit(s => { s.settings.sound = !s.settings.sound; }); sfx.tap(); },
+  toggleSound() { commit(s => { s.settings.sound = !s.settings.sound; }); setSound(state.settings.sound); sfx.tap(); },
   toggleArt() { commit(s => { s.settings.realArt = s.settings.realArt === false; }); if (artEnabled()) refreshWiki(); sfx.tap(); },
   refreshArt() { if (!navigator.onLine) { toast('You are offline. Try again when connected.'); return false; } forgetWiki().then(() => refreshWiki(true)); toast('Looking up artwork…'); return false; },
   clearArt(d) { clearCustomArt(d.id).then(() => { toast('Your image was removed.'); detailModal(CTOONS.find(t => t.char === d.id).id); }); return false; },
@@ -758,6 +764,7 @@ async function copy(text) {
 }
 
 export function bind() {
+  setSound(state.settings.sound !== false);
   document.body.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]'); if (!el) return;
     const fn = actions[el.dataset.action]; if (!fn) return;

@@ -16,9 +16,32 @@ export function log(text) {
   state.log = state.log.slice(0, 12);
 }
 
-export function addCtoon(id, n = 1) {
-  state.collection[id] = (state.collection[id] || 0) + n;
+export function addCtoon(id, n = 1, src = 'pack') {
+  const had = state.collection[id] || 0;
+  state.collection[id] = had + n;
+  if (!had) {
+    // First copy: stamp provenance (when, how, mint number) and check the set.
+    state.prov = state.prov || {}; state.mint = (state.mint || 0) + 1;
+    state.prov[id] = { t: Date.now(), src, mint: state.mint };
+    const t = BY_ID[id];
+    if (t && t.series !== 'pz') {
+      const set = CTOONS.filter(x => x.char === t.char);
+      if (set.every(x => (state.collection[x.id] || 0) > 0)) {
+        state.sets = state.sets || []; state.pendingSets = state.pendingSets || [];
+        if (!state.sets.includes(t.char)) { state.sets.push(t.char); state.pendingSets.push(t.char); log(`SET COMPLETE: ${t.short}. All eight editions.`); }
+      }
+    }
+  }
 }
+export function popPendingSet() { const p = state.pendingSets || []; if (!p.length) return null; const c = p.shift(); commit(); return c; }
+// The chip shown on the front page: the player's pick, else their rarest.
+export function showcaseId() {
+  if (state.showcase && ownedCount(state.showcase) > 0) return state.showcase;
+  const owned = Object.keys(state.collection).filter(id => state.collection[id] > 0 && BY_ID[id]);
+  owned.sort((a, b) => (BY_ID[b].rarity - BY_ID[a].rarity) || (BY_ID[b].pts - BY_ID[a].pts));
+  return owned[0] || 'pz01';
+}
+export function setShowcase(id) { commit(s => { s.showcase = id; }); }
 export function removeCtoon(id, n = 1) {
   const have = state.collection[id] || 0;
   if (have < n) return false;
@@ -43,14 +66,19 @@ export function startNewPlayer(name) {
     s.name = (name || 'Orbiter').trim().slice(0, 16) || 'Orbiter';
     s.points = 500;
     const starters = ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1'];
-    starters.forEach(id => addCtoon(id));
-    addCtoon('pz01'); s.prizes.push('pz01');
+    starters.forEach(id => addCtoon(id, 1, 'starter'));
+    addCtoon('pz01', 1, 'prize'); s.prizes.push('pz01');
     // one random uncommon and one random rare to make the first deck fun
     const pick = (r) => { const pool = PACKABLE.filter(t => t.rarity === r); return pool[Math.floor(Math.random() * pool.length)].id; };
-    addCtoon(pick(1)); addCtoon(pick(2));
+    const extra = [pick(1), pick(2)];
+    extra.forEach(id => addCtoon(id, 1, 'starter'));
     s.deck = autoDeck(s);
     s.onboarded = true;
+    s.pendingSets = [];
     log('Welcome to the Orbit! Starter binder unlocked.');
+    // The first pack the player rips: the whole starter set, least rare first.
+    const ids = starters.concat(extra).sort((a, b) => (BY_ID[a].rarity - BY_ID[b].rarity) || (BY_ID[a].pts - BY_ID[b].pts));
+    return { pack: { id: 'starter', name: 'Starter cPack', size: ids.length }, ids, newIds: ids.slice() };
   });
 }
 
@@ -99,7 +127,7 @@ export function buyPack(packId) {
     s.points -= pack.price;
     const ids = rollPack(pack);
     const newIds = [];
-    ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id); });
+    ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'pack'); });
     s.stats.packs++;
     bumpQuest(s, 'packsToday');
     log(`Opened a ${pack.name}: ${ids.map(id => BY_ID[id].name).join(', ')}.`);
@@ -125,7 +153,7 @@ export function claimDailyFree() {
   const today = todayKey();
   if (state.dailyFree === today) return null;
   const t = dailyFreeCtoon();
-  return commit(s => { s.dailyFree = today; addCtoon(t.id); log(`Free daily cToon: ${t.name}.`); checkPrizes(s); return t; });
+  return commit(s => { s.dailyFree = today; addCtoon(t.id, 1, 'free'); log(`Free daily cToon: ${t.name}.`); checkPrizes(s); return t; });
 }
 
 export function recycle(id) {
@@ -192,7 +220,7 @@ export function doTrade(offer) {
   return commit(s => {
     if (s.trades.date !== todayKey()) s.trades = { date: todayKey(), done: [] };
     removeCtoon(offer.give, offer.giveN);
-    addCtoon(offer.get);
+    addCtoon(offer.get, 1, 'trade');
     s.trades.done.push(offer.idx);
     s.stats.trades++;
     bumpQuest(s, 'tradesToday');
@@ -223,6 +251,7 @@ export function recordBattle(op, won, margin) {
   return commit(s => {
     s.stats.battles++;
     bumpQuest(s, 'playsToday');
+    s.lastBattle = todayKey();
     let points = 0, firstWin = false, bonus = [];
     if (won) {
       s.stats.wins++;
@@ -264,7 +293,7 @@ export function redeemCode(raw) {
   const gift = parseGiftCode(code);
   if (gift) {
     if (state.redeemed.includes(gift.key)) return { ok: false, text: 'That gift code was already redeemed on this device.' };
-    return commit(s => { s.redeemed.push(gift.key); addCtoon(gift.id); log(`Gift received: ${BY_ID[gift.id].name}!`); checkPrizes(s); return { ok: true, text: `${BY_ID[gift.id].name} joins your binder!`, ctoons: [gift.id] }; });
+    return commit(s => { s.redeemed.push(gift.key); addCtoon(gift.id, 1, 'gift'); log(`Gift received: ${BY_ID[gift.id].name}!`); checkPrizes(s); return { ok: true, text: `${BY_ID[gift.id].name} joins your binder!`, ctoons: [gift.id] }; });
   }
   if (code === featuredCode()) {
     const key = 'featured:' + todayKey() + ':' + code;
@@ -279,7 +308,7 @@ export function redeemCode(raw) {
     s.redeemed.push(key);
     let ctoons = [];
     if (promo.points) s.points += promo.points;
-    if (promo.ctoon) { addCtoon(promo.ctoon); ctoons = [promo.ctoon]; }
+    if (promo.ctoon) { addCtoon(promo.ctoon, 1, 'code'); ctoons = [promo.ctoon]; }
     if (promo.pack) ctoons = grantPack(promo.pack);
     log(`Orbit Code ${code}: ${promo.text}`);
     checkPrizes(s);
@@ -293,7 +322,7 @@ export function giftCtoon(id) {
 
 // ---- Prize cToons ----
 export function checkPrizes(s = state) {
-  const award = (id) => { if (!s.prizes.includes(id)) { s.prizes.push(id); addCtoon(id); log(`PRIZE unlocked: ${BY_ID[id].name}!`); return id; } return null; };
+  const award = (id) => { if (!s.prizes.includes(id)) { s.prizes.push(id); addCtoon(id, 1, 'prize'); log(`PRIZE unlocked: ${BY_ID[id].name}!`); return id; } return null; };
   const unique = Object.keys(s.collection).filter(id => s.collection[id] > 0).length;
   const got = [];
   if (s.daily.streak >= 7) { const p = award('pz02'); if (p) got.push(p); }

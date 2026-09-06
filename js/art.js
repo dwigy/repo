@@ -1,6 +1,6 @@
 // Vector portraits of public-domain cartoon stars (original works 1905–1930),
 // drawn in the rubber-hose style, rendered inside glossy circular gToon chips.
-import { SERIES, COLORS, RARITY } from './data.js';
+import { SERIES, COLORS, RARITY, PACK_TINTS } from './data.js';
 import { getArt, artEnabled } from './artwork.js';
 
 const O = 'stroke="#111" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"';
@@ -331,7 +331,7 @@ export function chipBackSVG(size = 100, tint = '#1a3d78') {
 export function packSVG(pack, opts = {}) {
   const id = 'k' + (uid++);
   const w = 220, h = 300;
-  const tint = { std: ['#5b8def', '#1a3d78'], prem: ['#b06cff', '#4d1a9e'], mega: ['#ffd76a', '#b8780c'] }[pack.id] || ['#5b8def', '#1a3d78'];
+  const tint = PACK_TINTS[pack.id] || PACK_TINTS.std;
   const crimp = Array.from({ length: 22 }, (_, i) => `${i * 10},${i % 2 ? 0 : 6}`).join(' ');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${opts.size || w}" height="${Math.round((opts.size || w) * h / w)}" class="packsvg">
     <defs>
