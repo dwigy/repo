@@ -70,9 +70,15 @@ Open that link on your iPhone and follow the install steps above.
 | cZones | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC cZones to visit (Previous / Random / Next) with awards. |
 | Auction | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
 | Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
-| Orbit Codes | A featured code on the front page rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
+| Orbit Codes | A featured code rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
+| Testing codes | `UNLIMITED` toggles unlimited points (packs and backgrounds are free, the wallet shows ∞). `DEBUG` toggles a hidden Debug tab under Profile, as does tapping the version line in Settings seven times. The debug tab can add points and chips, open free or forced-Legendary packs, reset the day, change the streak, unlock the ladder and backgrounds, replay ceremonies, show the raw save and clear the cache. |
 | Look | The 2003 Orbit layout in a clean white, blue and grey finish with glossy highlights, so the chips are the most colourful thing on screen. |
-| Front page | A poster of your featured chip (pick any chip and tap FEATURE ON FRONT PAGE), the day's ritual card (bonus, free chip, a battle) and your streak. |
+| Navigation | Five tabs along the bottom: Home, Collection, Battle (the big centre button), Market and Profile. Each tab has at most three folder sub-tabs. |
+| Home | A poster of this week's featured series, the day's ritual (bonus, free chip, a battle, three goals), the main menu as glossy tiles, and a What's New card with the version log and what is coming next. |
+| Collection | Binder (all chips, grouped by star, with series and tier filters), Sets (one card per star with its eight-edition meter) and your cZone, with a Visit button for the daily NPC cZones. |
+| Battle | Opens on your next challenger with one PLAY button, then your deck and the full ladder. My Deck and How to Play sit beside it. |
+| Market | cMart packs and the free chip of the day, the Auction, and Orbit Codes. |
+| Profile | Your featured chip, stats, awards and Orbit log; Settings (name, sound, real artwork, reset); Device (install steps, backup code, restore). |
 | Chip details | Tilt the chip with your finger, flip it to see its mint number, date and where it came from. Completing all eight editions of a character shows a set poster. |
 | Sound | A small synthesised sound kit (rip, flip, clink, land, tally, win) generated in the browser, paired with visual pulses. Toggle in Settings. |
 
@@ -98,6 +104,7 @@ js/data.js            cToon catalog, packs, opponents, quests, codes
 js/art.js             vector portraits, glossy chips, metal/dark edition treatments, sockets, badges, pack foils
 js/pack.js            pack ripping and reveal overlay
 js/sound.js           synthesised sound kit (WebAudio)
+js/news.js            version log and roadmap shown on Home
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
 js/gtoons.js          battle engine and AI
