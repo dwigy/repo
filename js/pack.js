@@ -19,13 +19,17 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
     const best = Math.max(...cards.map(t => t.rarity));
 
     const close = () => { root.remove(); document.body.classList.remove('pk-open'); resolve(); };
+    // Swipe left/up advances during the reveal (attached once; guarded by stage).
+    let sx = 0, sy = 0;
+    root.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; });
+    root.addEventListener('pointerup', (e) => { if (stage === 'reveal' && flipped && !busy && (sx - e.clientX > 50 || sy - e.clientY > 50)) next(); });
 
     // ---------- sealed ----------
     function renderSealed() {
       root.innerHTML = `<div class="pk-back"></div>
         <div class="pk-stage">
           <div class="pk-hint">${esc(pack.name).toUpperCase()}</div>
-          <div class="pk-packwrap"><div class="pk-pack" id="pkPack">${packSVG(pack, { size: 230 })}</div><div class="pk-tear" id="pkTear"></div></div>
+          <div class="pk-packwrap"><div class="pk-peek" id="pkPeek">${chipBackSVG(110)}</div><div class="pk-pack" id="pkPack">${packSVG(pack, { size: 230 })}</div><div class="pk-tear" id="pkTear"></div></div>
           <div class="pk-sub">DRAG ACROSS THE TOP TO RIP IT OPEN</div>
           <button class="obtn pk-btn" id="pkRip">RIP IT</button>
           <button class="pk-x" id="pkSkip">SKIP</button>
@@ -38,6 +42,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
         t.setAttribute('transform', `translate(${(p * 140).toFixed(1)} ${(-p * 26).toFixed(1)}) rotate(${(-p * 14).toFixed(1)} 110 20)`);
         body().setAttribute('transform', `translate(${(Math.sin(p * 40) * p * 2).toFixed(1)} 0)`);
         root.querySelector('#pkTear').style.width = (p * 100) + '%';
+        const peek = root.querySelector('#pkPeek'); if (peek) peek.style.transform = `translateY(${(-p * 46).toFixed(1)}px) rotate(${(p * 6).toFixed(1)}deg)`;
       };
       el.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, w: el.getBoundingClientRect().width }; el.setPointerCapture(e.pointerId); if (!progress) sfx('grab'); });
       el.addEventListener('pointermove', (e) => { if (!drag) return; const p = Math.min(1, Math.max(0, (e.clientX - drag.x) / (drag.w * 0.6))); if (p > progress + 0.12) sfx('rip'); apply(p); });
@@ -77,6 +82,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
         ], { duration: 900, delay: i * 70, easing: 'cubic-bezier(.3,.8,.3,1)', fill: 'forwards' });
       });
       await wait(900 + cards.length * 70 + 200);
+      if (stage !== 'burst') { stack.remove(); return; }
       wrap.remove(); stack.remove();
       renderReveal();
     }
@@ -94,7 +100,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
             <div class="pk-face pk-face-back">${chipBackSVG(220)}</div>
           </div>
           <div class="pk-info" id="pkInfo" hidden>
-            <div class="pk-rarity" style="background:${r.color}">${r.name.toUpperCase()}${newIds.includes(t.id) ? ' · NEW!' : ''}</div>
+            <div class="pk-rarity" style="background:${r.color}">${r.name.toUpperCase()}${newIds.includes(t.id) && cards.findIndex(c => c.id === t.id) === idx ? ' · NEW!' : ''}</div>
             <div class="pk-name">${esc(t.short)}</div>
             <div class="pk-ed">${esc(t.edShort || t.edition)} · ${t.pts} PTS</div>
           </div>
@@ -105,10 +111,6 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
       const card = root.querySelector('#pkCard');
       const onTap = () => { if (busy) return; if (!flipped) flip(); else next(); };
       root.querySelector('.pk-stage').addEventListener('click', (e) => { if (e.target.closest('.pk-x')) return; onTap(); });
-      // swipe left/up also advances
-      let sx = 0, sy = 0;
-      root.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; });
-      root.addEventListener('pointerup', (e) => { if (flipped && !busy && (sx - e.clientX > 50 || sy - e.clientY > 50)) next(); });
       if (hint) sfx('tension');
     }
     async function flip() {
@@ -116,7 +118,9 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
       sfx('flip');
       const slow = t.rarity >= MYTHIC;
       if (t.rarity >= LEGENDARY) { card.classList.add('shimmer'); sfx('drum'); await wait(900); }
+      if (stage !== 'reveal' || !card.isConnected) { busy = false; return; }
       await card.animate([{ transform: 'rotateY(0deg) scale(1)' }, { transform: 'rotateY(90deg) scale(1.08)' }], { duration: slow ? 380 : 220, easing: 'ease-in', fill: 'forwards' }).finished;
+      if (stage !== 'reveal' || !card.isConnected) { busy = false; return; }
       card.classList.remove('shimmer');
       card.innerHTML = `<div class="pk-face">${tokenSVG(t, 220)}</div>`;
       card.animate([{ transform: 'rotateY(-90deg) scale(1.08)' }, { transform: 'rotateY(0deg) scale(1.15)', offset: .7 }, { transform: 'rotateY(0deg) scale(1)' }], { duration: slow ? 520 : 320, easing: 'cubic-bezier(.2,1.4,.4,1)', fill: 'forwards' });
@@ -142,17 +146,18 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
       busy = true;
       const card = root.querySelector('#pkCard');
       await card.animate([{ transform: 'translateX(0) rotate(0)', opacity: 1 }, { transform: 'translateX(-140%) rotate(-12deg)', opacity: 0 }], { duration: 260, easing: 'ease-in', fill: 'forwards' }).finished;
+      if (stage !== 'reveal') { busy = false; return; }
       idx++; busy = false;
       if (idx >= cards.length) renderSummary(); else renderReveal();
     }
 
     // ---------- summary ----------
     function renderSummary() {
-      stage = 'summary';
+      stage = 'summary'; busy = false;
       root.innerHTML = `<div class="pk-back"></div>
         <div class="pk-stage pk-summary">
           <div class="pk-hint">YOUR PULLS</div>
-          <div class="pk-grid">${cards.map((t, i) => { const r = RARITY[t.rarity]; return `<div class="pk-cell" style="--rc:${r.color};animation-delay:${i * 90}ms">${tokenSVG(t, 100, { bubble: false })}<div class="pk-cell-name">${esc(t.short)}</div><div class="pk-cell-ed" style="color:${r.color}">${esc(t.edShort || t.edition)}</div>${newIds.includes(t.id) ? '<span class="pk-new">NEW</span>' : ''}</div>`; }).join('')}</div>
+          <div class="pk-grid">${cards.map((t, i) => { const r = RARITY[t.rarity]; return `<div class="pk-cell" style="--rc:${r.color};animation-delay:${i * 90}ms">${tokenSVG(t, 100, { bubble: false })}<div class="pk-cell-name">${esc(t.short)}</div><div class="pk-cell-ed" style="color:${r.color}">${esc(t.edShort || t.edition)}</div>${newIds.includes(t.id) && cards.findIndex(c => c.id === t.id) === i ? '<span class="pk-new">NEW</span>' : ''}</div>`; }).join('')}</div>
           <div class="pk-sub">${newIds.length ? `${newIds.length} NEW FOR YOUR BINDER` : 'ALL DUPLICATES · RECYCLE THEM FOR POINTS'}</div>
           <button class="obtn pk-btn" id="pkDone">COLLECT</button>
         </div>`;

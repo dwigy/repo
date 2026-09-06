@@ -13,6 +13,7 @@ export const RARITY = [
   { key: 'prize',     name: 'Prize',     color: '#f06aa8', glow: '#ffb3d6', recycle: 0    },
 ];
 export const MYTHIC = 3, LEGENDARY = 4;
+export const PACK_TINTS = { std: ['#5b8def', '#1a3d78'], prem: ['#b06cff', '#4d1a9e'], mega: ['#ffd76a', '#b8780c'], starter: ['#8fd3ff', '#1e6fd0'] };
 const VALUE = [25, 60, 150, 500, 1500, 750];
 
 // gToon colour groups (the ring around a chip and its point bubble).
@@ -38,35 +39,35 @@ export const SERIES = {
 // Characters: name, series, debut, film used for the Reel edition, rarity of the top edition,
 // and four [colour, gToon points, power] tuples for the Classic / Reel / Spotlight / top editions.
 export const CHARACTERS = {
-  felix:   { name: 'Felix the Cat', wiki: 'Felix_the_Cat',          series: 'sil', year: 1919, film: 'Feline Follies',        top: 5, blurb: 'The first cartoon superstar. Keeps on walking.',
+  felix:   { name: 'Felix the Cat', wiki: 'Felix_the_Cat', quips: ["Righty-o!", "Keep on walking.", "Wowzers."],          series: 'sil', year: 1919, film: 'Feline Follies',        top: 5, blurb: 'The first cartoon superstar. Keeps on walking.',
              stats: [['slv', 4, { t: 'perOwnColor', color: 'slv', n: 2 }], ['blu', 6, { t: 'front', n: 4 }], ['slv', 9, { t: 'minusOppColor', color: 'blu', n: 3 }], ['slv', 16, { t: 'plusAll', n: 2 }]] },
-  gertie:  { name: 'Gertie the Dinosaur', wiki: 'Gertie_the_Dinosaur',    series: 'sil', year: 1914, film: 'Gertie the Dinosaur',   top: 4, blurb: 'The friendliest brontosaurus in vaudeville. Does tricks.',
+  gertie:  { name: 'Gertie the Dinosaur', wiki: 'Gertie_the_Dinosaur', quips: ["Hello, everybody!", "Watch me bow.", "Snack time?"],    series: 'sil', year: 1914, film: 'Gertie the Dinosaur',   top: 4, blurb: 'The friendliest brontosaurus in vaudeville. Does tricks.',
              stats: [['grn', 3, { t: 'back', n: 3 }], ['grn', 7, { t: 'lonely', n: 5 }], ['grn', 8, { t: 'perOwnColor', color: 'grn', n: 2 }], ['grn', 13, { t: 'plusOwnColor', color: 'grn', n: 3 }]] },
-  alfalfa: { name: 'Farmer Al Falfa', wiki: 'Farmer_Al_Falfa',        series: 'sil', year: 1916, film: "Al Falfa's Catastrophe", top: 3, blurb: 'Grumpy, bearded, and forever losing to his own farm animals.',
+  alfalfa: { name: 'Farmer Al Falfa', wiki: 'Farmer_Al_Falfa', quips: ["Consarn it!", "Get off my farm.", "Well, I'll be."],        series: 'sil', year: 1916, film: "Al Falfa's Catastrophe", top: 3, blurb: 'Grumpy, bearded, and forever losing to his own farm animals.',
              stats: [['yel', 3, { t: 'none' }], ['org', 6, { t: 'back', n: 4 }], ['yel', 8, { t: 'steal', n: 3 }], ['yel', 11, { t: 'perOppColor', color: 'grn', n: 3 }]] },
-  koko:    { name: 'Koko the Clown', wiki: 'Koko_the_Clown',         series: 'ink', year: 1918, film: 'Out of the Inkwell',    top: 4, blurb: 'Climbs out of the inkwell every night to cause trouble.',
+  koko:    { name: 'Koko the Clown', wiki: 'Koko_the_Clown', quips: ["Out of the inkwell!", "Ta-daa!", "Who's got the pen?"],         series: 'ink', year: 1918, film: 'Out of the Inkwell',    top: 4, blurb: 'Climbs out of the inkwell every night to cause trouble.',
              stats: [['slv', 4, { t: 'x2', id: 'bimbo' }], ['prp', 6, { t: 'opp', n: 3 }], ['slv', 9, { t: 'mirror' }], ['slv', 13, { t: 'minusOppColor', color: 'red', n: 3 }]] },
-  bimbo:   { name: 'Bimbo', wiki: 'Bimbo_(Fleischer_Studios)',                  series: 'ink', year: 1930, film: 'Hot Dog',               top: 3, blurb: 'A dog about town with big ears and bigger ideas.',
+  bimbo:   { name: 'Bimbo', wiki: 'Bimbo_(Fleischer_Studios)', quips: ["Woof!", "That's swell.", "Follow the bouncing ball."],                  series: 'ink', year: 1930, film: 'Hot Dog',               top: 3, blurb: 'A dog about town with big ears and bigger ideas.',
              stats: [['slv', 2, { t: 'perOwnColor', color: 'slv', n: 2 }], ['blu', 5, { t: 'first', n: 4 }], ['slv', 7, { t: 'lonely', n: 4 }], ['slv', 10, { t: 'plusOwnColor', color: 'slv', n: 2 }]] },
-  betty:   { name: 'Betty Boop', wiki: 'Betty_Boop',             series: 'ink', year: 1930, film: 'Dizzy Dishes',          top: 5, blurb: 'The 1930 original, floppy ears and all. Boop-oop-a-doop!',
+  betty:   { name: 'Betty Boop', wiki: 'Betty_Boop', quips: ["Boop-oop-a-doop!", "Oh, you!", "Isn't that a dilly?"],             series: 'ink', year: 1930, film: 'Dizzy Dishes',          top: 5, blurb: 'The 1930 original, floppy ears and all. Boop-oop-a-doop!',
              stats: [['red', 4, { t: 'x2', id: 'bimbo' }], ['red', 7, { t: 'front', n: 4 }], ['red', 10, { t: 'plusOwnColor', color: 'red', n: 2 }], ['red', 15, { t: 'perOwnColor', color: 'red', n: 3 }]] },
-  popeye:  { name: 'Popeye', wiki: 'Popeye',                 series: 'thm', year: 1929, film: 'Thimble Theatre',       top: 5, blurb: 'He is what he is. Strong to the finish.',
+  popeye:  { name: 'Popeye', wiki: 'Popeye', quips: ["I yam what I yam.", "Blow me down!", "Well, shiver me timbers."],                 series: 'thm', year: 1929, film: 'Thimble Theatre',       top: 5, blurb: 'He is what he is. Strong to the finish.',
              stats: [['blu', 5, { t: 'x2', id: 'olive' }], ['blu', 8, { t: 'opp', n: 4 }], ['blu', 10, { t: 'steal', n: 4 }], ['blu', 16, { t: 'opp', n: 8 }]] },
-  olive:   { name: 'Olive Oyl', wiki: 'Olive_Oyl',              series: 'thm', year: 1919, film: 'Thimble Theatre',       top: 3, blurb: 'Tall, tough and ten years older than Popeye.',
+  olive:   { name: 'Olive Oyl', wiki: 'Olive_Oyl', quips: ["Oh, Popeye!", "Hmph.", "Help! Help!"],              series: 'thm', year: 1919, film: 'Thimble Theatre',       top: 3, blurb: 'Tall, tough and ten years older than Popeye.',
              stats: [['red', 2, { t: 'x2', id: 'popeye' }], ['red', 5, { t: 'back', n: 3 }], ['red', 7, { t: 'perOwnColor', color: 'blu', n: 2 }], ['red', 10, { t: 'plusOwnColor', color: 'blu', n: 2 }]] },
-  oswald:  { name: 'Oswald the Lucky Rabbit', wiki: 'Oswald_the_Lucky_Rabbit', series: 'rub', year: 1927, film: 'Trolley Troubles',     top: 4, blurb: 'Lucky by name. Detachable by design.',
+  oswald:  { name: 'Oswald the Lucky Rabbit', wiki: 'Oswald_the_Lucky_Rabbit', quips: ["Lucky me!", "Ha-cha!", "Try and catch me."], series: 'rub', year: 1927, film: 'Trolley Troubles',     top: 4, blurb: 'Lucky by name. Detachable by design.',
              stats: [['blu', 4, { t: 'lonely', n: 3 }], ['blu', 7, { t: 'front', n: 3 }], ['prp', 9, { t: 'minusOppColor', color: 'grn', n: 3 }], ['blu', 13, { t: 'plusOwnColor', color: 'blu', n: 3 }]] },
-  willie:  { name: 'Steamboat Willie', wiki: 'Steamboat_Willie',       series: 'rub', year: 1928, film: 'Steamboat Willie',      top: 5, blurb: 'The 1928 deckhand who whistled his way into history.',
+  willie:  { name: 'Steamboat Willie', wiki: 'Steamboat_Willie', quips: ["Toot toot!", "Whistle while you work.", "All aboard!"],       series: 'rub', year: 1928, film: 'Steamboat Willie',      top: 5, blurb: 'The 1928 deckhand who whistled his way into history.',
              stats: [['slv', 4, { t: 'first', n: 3 }], ['org', 7, { t: 'perOwnColor', color: 'org', n: 2 }], ['slv', 9, { t: 'back', n: 5 }], ['slv', 15, { t: 'plusAll', n: 2 }]] },
-  bosko:   { name: 'Bosko', wiki: 'Bosko',                  series: 'rub', year: 1929, film: "Sinkin' in the Bathtub", top: 3, blurb: 'The Talk-Ink Kid. Never stops singing.',
+  bosko:   { name: 'Bosko', wiki: 'Bosko', quips: ["Ain't I cute?", "Hot dog!", "Hey, folks!"],                  series: 'rub', year: 1929, film: "Sinkin' in the Bathtub", top: 3, blurb: 'The Talk-Ink Kid. Never stops singing.',
              stats: [['org', 3, { t: 'none' }], ['org', 6, { t: 'perOppColor', color: 'slv', n: 2 }], ['org', 8, { t: 'front', n: 4 }], ['org', 11, { t: 'plusOwnColor', color: 'org', n: 2 }]] },
-  flip:    { name: 'Flip the Frog', wiki: 'Flip_the_Frog',          series: 'rub', year: 1930, film: 'Fiddlesticks',          top: 3, blurb: 'Fiddles, dances and hops out of every jam.',
+  flip:    { name: 'Flip the Frog', wiki: 'Flip_the_Frog', quips: ["Ribbit-ta-tat.", "Fiddlesticks!", "Hop to it."],          series: 'rub', year: 1930, film: 'Fiddlesticks',          top: 3, blurb: 'Fiddles, dances and hops out of every jam.',
              stats: [['grn', 3, { t: 'back', n: 2 }], ['grn', 6, { t: 'x2', id: 'bosko' }], ['grn', 8, { t: 'opp', n: 4 }], ['grn', 11, { t: 'perOwnColor', color: 'grn', n: 2 }]] },
-  krazy:   { name: 'Krazy Kat', wiki: 'Krazy_Kat',              series: 'fun', year: 1913, film: 'Krazy Kat',             top: 4, blurb: 'In love with a mouse who throws bricks. It is complicated.',
+  krazy:   { name: 'Krazy Kat', wiki: 'Krazy_Kat', quips: ["Li'l dollink!", "Oh, Ignatz…", "Wonderful."],              series: 'fun', year: 1913, film: 'Krazy Kat',             top: 4, blurb: 'In love with a mouse who throws bricks. It is complicated.',
              stats: [['prp', 3, { t: 'x2', id: 'ignatz' }], ['prp', 6, { t: 'mirror' }], ['prp', 8, { t: 'lonely', n: 6 }], ['prp', 12, { t: 'minusOppColor', color: 'blu', n: 3 }]] },
-  ignatz:  { name: 'Ignatz Mouse', wiki: 'Ignatz_Mouse',           series: 'fun', year: 1913, film: 'Krazy Kat',             top: 3, blurb: 'One mouse. One brick. One target.',
+  ignatz:  { name: 'Ignatz Mouse', wiki: 'Ignatz_Mouse', quips: ["Take THAT.", "Brick delivery.", "Bah."],           series: 'fun', year: 1913, film: 'Krazy Kat',             top: 3, blurb: 'One mouse. One brick. One target.',
              stats: [['slv', 2, { t: 'opp', n: 2 }], ['org', 5, { t: 'steal', n: 2 }], ['slv', 7, { t: 'opp', n: 5 }], ['slv', 10, { t: 'steal', n: 5 }]] },
-  nemo:    { name: 'Little Nemo', wiki: 'Little_Nemo',            series: 'fun', year: 1905, film: 'Slumberland',           top: 4, blurb: 'Falls out of bed at the end of every adventure.',
+  nemo:    { name: 'Little Nemo', wiki: 'Little_Nemo', quips: ["Am I dreaming?", "Whoa, Slumberland!", "Just five more minutes."],            series: 'fun', year: 1905, film: 'Slumberland',           top: 4, blurb: 'Falls out of bed at the end of every adventure.',
              stats: [['blu', 3, { t: 'first', n: 4 }], ['yel', 6, { t: 'lonely', n: 4 }], ['blu', 8, { t: 'last', n: 6 }], ['blu', 12, { t: 'last', n: 12 }]] },
 };
 
@@ -80,7 +81,7 @@ export const EDITIONS = [
   { n: 5, variant: 'silver',   pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Silver`,      tag: 'Full Silver',                     short: 'Silver' },
   { n: 6, variant: 'dark',     pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Dark Matter`, tag: 'Dark Matter',                     short: 'Dark Matter' },
   { n: 7, variant: 'gold',     pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Gold`,        tag: 'Full Gold',                       short: 'Gold' },
-  { n: 8, variant: 'platinum', pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Platinum`,    tag: 'Platinum',                        short: 'Platinum' },
+  { n: 8, variant: 'platinum', pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Platinum`,    tag: 'Full Platinum',                   short: 'Platinum' },
 ];
 // Which colour each character's Dark Matter edition punishes.
 const RIVAL_COLOR = { grn: 'red', yel: 'blu', org: 'blu', red: 'grn', blu: 'org', prp: 'yel', slv: 'prp' };
@@ -92,7 +93,7 @@ function editionStats(c, e, i) {
   const own = c.stats[0][0];
   switch (e.variant) {
     case 'holo':     return [own, clamp(topPts - 4, 8, 12), { t: 'perOwnColor', color: own, n: 2 }];
-    case 'silver':   return ['slv', clamp(topPts - 3, 9, 13), i % 2 ? { t: 'mirror' } : { t: 'steal', n: 4 }];
+    case 'silver':   return ['slv', clamp(topPts - 3, 9, 13), c.name.length % 2 ? { t: 'mirror' } : { t: 'steal', n: 4 }];
     case 'dark':     return [own, clamp(topPts - 3, 9, 13), { t: 'minusOppColor', color: RIVAL_COLOR[own] || 'blu', n: 3 }];
     case 'gold':     return [topColor, clamp(topPts, 13, 16), topPower];
     case 'platinum': return ['slv', clamp(topPts - 1, 13, 16), { t: 'plusAll', n: 2 }];
