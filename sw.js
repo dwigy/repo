@@ -1,6 +1,6 @@
 // Offline-first service worker: precache the app shell, serve from cache,
 // refresh in the background.
-const VERSION = 'app-v9';
+const VERSION = 'app-v10';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './css/fonts.css',
   './fonts/Michroma-400.woff2', './fonts/BarlowCondensed-600.woff2', './fonts/BarlowCondensed-600i.woff2', './fonts/BarlowCondensed-800.woff2', './fonts/BarlowCondensed-800i.woff2',
