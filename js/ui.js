@@ -1,7 +1,7 @@
 // All screens and interactions, styled after the 2003 Cartoon Orbit site.
 // Rendering is string templates plus one delegated click handler keyed on
 // data-action attributes.
-import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, TRAIN_WINS, POWER_NAMES, powerText } from './data.js';
+import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, TRAIN_WINS, POWER_NAMES, setOf, powerText } from './data.js';
 import { ZONES, NODES, zoneOf, PROLOGUE, EPILOGUE, ruleText, goalText, deckText } from './campaign.js';
 import { openPack } from './pack.js';
 import { play as snd, setEnabled as setSound } from './sound.js';
@@ -213,9 +213,9 @@ function binderView() {
   const totalIn = (k) => CTOONS.filter(t => k === 'all' || t.series === k).length;
   const tierOk = (t) => binderTier === 'all' || (binderTier === 'mythic' && t.rarity === MYTHIC) || (binderTier === 'legendary' && t.rarity === LEGENDARY);
   const chars = Object.entries(CHARACTERS).filter(([, c]) => binderFilter === 'all' || c.series === binderFilter);
-  const sets = chars.filter(([k]) => CTOONS.filter(t => t.char === k).every(t => G.ownedCount(t.id) > 0)).length;
+  const sets = chars.filter(([k]) => setOf(k).every(t => G.ownedCount(t.id) > 0)).length;
   const blocks = chars.map(([key, c]) => {
-    const eds = CTOONS.filter(t => t.char === key);
+    const eds = setOf(key);
     const have = eds.filter(t => G.ownedCount(t.id) > 0).length;
     const shown = eds.filter(tierOk);
     if (!shown.length) return '';
@@ -225,17 +225,18 @@ function binderView() {
       <div class="tokgrid">${shown.map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
     </div>`;
   }).join('');
+  const frames = (binderFilter === 'all' || binderFilter === 'tour') && binderTier !== 'mythic' ? `<div class="charset"><div class="charset-head"><div><b>Keeper's Frames</b><span class="small">Won on the Orbit Tour</span></div></div><div class="tokgrid">${CTOONS.filter(t => t.series === 'tour').map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div></div>` : '';
   const prizes = (binderFilter === 'all' || binderFilter === 'pz') && binderTier === 'all' ? `<div class="charset"><div class="charset-head"><div><b>Orbit Prizes</b><span class="small">Earn only</span></div></div><div class="tokgrid">${CTOONS.filter(t => t.series === 'pz').map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div></div>` : '';
   return `<div class="panel">
     <div class="ptab">MY BINDER <em>${G.uniqueOwned()}/${CTOONS.length} cTOONS · ${sets} SETS</em></div>
     <div class="chips scroll">${tabs.map(([k, n]) => `<button class="chip ${binderFilter === k ? 'on' : ''}" data-action="binderFilter" data-id="${k}">${n} <em>${ownedIn(k)}/${totalIn(k)}</em></button>`).join('')}</div>
     <div class="chips tiers">${[['all', 'ALL TIERS', '#5d6f88'], ['mythic', 'MYTHIC', RARITY[MYTHIC].color], ['legendary', 'LEGENDARY', RARITY[LEGENDARY].color]].map(([k, n, col]) => `<button class="chip tier ${binderTier === k ? 'on' : ''}" style="--tc:${col}" data-action="binderTier" data-id="${k}">${n}</button>`).join('')}</div>
     ${binderFilter !== 'all' && SERIES[binderFilter] ? `<div class="series-blurb">${esc(SERIES[binderFilter].blurb)}</div>` : ''}
-    ${blocks}${prizes}
+    ${blocks}${frames}${prizes}
   </div>`;
 }
 function setsView() {
-  const chars = Object.entries(CHARACTERS).map(([key, c]) => { const eds = CTOONS.filter(t => t.char === key); const have = eds.filter(t => G.ownedCount(t.id) > 0); return { key, c, eds, have }; });
+  const chars = Object.entries(CHARACTERS).map(([key, c]) => { const eds = setOf(key); const have = eds.filter(t => G.ownedCount(t.id) > 0); return { key, c, eds, have }; });
   chars.sort((a, b) => (b.have.length - a.have.length) || a.c.name.localeCompare(b.c.name));
   const done = chars.filter(x => x.have.length === x.eds.length).length;
   return `<div class="panel">
@@ -258,8 +259,8 @@ function detailModal(id) {
     if (inDeck < n && state.deck.length < 12) actions.push(`<button class="obtn" data-action="deckAdd" data-id="${id}">ADD TO DECK</button>`);
     if (inDeck > 0) actions.push(`<button class="obtn grey" data-action="deckRemove" data-id="${id}">REMOVE FROM DECK</button>`);
     if (inZone < n) actions.push(`<button class="obtn" data-action="zoneAdd" data-id="${id}">PUT IN cZONE</button>`);
-    if (n > 1 && t.series !== 'pz') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
-    if (t.series !== 'pz') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
+    if (n > 1 && t.series !== 'pz' && t.series !== 'tour') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
+    if (t.series !== 'pz' && t.series !== 'tour') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
   }
   const prov = (state.prov || {})[id];
   const srcName = { pack: 'a cPack', free: 'the free daily chip', trade: 'the Auction', gift: 'a gift', code: 'an Orbit Code', starter: 'your starter pack', prize: 'a prize' };
@@ -375,7 +376,7 @@ function tourNodeCard(n) {
 }
 function tourView() {
   const c = G.ensureCampaign(); const cur = G.tourZoneIndex();
-  if (tourZone == null || tourZone > cur) tourZone = cur;
+  if (tourZone == null || tourZone < 0 || tourZone >= ZONES.length) tourZone = cur;
   const z = ZONES[tourZone]; const un = G.zoneUnlocked(z); const complete = G.tourComplete();
   const frames = `<div class="frames">${ZONES.map((zz, i) => `<div class="frame-slot ${c.badges.includes(zz.id) ? 'lit' : ''}" data-action="tourZone" data-id="${i}">${zoneBadgeSVG(zz, 40, c.badges.includes(zz.id))}</div>`).join('')}</div>`;
   return `<section class="tour-head" style="--s1:${z.sky[0]};--s2:${z.sky[1]};--s3:${z.sky[2]}">
@@ -413,7 +414,7 @@ function tourNodeModal(id) {
       <div><span>REWARD</span><b>+${n.reward.points} PTS${packName ? ' · ' + esc(packName).toUpperCase() : ''}${rc ? ' · ' + esc(rc.name).toUpperCase() : ''}${st === 'done' && n.kind !== 'spar' ? ' (WON)' : ''}</b></div>
     </div>
     ${rc ? `<div class="scout-chip">${G.ownedCount(rc.id) ? tokenSVG(rc, 84, { bubble: false }) : shadowTokenSVG(rc, 84)}</div>` : ''}
-    <div class="deckline ${chk.ok ? 'ok' : 'bad'}">${chk.ok ? 'DECK READY' : esc(chk.why).toUpperCase()}${chk.ok ? '' : n.deck ? ` <button class="obtn small" data-action="tourBuild" data-id="${n.id}">BUILD ONE</button>` : ' <button class="obtn small" data-action="autoDeck">AUTO-FILL</button>'}</div>
+    <div class="deckline ${chk.ok ? 'ok' : 'bad'}">${chk.ok ? 'DECK READY' : esc(chk.why).toUpperCase()}${chk.ok ? '' : n.deck ? ` <button class="obtn small" data-action="tourBuild" data-id="${n.id}">BUILD ONE</button>` : ` <button class="obtn small" data-action="tourBuild" data-id="${n.id}">AUTO-FILL</button>`}</div>
     <div class="row center"><button class="obtn primary big" data-action="tourPlay" data-id="${n.id}" ${playable ? '' : 'disabled'}>${st === 'done' && n.kind !== 'spar' ? 'PLAY AGAIN' : 'PLAY'}</button><button class="obtn grey" data-action="closeModal">BACK</button></div>
   </div>`);
 }
@@ -428,7 +429,7 @@ function showCards(cards, onDone) {
 }
 // Show the next unseen story beat for the Tour, if any.
 function queueTourStory() {
-  if (document.querySelector('.tcard, .setpost') || document.body.classList.contains('pk-open') || !$('#modal').hidden) return;
+  if (section !== 'battle' || subs.battle !== 'tour' || match || document.querySelector('.tcard, .setpost') || document.body.classList.contains('pk-open') || !$('#modal').hidden) return;
   const c = G.ensureCampaign(); const cur = G.tourZoneIndex();
   const beats = [];
   if (PROLOGUE.length) beats.push(['prologue', PROLOGUE]);
@@ -673,10 +674,10 @@ async function finishMatch() {
   const wokeHTML = (ids) => ids && ids.length ? `<div>${ids.map(id => `<span class="woke">SECRET AWAKE · ${esc(BY_ID[id].short).toUpperCase()}</span>`).join('')}</div>` : '';
   if (match.node) {
     const node = match.node; const res = G.recordTour(node, ev, match.p.slots);
-    snd(res.cleared ? 'win' : won ? 'good' : 'lose');
-    const title = res.cleared ? (node.kind === 'keeper' ? 'FRAME WON' : node.kind === 'spar' ? 'GOOD SPAR' : 'CLEARED') : won ? 'GOAL MISSED' : 'DEFEAT';
+    snd(res.cleared ? 'win' : won || draw ? 'good' : 'lose');
+    const title = res.cleared ? (node.kind === 'keeper' ? 'FRAME WON' : node.kind === 'spar' ? 'GOOD SPAR' : 'CLEARED') : won ? 'GOAL MISSED' : draw ? 'DRAW' : 'DEFEAT';
     const packName = node.reward.pack ? PACKS.find(p => p.id === node.reward.pack).name : '';
-    showModal(`<div class="reveal result ${res.cleared ? 'won' : 'lost'}">
+    showModal(`<div class="reveal result ${res.cleared ? 'won' : draw ? 'drew' : 'lost'}">
       <div class="result-title">${title}</div>
       <div class="result-score"><span class="me">${ev.aTotal}</span><i>–</i><span class="them">${ev.bTotal}</span></div>
       <div class="result-names"><span>${esc(state.name)}</span><span>${esc(match.opponent.name)}</span></div>
@@ -878,7 +879,7 @@ export function rerender() { if (!busy) render(); }
 
 function showSetPoster(charKey) {
   const c = CHARACTERS[charKey]; if (!c) return;
-  const eds = CTOONS.filter(t => t.char === charKey);
+  const eds = setOf(charKey);
   const el = document.createElement('div'); el.className = 'setpost';
   el.innerHTML = `<div class="setpost-in">
       <div class="setpost-kicker">SET COMPLETE</div>
@@ -939,7 +940,7 @@ function afterMatchRender() {
 
 // ---------- actions ----------
 const actions = {
-  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; zoneMode = 'mine'; window.scrollTo(0, 0); },
+  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; if (d.sub === 'tour') tourZone = null; zonePick = false; zoneMode = 'mine'; window.scrollTo(0, 0); },
   sub(d) { subs[section] = d.id; zonePick = false; window.scrollTo(0, 0); },
   none() {},
   closeModal() { closeModal(); },
@@ -1027,7 +1028,7 @@ const actions = {
     showModal(`<div class="detail"><div class="ptab">${esc(t.name).toUpperCase()}</div><div class="detail-tok center">${tokenSVG(t, 120)}</div><div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
       <div class="mods"><div>BASE <b>${v.base}</b></div>${v.mods.map(m => `<div>${m.v > 0 ? '+' : ''}${m.v} <span class="small">${esc(m.why)}</span></div>`).join('')}<div>TOTAL <b>${v.total}</b></div></div>
       <button class="obtn grey block" data-action="closeModal">CLOSE</button></div>`); return false; },
-  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; if (match.node) G.recordTour(match.node, { aTotal: 0, bTotal: 1, aColors: {}, rules: match.rules }, []); else G.recordBattle(match.opponent, false, 0); } const wasTour = !!(match && match.node); match = null; closeModal(); if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
+  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; if (match.node) G.recordTour(match.node, { aTotal: 0, bTotal: 1, aColors: {}, rules: match.rules, forfeit: true }, []); else G.recordBattle(match.opponent, false, 0); } const wasTour = !!(match && match.node); match = null; closeModal(); if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
   rematch() { const op = match.opponent; const node = match.node; closeModal(); if (node) startTour(node.id); else startBattle(op.id); return false; },
   leaveMatch() { const wasTour = !!(match && match.node); closeModal(); match = null; if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
   tourZone(d) { tourZone = +d.id; },

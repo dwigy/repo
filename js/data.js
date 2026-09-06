@@ -159,7 +159,7 @@ function build() {
   // Keeper's Frame chips: won from the seven Keepers of the Orbit Tour.
   const keeper = (n, char, name, color, pts, power, secret, blurb) => ({ id: `kp${n}`, char, series: 'tour', name: `${name} · Keeper's Frame`, short: name, edition: "Keeper's Frame", edShort: 'Frame', variant: 'gold', pose: 'hero', rarity: 4, points: VALUE[4], color, pts, power, secret, blurb, year: 2000, zone: n });
   out.push(
-    keeper(1, 'koko',   'Koko',     'slv', 12, { t: 'mirror' },                       { t: 'shield' },                'Frame one of seven. Inky Alley remembers.'),
+    keeper(1, 'koko',   'Koko',     'slv', 12, { t: 'mirror' },                       { t: 'shield' },                'Frame one of seven. Inkwell Alley remembers.'),
     keeper(2, 'popeye', 'Popeye',   'blu', 14, { t: 'opp', n: 6 },                    { t: 'crown', n: 4 },           'Frame two of seven. Strong to the finish.'),
     keeper(3, 'ignatz', 'Ignatz',   'org', 12, { t: 'bomb', n: 3 },                   { t: 'late', n: 5 },            'Frame three of seven. Brick, meet Kat.'),
     keeper(4, 'nemo',   'Nemo',     'blu', 13, { t: 'last', n: 9 },                   { t: 'veto' },                  'Frame four of seven. Everything bends in Slumberland.'),
@@ -172,6 +172,9 @@ function build() {
 export const CTOONS = build();
 export const BY_ID = Object.fromEntries(CTOONS.map(t => [t.id, t]));
 export const PACKABLE = CTOONS.filter(t => t.series !== 'pz' && t.series !== 'tour');
+// The eight editions that make up a star's set (Keeper's Frames and Prizes are not part of any set).
+export const setOf = (charKey) => CTOONS.filter(t => t.char === charKey && t.series !== 'tour' && t.series !== 'pz');
+export const isTour = (t) => !!t && t.series === 'tour';
 
 export const PACKS = [
   { id: 'std',  name: 'Standard cPack', price: 300, size: 3, desc: '3 cToons. Uncommon or better guaranteed.',

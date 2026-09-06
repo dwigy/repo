@@ -1,6 +1,6 @@
 // Game rules: economy, packs, daily rewards, quests, trades, prizes.
 import { ZONES, NODES, zoneOf } from './campaign.js';
-import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, CHARACTERS, COLORS, TRAIN_WINS, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
+import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, CHARACTERS, COLORS, TRAIN_WINS, setOf, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
 import { state, commit, todayKey, seededRng, parseGiftCode, makeGiftCode } from './store.js';
 
 export const DAILY_BASE = 100;
@@ -28,8 +28,8 @@ export function addCtoon(id, n = 1, src = 'pack') {
     state.prov = state.prov || {}; state.mint = (state.mint || 0) + 1;
     state.prov[id] = { t: Date.now(), src, mint: state.mint };
     const t = BY_ID[id];
-    if (t && t.series !== 'pz') {
-      const set = CTOONS.filter(x => x.char === t.char);
+    if (t && t.series !== 'pz' && t.series !== 'tour') {
+      const set = setOf(t.char);
       if (set.every(x => (state.collection[x.id] || 0) > 0)) {
         state.sets = state.sets || []; state.pendingSets = state.pendingSets || [];
         if (!state.sets.includes(t.char)) { state.sets.push(t.char); state.pendingSets.push(t.char); log(`SET COMPLETE: ${t.short}. All eight editions.`); }
@@ -167,7 +167,7 @@ export function claimDailyFree() {
 
 export function recycle(id) {
   const t = BY_ID[id];
-  if (!t || ownedCount(id) < 2 || t.series === 'pz') return null;
+  if (!t || ownedCount(id) < 2 || t.series === 'pz' || t.series === 'tour') return null;
   return commit(s => {
     removeCtoon(id);
     const v = RARITY[t.rarity].recycle;
@@ -286,7 +286,7 @@ export function recordBattle(op, won, margin, boardIds = []) {
 export function train(s, ids) {
   s.trained = s.trained || {};
   const woke = [];
-  ids.filter(Boolean).forEach(id => { const t = BY_ID[id]; if (!t || !t.secret) return; const before = s.trained[id] || 0; s.trained[id] = before + 1; if (before < TRAIN_WINS && s.trained[id] >= TRAIN_WINS) { woke.push(id); log(`${t.name} woke its secret power.`); } });
+  [...new Set(ids.filter(Boolean))].forEach(id => { const t = BY_ID[id]; if (!t || !t.secret) return; const before = s.trained[id] || 0; s.trained[id] = before + 1; if (before < TRAIN_WINS && s.trained[id] >= TRAIN_WINS) { woke.push(id); log(`${t.name} woke its secret power.`); } });
   return woke;
 }
 export const trainedWins = (id) => (state.trained && state.trained[id]) || 0;
@@ -371,7 +371,7 @@ export function recordTour(node, ev, boardIds = []) {
   return commit(s => {
     const c = ensureCampaign(s); const z = zoneOf(node);
     const won = ev.aTotal > ev.bTotal; const cleared = goalMet(node, ev);
-    s.stats.battles++; bumpQuest(s, 'playsToday'); s.lastBattle = todayKey();
+    s.stats.battles++; if (!ev.forfeit) { bumpQuest(s, 'playsToday'); s.lastBattle = todayKey(); }
     const woke = won ? train(s, boardIds) : [];
     let points = 0, first = false; const chips = []; let pack = []; let badge = null;
     if (won) { s.stats.wins++; bumpQuest(s, 'winsToday'); }
@@ -385,10 +385,10 @@ export function recordTour(node, ev, boardIds = []) {
       }
       log(`${node.kind === 'keeper' ? 'Frame ' + z.n + ' won from ' + node.name : (node.kind === 'spar' ? 'Sparred with ' : 'Cleared ') + node.name}${points ? ' (+' + points + ')' : ''}.`);
     } else {
-      points = won ? Math.floor(node.reward.points / 5) : Math.floor(node.reward.points / 10);
-      log(`${won ? 'Won but missed the goal against' : 'Lost to'} ${node.kind === 'challenge' ? node.opponent : node.name}.`);
+      points = ev.forfeit ? 0 : won ? Math.floor(node.reward.points / 5) : Math.floor(node.reward.points / 10);
+      log(`${ev.forfeit ? 'Walked out on' : won ? 'Won but missed the goal against' : ev.aTotal === ev.bTotal ? 'Drew with' : 'Lost to'} ${node.kind === 'challenge' ? node.opponent : node.name}.`);
     }
-    const margin = ev.aTotal - ev.bTotal; c.best[node.id] = Math.max(c.best[node.id] ?? -999, margin);
+    if (!ev.forfeit) { const margin = ev.aTotal - ev.bTotal; c.best[node.id] = Math.max(c.best[node.id] ?? -999, margin); }
     s.points += points;
     const prize = checkPrizes(s);
     return { won, cleared, first, points, chips, pack, badge, woke, prize };
@@ -417,6 +417,7 @@ export function redeemCode(raw) {
   if (!code) return { ok: false, text: 'Enter a code first.' };
   const gift = parseGiftCode(code);
   if (gift) {
+    if (!BY_ID[gift.id] || BY_ID[gift.id].series === 'tour') return { ok: false, text: 'That gift code is not valid.' };
     if (state.redeemed.includes(gift.key)) return { ok: false, text: 'That gift code was already redeemed on this device.' };
     return commit(s => { s.redeemed.push(gift.key); addCtoon(gift.id, 1, 'gift'); log(`Gift received: ${BY_ID[gift.id].name}!`); checkPrizes(s); return { ok: true, text: `${BY_ID[gift.id].name} joins your binder!`, ctoons: [gift.id] }; });
   }
@@ -449,7 +450,7 @@ export function redeemCode(raw) {
   });
 }
 export function giftCtoon(id) {
-  if (ownedCount(id) < 1 || BY_ID[id].series === 'pz') return null;
+  if (ownedCount(id) < 1 || BY_ID[id].series === 'pz' || BY_ID[id].series === 'tour') return null;
   return commit(s => { removeCtoon(id); const code = makeGiftCode(id); log(`Gift code created for ${BY_ID[id].name}.`); return code; });
 }
 
@@ -466,7 +467,7 @@ export function checkPrizes(s = state) {
   return got[0] || null;
 }
 
-export function completeSets() { return Object.keys(CHARACTERS).filter(k => CTOONS.filter(t => t.char === k).every(t => (state.collection[t.id] || 0) > 0)); }
+export function completeSets() { return Object.keys(CHARACTERS).filter(k => setOf(k).every(t => (state.collection[t.id] || 0) > 0)); }
 export function catalogProgress() {
   const total = CTOONS.length;
   return { have: uniqueOwned(), total };
@@ -525,7 +526,7 @@ export const debug = {
   points(n) { commit(s => { s.points = Math.max(0, s.points + n); }); },
   give(id, n = 1) { if (!BY_ID[id]) return; commit(s => { addCtoon(id, n, 'debug'); if (BY_ID[id].series === 'pz' && !s.prizes.includes(id)) s.prizes.push(id); checkPrizes(s); }); },
   giveTier(r) { const pool = PACKABLE.filter(t => t.rarity === r); if (!pool.length) return; const t = pool[Math.floor(Math.random() * pool.length)]; commit(s => { addCtoon(t.id, 1, 'debug'); checkPrizes(s); }); return t; },
-  giveSet(charKey) { commit(s => { CTOONS.filter(t => t.char === charKey).forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
+  giveSet(charKey) { commit(s => { setOf(charKey).forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
   giveAll() { commit(s => { PACKABLE.forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
   freePack(packId) { const pack = PACKS.find(p => p.id === packId); if (!pack) return null;
     return commit(s => { const ids = rollPack(pack); const newIds = []; ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'debug'); }); s.stats.packs++; checkPrizes(s); return { ids, newIds, pack }; }); },

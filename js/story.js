@@ -86,9 +86,9 @@ export const STORY = {
         },
         {
           "name": "Rough Water",
-          "kicker": "BACK ROW ONLY. HOLD ON.",
+          "kicker": "BACK ROW PAYS. HOLD ON.",
           "opponent": "The Sea Cook",
-          "line": "Deck's pitching. Play from the stern or don't play."
+          "line": "Deck's pitching. Chips at the stern hold best."
         }
       ],
       "arrive": [
@@ -151,9 +151,9 @@ export const STORY = {
         "Offissa Pupp on the jailhouse porch. He looks at his boots. He looks at you. He sighs."
       ],
       "afterKeeper": [
-        "Pupp hands over Frame Three. It is a brick. Painted. Still tacky. Signed C.S.",
-        "Spool traded him a fake at dawn. The real one is on the road ahead.",
-        "Two frames warm. One brick heavy. The road bends toward bed."
+        "Pupp hands over Frame Three. Beside it, a brick. Painted to look like one. Signed C.S.",
+        "Spool tried the fake on him at dawn. Pupp is no fool. Spool left in a hurry. The brick stays with you.",
+        "Three frames warm. One brick heavy. The road bends toward bed."
       ]
     },
     {
@@ -242,13 +242,13 @@ export const STORY = {
       ],
       "midway": [
         "Stage Three is closed for a pie fight. Stage Two is closed for the same pie fight.",
-        "You and Spool walk the lot in silence. Three frames warm. One brick. One glove."
+        "You and Spool walk the lot in silence. Four frames warm. One brick. One glove."
       ],
       "beforeKeeper": [
         "The red lamp over the stage door goes on. Klapper's voice through it. 'ACTION.'"
       ],
       "afterKeeper": [
-        "Frame Five. A steamboat whistle, mid-toot. Klapper says nothing. That is the review.",
+        "Frame Five. A rabbit, mid-leap, one ear up. Klapper says nothing. That is the review.",
         "Spool waits by the gate. 'The Funny Pages want two of us. Editor's rules.'"
       ]
     },
@@ -288,13 +288,13 @@ export const STORY = {
       ],
       "midway": [
         "The editor prints nothing without two sources. One collector is a rumour. Two is news.",
-        "Spool holds out Frame Three. The real one. 'A fake for a real one. My turn to even it.'"
+        "Spool holds out the racing form he lost the roadster on. 'One source is a rumour. Now you have two.'"
       ],
       "beforeKeeper": [
         "Maude Deadline's office. A clock with no hands. A red pencil the size of an oar."
       ],
       "afterKeeper": [
-        "Frame Six. A mouse, a brick, a kat in love. Six frames warm. The brick stays. Souvenir.",
+        "Frame Six. A tall man, a short man, a racing form. Six frames warm. The brick stays. Souvenir.",
         "One frame left. The Projectionist's own. Spool goes quiet. Then, 'Together or not at all.'"
       ]
     },

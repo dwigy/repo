@@ -67,9 +67,9 @@ export const ZONES = [
     spar: S('s7', 'felix2', 0.7, { minR: 1, maxR: 3 }),
     challenges: [
       C('c7a', 'alfalfa3', 0.9, { minR: 2, maxR: 4 }, { reelChange: true }, { type: 'win' }, { minTour: 3 }, { points: 600, chip: 'clara3' }),
-      C('c7b', 'willie5', 0.95, { minR: 3, maxR: 4 }, { secretsOn: true }, { type: 'score', n: 55 }, null, { points: 700, pack: 'mega' }),
+      C('c7b', 'willie5', 0.9, { minR: 3, maxR: 4 }, { secretsOn: true }, { type: 'score', n: 50 }, null, { points: 700, pack: 'mega' }),
     ],
-    keeper: K(7, 'felix7', 1.0, { fixed: ['felix7', 'felix8', 'popeye7', 'betty7', 'willie8', 'pete7', 'koko7', 'nemo7', 'oswald8', 'heeza7', 'mutt8', 'krazy7'] }, { secretsOn: true }, { points: 2500, pack: 'mega', chip: 'kp7' }, { smart: true }) },
+    keeper: K(7, 'felix7', 1.0, { fixed: ['felix7', 'felix8', 'popeye7', 'betty7', 'willie7', 'pete7', 'koko7', 'nemo7', 'oswald7', 'heeza7', 'mutt7', 'krazy7'] }, { secretsOn: true }, { points: 2500, pack: 'mega', chip: 'kp7' }, { smart: true }) },
 ];
 
 // Merge story text by zone id and give every node its display fields.
