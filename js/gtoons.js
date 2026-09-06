@@ -5,7 +5,7 @@
 // A match carries a `rules` object (house rules) so the campaign can bend
 // the game: colour-set size and bonus, swap cost, no swaps, no powers, a
 // bonus for a row, a smaller hand, and which chips have their secret power
-// awake. Everything defaults to the classic Orbit rules.
+// awake. Everything defaults to the classic rules.
 import { BY_ID, COLORS } from './data.js';
 
 export const SLOTS = 7;          // 0..2 back row, 3..6 front row
@@ -21,6 +21,7 @@ export const DEFAULT_RULES = Object.freeze({
   flipRows: false,     // back-row powers fire in the front row and vice versa
   lastBonus: 0,        // the chip each side plays last gets this
   reelChange: false,   // after three placements a side discards its hand and redraws
+  heroP: null, heroAi: null, heroBonus: 6, // stack leaders: +heroBonus when played first
 });
 export const withRules = (r) => ({ ...DEFAULT_RULES, ...(r || {}), rowBonus: { ...DEFAULT_RULES.rowBonus, ...((r && r.rowBonus) || {}) } });
 
@@ -47,18 +48,21 @@ const awake = (side, id) => side.awake === 'all' || (Array.isArray(side.awake) &
 
 // Slots whose power is cancelled by a rival Veto across the line. A Veto chip
 // cannot itself be vetoed, so two Vetos facing each other both stand.
+const hasPower = (side, i, kind) => { const t = card(side, i); return !!t && (t.power.t === kind || (t.secret && t.secret.t === kind && awake(side, t.id))); };
 function silencedBy(rival, me) {
   const out = new Set();
   for (let i = 0; i < SLOTS; i++) {
-    const rt = card(rival, i); if (!rt || rt.power.t !== 'veto') continue;
-    const mine = card(me, across(i)); if (mine && mine.power.t !== 'veto') out.add(across(i));
+    if (!hasPower(rival, i, 'veto')) continue;
+    if (card(me, across(i)) && !hasPower(me, across(i), 'veto')) out.add(across(i));
   }
   return out;
 }
+// Shielded slots on a side (a silenced Shield does not count).
+const shieldsOf = (side, silenced) => new Set([...Array(SLOTS).keys()].filter(i => !silenced.has(i) && hasPower(side, i, 'shield')));
 
 // Compute modifiers this side's powers create. `mods` land on own slots,
 // `rmods` on the rival's slots, `shield` marks own slots immune to penalties.
-function powersFor(me, rival, rules, silenced) {
+function powersFor(me, rival, rules, silenced, rivalShield = new Set()) {
   const mods = Array(SLOTS).fill(0).map(() => []);
   const rmods = Array(SLOTS).fill(0).map(() => []);
   const shield = new Set();
@@ -77,7 +81,7 @@ function powersFor(me, rival, rules, silenced) {
       case 'plusOwnColor':  for (let j = 0; j < SLOTS; j++) if (j !== i && card(me, j)?.color === p.color) mods[j].push({ v: p.n, why: name }); break;
       case 'plusAll':       for (let j = 0; j < SLOTS; j++) if (j !== i && card(me, j)) mods[j].push({ v: p.n, why: name }); break;
       case 'opp':           if (rt) rmods[across(i)].push({ v: -p.n, why: name }); break;
-      case 'steal':         if (rt) { add(p.n, `from ${rt.short || rt.name}`); rmods[across(i)].push({ v: -p.n, why: name }); } break;
+      case 'steal':         if (rt) { if (!rivalShield.has(across(i))) add(p.n, `from ${rt.short || rt.name}`); rmods[across(i)].push({ v: -p.n, why: name }); } break;
       case 'mirror':        if (rt) add(rt.pts, `copies ${rt.short || rt.name}`); break;
       case 'back':          if (rowFor(i, rules) === 'back') add(p.n, 'back row'); break;
       case 'front':         if (rowFor(i, rules) === 'front') add(p.n, 'front row'); break;
@@ -94,8 +98,10 @@ function powersFor(me, rival, rules, silenced) {
       case 'veto':          break; // handled by silencedBy()
     }
   };
+  const hero = me === undefined ? null : (me.isAi ? rules.heroAi : rules.heroP);
   for (let i = 0; i < SLOTS; i++) {
     const t = card(me, i); if (!t) continue;
+    if (hero && t.id === hero && me.order[0] === i) mods[i].push({ v: rules.heroBonus, why: 'leader played first' });
     if (silenced.has(i)) continue;
     apply(t.power, i, t, false);
     if (t.secret && awake(me, t.id)) apply(t.secret, i, t, true);
@@ -107,7 +113,7 @@ function powersFor(me, rival, rules, silenced) {
 export function evaluate(a, b, rulesIn) {
   const rules = rulesIn ? withRules(rulesIn) : DEFAULT_RULES;
   const silA = silencedBy(b, a), silB = silencedBy(a, b);
-  const A = powersFor(a, b, rules, silA), B = powersFor(b, a, rules, silB);
+  const A = powersFor(a, b, rules, silA, shieldsOf(b, silB)), B = powersFor(b, a, rules, silB, shieldsOf(a, silA));
   const finalFor = (side, own, incoming, shield) => side.slots.map((id, i) => {
     if (!id) return null;
     const t = BY_ID[id];
@@ -134,14 +140,14 @@ function shuffle(arr, rnd = Math.random) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
-function mkSide(deck, hand, awakeIds) { const d = shuffle(deck); return { slots: Array(SLOTS).fill(null), order: [], deck: d.slice(hand), hand: d.slice(0, hand), swaps: 0, awake: awakeIds || [] }; }
+function mkSide(deck, hand, awakeIds, isAi = false) { const d = shuffle(deck); return { slots: Array(SLOTS).fill(null), order: [], deck: d.slice(hand), hand: d.slice(0, hand), swaps: 0, awake: awakeIds || [], isAi }; }
 
 // opts: { rules, pAwake: [ids], aiAwake: [ids] | 'all', first: 'p'|'ai' }
 export function newMatch(playerDeck, aiDeck, opponent, opts = {}) {
   const rules = withRules(opts.rules);
   const first = opts.first || (Math.random() < 0.5 ? 'p' : 'ai');
   const aiAwake = opts.aiAwake ?? (rules.secretsOn ? 'all' : []);
-  return { opponent, rules, turn: first, p: mkSide(playerDeck, rules.handSize, opts.pAwake), ai: mkSide(aiDeck, rules.handSize, aiAwake), done: false, lastMove: null, round: 1 };
+  return { opponent, rules, turn: first, p: mkSide(playerDeck, rules.handSize, opts.pAwake), ai: mkSide(aiDeck, rules.handSize, aiAwake, true), done: false, lastMove: null, round: 1 };
 }
 
 export function place(match, who, handIndex, slot) {

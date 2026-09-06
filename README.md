@@ -1,10 +1,10 @@
-# Cartoon Orbit
+# [GAME] (working title)
 
 A fan-made homage to the classic 2003 collect-and-battle web game, rebuilt as an
 installable web app for your phone in the look of the original site: the teal frame,
-steel-blue bevelled panels, angled tabs, the gToon Game Zone board with its sunburst
-"ORBIT" sockets, and the cZones badge grid. Collect **cToons**, battle in **gToons**,
-decorate your **cZone**, trade at the Auction and redeem **Orbit Codes**. Everything
+steel-blue bevelled panels, angled tabs, the chip Game Zone board with its sunburst
+"ORBIT" sockets, and the portfolios badge grid. Collect **chips**, battle in **chips**,
+decorate your **portfolio**, trade at the Auction and redeem **Codes**. Everything
 saves automatically on your device.
 
 It is free and not for sale. The cast are cartoon stars whose original works are in the
@@ -14,7 +14,7 @@ Oyl, Krazy Kat, Ignatz Mouse, Gertie the Dinosaur, Farmer Al Falfa and Little Ne
 shows real artwork when it can: the game looks up the character's Wikipedia article and,
 if its lead image is hosted on Wikimedia Commons (free-licensed, mostly public-domain stills
 from the original works), downloads it once and keeps it for offline play, with a link to
-the Commons file in the cToon details. Characters whose article image is a fair-use file
+the Commons file in the chip details. Characters whose article image is a fair-use file
 keep a hand-drawn rubber-hose portrait instead, and you can set your own image on any
 character from its details page (stored on your device). Switch real artwork off in
 Settings if you prefer the drawn set. Each character comes in eight collectible editions across five rarity tiers: Classic
@@ -52,7 +52,7 @@ Open that link on your iPhone and follow the install steps above.
 
 ## How progress is saved
 
-- Every action (opening a pack, winning a match, moving a cToon in your cZone) is written
+- Every action (opening a pack, winning a match, moving a chip in your portfolio) is written
   immediately to **both** `localStorage` and IndexedDB on the device. Whichever copy is
   newer is loaded next time, so a cleared cache in one store does not lose your binder.
 - The app asks the browser for persistent storage and flushes any pending save when it is
@@ -64,22 +64,20 @@ Open that link on your iPhone and follow the install steps above.
 
 | Feature | Details |
 | --- | --- |
-| Binder | 221 cToons: 26 public-domain stars × 8 editions across 6 series, 7 Keeper's Frame chips won only on the Tour, and 6 earn-only Prize cToons. Five rarity tiers (Common, Uncommon, Rare, Mythic, Legendary) with per-character set meters. Duplicates can be recycled for points. |
-| cMart | Free daily cToon plus Standard, Premium and Mega cPacks with published odds. Opening a pack is a rip: drag across the foil, it bursts, and the chips flip one at a time from least rare to most rare, with bigger effects for Mythic and Legendary pulls and NEW badges for first-time pulls. |
-| gToons | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every gToon has a colour, 1–16 points and one of 22 named powers (Buddy, Rally, Hex, Jab, Pickpocket, Mirror, Backstage, Spotlight, Opener, Closer, Encore, Loner, Twins, Chorus Line, Crown, Underdog, Brick, Shield, Veto…). Mythic and Legendary chips also carry a secret power that wakes after three wins on the board. Three of a colour scores a bonus; swapping a hand gToon costs 10. Chips flip through the air from your hand to the board, land with a shockwave, and rival chips flash or shake when powers hit them. Five unlockable opponents, deck builder with auto-fill. |
-| cZones | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC cZones to visit (Previous / Random / Next) with awards. |
-| Auction | Three NPC traders with new offers every day. Gift codes let you send a cToon to a friend. |
-| Daily loop | Login bonus with streaks, three daily quests, Prize cToons for milestones. |
-| Orbit Codes | A featured code rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
+| Binder | 222 chips: 26 placeholder characters (Alpha to Zulu) × 8 editions across 6 sets, 8 one-of-one chips (seven gatekeepers plus 100% completion) and 6 earn-only Award chips. Chip art is a generated placeholder sigil per character until the real library lands. Five rarity tiers (Common, Uncommon, Rare, Mythic, Legendary) with per-character set meters. Duplicates can be recycled for points. |
+| Shop | Free daily chip plus Standard, Premium and Mega packs with published odds. Opening a pack is a rip: drag across the foil, it bursts, and the chips flip one at a time from least rare to most rare, with bigger effects for Mythic and Legendary pulls and NEW badges for first-time pulls. |
+| chips | Game Zone battles on the original 7-socket board (back row of 3, front row of 4). Every chip has a colour, 1–16 points and one of 22 named powers (Buddy, Rally, Hex, Jab, Pickpocket, Mirror, Backstage, Spotlight, Opener, Closer, Encore, Loner, Twins, Chorus Line, Crown, Underdog, Brick, Shield, Veto…). Mythic and Legendary chips also carry a secret power that wakes after three wins on the board. Three of a colour scores a bonus; swapping a hand chip costs 10. Chips flip through the air from your hand to the board, land with a shockwave, and rival chips flash or shake when powers hit them. Five unlockable opponents, deck builder with auto-fill. |
+| portfolios | Drag-and-drop display room with 8 unlockable backgrounds, plus daily NPC portfolios to visit (Previous / Random / Next) with awards. |
+| Auction | Three NPC traders with new offers every day. Gift codes let you send a chip to a friend. |
+| Daily loop | Login bonus with streaks, three daily quests, Prize chips for milestones. |
+| Codes | A featured code rotates daily (+150). Promo codes: `ORBIT2000`, `GTOONS`, `INKWELL`, `SPINACH` and `SLUMBERLAND`. |
 | Testing codes | `UNLIMITED` toggles unlimited points (packs and backgrounds are free, the wallet shows ∞). `DEBUG` toggles a hidden Debug tab under Profile, as does tapping the version line in Settings seven times. The debug tab can add points and chips, open free or forced-Legendary packs, reset the day, change the streak, unlock the ladder and backgrounds, replay ceremonies, show the raw save and clear the cache. |
 | Look | The 2003 Orbit layout in a clean white, blue and grey finish with glossy highlights, so the chips are the most colourful thing on screen. |
-| Navigation | Five tabs along the bottom: Home, Collection, Battle (the big centre button), Market and Profile. Each tab has at most three folder sub-tabs. |
+| Navigation | Five tabs along the bottom: Home, Collection, Campaign (the big centre button), Online (coming soon) and Profile. A cover page with tap to start opens the app. Light, dark or system theme under Profile > Settings. |
 | Home | A poster of this week's featured series, the day's ritual (bonus, free chip, a battle, three goals), the main menu as glossy tiles, and a What's New card with the version log and what is coming next. |
-| Collection | Binder (all chips, grouped by star, with series and tier filters), Sets (one card per star with its eight-edition meter) and your cZone, with a Visit button for the daily NPC cZones. |
-| Battle | The Orbit Tour (below), the quick-play Ladder of five opponents, My Deck and How to Play. |
-| The Orbit Tour | A seven-zone campaign that leaves Orbit Station and returns to it: Inkwell Alley, Sweethaven Docks, Kokonino Kounty, Slumberland, The Studio Lot, The Funny Pages and the Projection Room. Each zone has two challenges with house rules and goals, a sparring partner for practice, and a Keeper who holds one of the seven Frames. Story title cards follow a rival collector, Cyril Spool, around the loop. House rules include no swaps, no powers, flipped rows, a hand of four, double sets, an open hand, a mid-match reel change and awakened secret powers. Some challenges constrain your deck (nothing above Uncommon, at most one Blue, no Silver, three Keeper's Frames) and a BUILD ONE button assembles a legal deck from your binder. |
-| Market | cMart packs and the free chip of the day, the Auction, and Orbit Codes. |
-| Profile | Your featured chip, stats, awards and Orbit log; Settings (name, sound, real artwork, reset); Device (install steps, backup code, restore). |
+| Collection | Binder, Sets, your Stack (12 chips), Shop, Trades and Codes. |
+| Campaign | Three save slots with progress snapshots. A new save plays a spoken intro, then picks one of five starter stacks, each led by a hero chip (+6 when played first). Seven regions, each its own themed page with Train (coins), a region-only pack, three players to beat, a gatekeeper (badge + 1/1 chip) and three places to explore (lore, a chip to find, a Higher-or-Lower mini-game). After seven badges the three heroes open; 100% completion grants a final badge and 1/1. The map jumps between unlocked regions. Menu is always top-left. |
+| Profile | Portfolio (background, favourite chips, badges, link to your stack), Settings (name, sound, theme, artwork, reset), Device (install, backup, restore). |
 | Chip details | Tilt the chip with your finger, flip it to see its mint number, date and where it came from. Completing all eight editions of a character shows a set poster. |
 | Sound | A small synthesised sound kit (rip, flip, clink, land, tally, win) generated in the browser, paired with visual pulses. Toggle in Settings. |
 
@@ -101,7 +99,7 @@ manifest.webmanifest  PWA manifest (name, icons, standalone display)
 sw.js                 offline cache
 css/style.css         styling (2003 Orbit look)
 css/fonts.css, fonts/ bundled open-licensed fonts
-js/data.js            cToon catalog, packs, opponents, quests, codes
+js/data.js            chip catalog, packs, opponents, quests, codes
 js/art.js             vector portraits, glossy chips, metal/dark edition treatments, sockets, badges, pack foils
 js/pack.js            pack ripping and reveal overlay
 js/sound.js           synthesised sound kit (WebAudio)
@@ -109,9 +107,16 @@ js/news.js            version log and roadmap shown on Home
 js/store.js           autosave (localStorage + IndexedDB), backup codes, seeded RNG
 js/game.js            economy: packs, daily rewards, quests, trades, prizes
 js/gtoons.js          battle engine (house rules, powers, secrets) and AI
-js/campaign.js        the Orbit Tour: zones, keepers, challenges, rules, rewards
-js/story.js           Tour story cards
+js/campaign.js        regions, players, gatekeepers, heroes, starter stacks, region packs
+js/story.js           placeholder lore cards
+js/camp.js            the campaign's own UI (slots, intro, starters, regions, explore, mini-game)
 js/ui.js              screens and interactions
 icons/                app icons
 docs/                 UX philosophy, evaluation and research notes
 ```
+
+## Design documents
+
+- `docs/CAMPAIGN-FORMAT.md` — the agency-style campaign format draft (three angles, judged and synthesised).
+- `docs/chips.xlsx` / `docs/chips.csv` — every chip with ids, stats, powers and secret powers.
+- `docs/UX-PHILOSOPHY.md`, `docs/UX-EVALUATION.md`, `docs/research/` — the UX research and evaluation.

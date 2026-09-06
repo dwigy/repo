@@ -1,8 +1,17 @@
 // Version log and roadmap shown on the Home page and under Profile.
 // Newest first. Keep entries short: a title card, then a few lines.
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.8.0';
 
 export const NEWS = [
+  { v: '0.8.0', date: '2026-09-06', title: 'Placeholder rebrand and the campaign',
+    items: [
+      'All names are placeholders now: [GAME], chips, stacks, coins, regions. Chip art is a stand-in sigil per character until the new library lands.',
+      'A cover page with tap to start, a new placeholder logo and app icon, and a dark mode (Profile > Settings > Theme).',
+      'Five tabs: Home, Collection, Campaign in the centre, Online (coming soon) and Profile.',
+      'The campaign has three save slots, a spoken intro, five starter stacks with a leader chip (+6 when played first), seven regions with Train, Shop, three players, a gatekeeper and places to explore, then the three heroes and 100% completion.',
+      'Gatekeepers grant a badge for your profile and a 1/1 chip. Completion grants another of each.',
+      'The old zone page is now your portfolio: background, favourite chips, badges and a link to your stack.',
+    ] },
   { v: '0.7.0', date: '2026-09-06', title: 'The Orbit Tour',
     items: [
       'A seven-zone campaign that leaves Orbit Station and comes back to it. Two challenges, a sparring partner and a Keeper in every zone.',
@@ -10,15 +19,15 @@ export const NEWS = [
       'Eleven new stars: Bobby Bumps, Colonel Heeza Liar, Julius the Cat, Pete, Clarabelle, Horace, Minnie (1928), Mutt, Jeff, Happy Hooligan and Buster Brown.',
       'Eight new powers: Encore, Twins, Chorus Line, Crown, Underdog, Brick, Shield and Veto.',
       'Secret powers on Mythic and Legendary chips wake up after three wins on the board.',
-      "Seven Keeper's Frame chips you can only win on the Tour.",
+      "Seven 1/1 chip chips you can only win on the Tour.",
     ] },
   { v: '0.6.0', date: '2026-09-06', title: 'A new front door',
     items: [
       'Five tabs: Home, Collection, Battle, Market, Profile. The old top tabs are gone.',
       'Home is a poster of this week\'s featured series, your daily ritual, the main menu and this news card.',
-      'Collection gathers your binder, a new Sets page and your cZone in one place.',
+      'Collection gathers your binder, a new Sets page and your portfolio in one place.',
       'Battle opens on your next challenger with one big PLAY button and the full ladder below.',
-      'Profile holds your stats, awards, Orbit log and every setting, backup and install step.',
+      'Profile holds your stats, awards, log and every setting, backup and install step.',
     ] },
   { v: '0.5.0', date: '2026-09-06', title: 'Hold the chip',
     items: [
@@ -41,16 +50,16 @@ export const NEWS = [
       'Glossy chips, chip flights and landings on the Game Zone board, BATTLE at the centre of the bar.',
     ] },
   { v: '0.2.0', date: '2026-09-05', title: 'Back to 2003',
-    items: ['The original Orbit layout: folder tabs, sunburst sockets, the seven-socket gToons board and cZone badges.'] },
+    items: ['The original Orbit layout: folder tabs, sunburst sockets, the seven-socket chips board and portfolio badges.'] },
   { v: '0.1.0', date: '2026-09-05', title: 'Launch',
-    items: ['cToons, gToons and cZones, installable on iPhone from Safari, with automatic saving.'] },
+    items: ['chips, chips and portfolio, installable on iPhone from Safari, with automatic saving.'] },
 ];
 
 export const ROADMAP = [
   { k: 'next', title: 'Rarity tell on the card back', note: 'The face-down chip hints its tier before the flip.' },
   { k: 'next', title: 'Pick inside Premium and Mega packs', note: 'Three chips fan out; you keep one.' },
   { k: 'soon', title: 'Share card for Mythic and Legendary pulls', note: 'One tap makes a poster to send to a friend.' },
-  { k: 'soon', title: 'cZone reactions', note: 'Tap a displayed chip for a bounce and a quip.' },
+  { k: 'soon', title: 'portfolio reactions', note: 'Tap a displayed chip for a bounce and a quip.' },
   { k: 'idea', title: 'New series', note: 'More public-domain stars and editions.' },
   { k: 'idea', title: 'Music', note: 'A quiet theme for the Home page and the Game Zone.' },
 ];

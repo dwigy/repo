@@ -1,7 +1,7 @@
 {
-  "name": "Cartoon Orbit",
-  "short_name": "Orbit",
-  "description": "Collect cToons, battle in gToons and decorate your cZone. A fan-made tribute with all-original characters.",
+  "name": "[GAME]",
+  "short_name": "[GAME]",
+  "description": "Collect chips, battle in chips and decorate your portfolio. A fan-made tribute with all-original characters.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
