@@ -1,5 +1,5 @@
 // Game rules: economy, packs, daily rewards, quests, trades, prizes.
-import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
+import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, CHARACTERS, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
 import { state, commit, todayKey, seededRng, parseGiftCode, makeGiftCode } from './store.js';
 
 export const DAILY_BASE = 100;
@@ -94,6 +94,11 @@ export function autoDeck(s = state) {
 }
 
 // ---- Daily login ----
+export function nextDailyAmount() {
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const streak = state.daily.last === todayKey(y) ? state.daily.streak + 1 : 1;
+  return Math.min(DAILY_STREAK_CAP, DAILY_BASE + DAILY_STREAK_BONUS * (streak - 1));
+}
 export function claimDaily() {
   const today = todayKey();
   if (state.daily.last === today) return null;
@@ -308,7 +313,7 @@ export function redeemCode(raw) {
     return { ok: true, text: on ? 'Unlimited points. Packs are on the house.' : 'Unlimited points switched off.', ctoons: [] };
   }
   if (code === 'DEBUG') {
-    const on = !state.settings.debug; commit(s => { s.settings.debug = on; });
+    const on = !state.settings.debug; commit(s => { s.settings.debug = on; if (!on) delete s.settings.debugHour; });
     return { ok: true, text: on ? 'Debug menu unlocked. Find it under Profile.' : 'Debug menu hidden.', ctoons: [] };
   }
   const promo = PROMO_CODES[code];
@@ -344,6 +349,7 @@ export function checkPrizes(s = state) {
   return got[0] || null;
 }
 
+export function completeSets() { return Object.keys(CHARACTERS).filter(k => CTOONS.filter(t => t.char === k).every(t => (state.collection[t.id] || 0) > 0)); }
 export function catalogProgress() {
   const total = CTOONS.length;
   return { have: uniqueOwned(), total };
@@ -399,16 +405,16 @@ export function featuredSeriesKey() {
 // ---- Debug helpers (only reachable from the hidden debug menu) ----
 export const debug = {
   points(n) { commit(s => { s.points = Math.max(0, s.points + n); }); },
-  give(id, n = 1) { if (!BY_ID[id]) return; commit(s => { addCtoon(id, n, 'debug'); checkPrizes(s); }); },
+  give(id, n = 1) { if (!BY_ID[id]) return; commit(s => { addCtoon(id, n, 'debug'); if (BY_ID[id].series === 'pz' && !s.prizes.includes(id)) s.prizes.push(id); checkPrizes(s); }); },
   giveTier(r) { const pool = PACKABLE.filter(t => t.rarity === r); if (!pool.length) return; const t = pool[Math.floor(Math.random() * pool.length)]; commit(s => { addCtoon(t.id, 1, 'debug'); checkPrizes(s); }); return t; },
   giveSet(charKey) { commit(s => { CTOONS.filter(t => t.char === charKey).forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
   giveAll() { commit(s => { PACKABLE.forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
   freePack(packId) { const pack = PACKS.find(p => p.id === packId); if (!pack) return null;
     return commit(s => { const ids = rollPack(pack); const newIds = []; ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'debug'); }); s.stats.packs++; checkPrizes(s); return { ids, newIds, pack }; }); },
   legendaryPack() { const pack = PACKS[2]; return commit(s => { const ids = rollPack(pack); const leg = PACKABLE.filter(t => t.rarity === 4); ids[ids.length - 1] = leg[Math.floor(Math.random() * leg.length)].id; const newIds = []; ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'debug'); }); s.stats.packs++; checkPrizes(s); return { ids, newIds, pack }; }); },
-  resetDaily() { commit(s => { s.daily.last = ''; s.dailyFree = ''; s.quests = { date: '', stats: {}, claimed: [] }; s.trades = { date: '', done: [] }; s.lastBattle = ''; s.redeemed = s.redeemed.filter(k => !k.startsWith('featured:')); }); },
-  streak(n) { commit(s => { s.daily.streak = Math.max(0, n); }); },
-  beatAll() { commit(s => { s.beaten = OPPONENTS.map(o => o.id); }); },
+  resetDaily() { commit(s => { const y = new Date(); y.setDate(y.getDate() - 1); s.daily.last = s.daily.streak ? todayKey(y) : ''; s.dailyFree = ''; s.quests = { date: '', stats: {}, claimed: [] }; s.trades = { date: '', done: [] }; s.lastBattle = ''; s.redeemed = s.redeemed.filter(k => !k.startsWith('featured:')); }); },
+  streak(n) { commit(s => { s.daily.streak = Math.max(0, n); if (s.daily.streak && !s.daily.last) { const y = new Date(); y.setDate(y.getDate() - 1); s.daily.last = todayKey(y); } checkPrizes(s); }); },
+  beatAll() { commit(s => { s.beaten = OPPONENTS.map(o => o.id); checkPrizes(s); }); },
   clearBeaten() { commit(s => { s.beaten = []; }); },
   unlockBgs() { commit(s => { s.unlockedBgs = BACKGROUNDS.map(b => b.id); }); },
   fakeWin(opId) { const op = OPPONENTS.find(o => o.id === opId) || OPPONENTS[0]; return recordBattle(op, true, 5); },

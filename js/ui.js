@@ -157,7 +157,7 @@ function todayCard() {
   return `<div class="panel today">
       <div class="row between"><div class="ptab">TODAY</div>${streakOrbs()}</div>
       <div class="ritual">
-        <div class="rit ${dailyDone ? 'done' : ''}"><i>${dailyDone ? '✓' : '1'}</i><div><b>Daily bonus</b><span>${dailyDone ? 'Claimed' : '+' + Math.min(G.DAILY_STREAK_CAP, G.DAILY_BASE + G.DAILY_STREAK_BONUS * Math.max(0, state.daily.streak)) + ' points'}</span></div>${dailyDone ? '' : '<button class="obtn small primary" data-action="claimDaily">CLAIM</button>'}</div>
+        <div class="rit ${dailyDone ? 'done' : ''}"><i>${dailyDone ? '✓' : '1'}</i><div><b>Daily bonus</b><span>${dailyDone ? 'Claimed' : '+' + G.nextDailyAmount() + ' points'}</span></div>${dailyDone ? '' : '<button class="obtn small primary" data-action="claimDaily">CLAIM</button>'}</div>
         <div class="rit ${freeDone ? 'done' : ''}"><i>${freeDone ? '✓' : '2'}</i><div class="mini-tok">${tokenSVG(free, 40, { bubble: false })}</div><div><b>Free chip</b><span>${esc(free.short)}</span></div>${freeDone ? '' : '<button class="obtn small primary" data-action="claimFree">TAKE</button>'}</div>
         <div class="rit ${played ? 'done' : ''}"><i>${played ? '✓' : '3'}</i><div><b>One battle</b><span>${played ? 'Played' : 'vs ' + esc(nextOp.name)}</span></div>${played ? '' : '<button class="obtn small" data-action="go" data-to="battle">GO</button>'}</div>
       </div>
@@ -198,10 +198,9 @@ function newsModal() {
     <button class="obtn grey block" data-action="closeModal">CLOSE</button>`);
 }
 function homeView() {
-  const n = NEWS[0];
   const install = (!isStandalone() && !installDismissed) ? `<div class="panel slim row between"><div><b>ADD TO HOME SCREEN</b><div class="small">${isIOS() ? 'Share, then Add to Home Screen.' : 'Open in Safari on iPhone.'}</div></div><div class="row"><button class="obtn small" data-action="go" data-to="profile" data-sub="device">HOW</button><button class="obtn small grey" data-action="dismissInstall">LATER</button></div></div>` : '';
   return `${seriesHero()}
-    <div class="notice" data-action="allNews"><i>NEW</i><span>v${APP_VERSION} · ${esc(n.title)}</span><em>›</em></div>
+    <div class="notice" data-action="go" data-to="market" data-sub="codes"><i>TODAY</i><span>Featured code ${G.featuredCode()} · +150 points</span><em>›</em></div>
     ${todayCard()}${menuTiles()}${newsCard()}${install}`;
 }
 
@@ -369,7 +368,7 @@ function arenaView() {
         return `<div class="rung ${u ? '' : 'locked'} ${isNext ? 'next' : ''}">
           <span class="n">0${i + 1}</span><div class="av">${u ? tokenSVG(BY_ID[op.avatar], 44, { bubble: false }) : socketSVG(44)}</div>
           <div class="who"><b>${esc(op.name)}</b><span>${beat ? 'BEATEN · +' + op.reward + ' PTS A WIN' : u ? '+' + op.reward + ' PTS · FIRST WIN BONUS' : 'BEAT THE ONE ABOVE TO UNLOCK'}</span></div>
-          ${u ? `<button class="obtn small ${isNext ? 'primary' : 'grey'}" data-action="battle" data-id="${op.id}" ${deckOk ? '' : 'disabled'}>PLAY</button>` : '<span class="lock">LOCKED</span>'}
+          ${isNext ? '<span class="lock next">UP NEXT</span>' : u ? `<button class="obtn small grey" data-action="battle" data-id="${op.id}" ${deckOk ? '' : 'disabled'}>PLAY</button>` : '<span class="lock">LOCKED</span>'}
         </div>`; }).join('')}</div>
     </div>`;
 }
@@ -645,7 +644,7 @@ function codesView() {
 function profileView() {
   const show = BY_ID[G.showcaseId()]; const st = state.stats;
   const rating = state.czone.items.reduce((s, it) => s + BY_ID[it.id].points, 0);
-  const stats = [['cTOONS', `${G.uniqueOwned()}/${CTOONS.length}`], ['SETS', `${(state.sets || []).length}/${Object.keys(CHARACTERS).length}`], ['BINDER VALUE', fmt(G.binderValue())], ['RECORD', `${st.wins}–${st.battles - st.wins}`],
+  const stats = [['cTOONS', `${G.uniqueOwned()}/${CTOONS.length}`], ['SETS', `${G.completeSets().length}/${Object.keys(CHARACTERS).length}`], ['BINDER VALUE', fmt(G.binderValue())], ['RECORD', `${st.wins}–${st.battles - st.wins}`],
     ['PACKS', st.packs], ['TRADES', st.trades], ['RECYCLED', st.recycled], ['cZONE', fmt(rating)]];
   const d = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const prizes = CTOONS.filter(t => t.series === 'pz');
@@ -806,7 +805,7 @@ function afterMatchRender() {
 
 // ---------- actions ----------
 const actions = {
-  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; window.scrollTo(0, 0); },
+  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; zoneMode = 'mine'; window.scrollTo(0, 0); },
   sub(d) { subs[section] = d.id; zonePick = false; window.scrollTo(0, 0); },
   none() {},
   closeModal() { closeModal(); },
@@ -825,7 +824,7 @@ const actions = {
   allLog() { const d = (t) => new Date(t).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' });
     showModal(`<div class="ptab">ORBIT LOG</div><div class="updates tall">${state.log.map(l => `<div class="upd"><div class="upd-date">${d(l.t)}</div><div>${esc(l.text)}</div></div>`).join('')}</div><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false; },
   versionTap() { const now = Date.now(); if (now - verTapAt > 2500) verTaps = 0; verTapAt = now; verTaps++;
-    if (verTaps >= 7) { verTaps = 0; const on = !state.settings.debug; commit(s => { s.settings.debug = on; }); snd(on ? 'great' : 'tap'); toast(on ? 'Debug menu unlocked.' : 'Debug menu hidden.'); if (on) subs.profile = 'debug'; return; }
+    if (verTaps >= 7) { verTaps = 0; const on = !state.settings.debug; commit(s => { s.settings.debug = on; if (!on) delete s.settings.debugHour; }); snd(on ? 'great' : 'tap'); toast(on ? 'Debug menu unlocked.' : 'Debug menu hidden.'); if (on) subs.profile = 'debug'; return; }
     if (verTaps >= 4) toast(`${7 - verTaps} more…`, 800); return false; },
   dbg(d) { const [op, arg] = d.id.split(':');
     const show = (r) => { render(); openPack(r, { sfx: packSfx }).then(() => render()); };
@@ -852,7 +851,7 @@ const actions = {
       case 'dump': showModal(`<div class="ptab">SAVE</div><pre class="dump">${esc(JSON.stringify(state, null, 1))}</pre><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false;
       case 'sanitize': G.sanitize(); toast('Save checked.'); break;
       case 'reload': (async () => { try { const regs = await navigator.serviceWorker?.getRegistrations?.() || []; await Promise.all(regs.map(r => r.unregister())); const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch { /* ignore */ } location.reload(); })(); return false;
-      case 'hide': commit(s => { s.settings.debug = false; }); subs.profile = 'settings'; break;
+      case 'hide': commit(s => { s.settings.debug = false; delete s.settings.debugHour; }); subs.profile = 'settings'; break;
     }
     snd('tap'); },
   detail(d) { snd('clink'); detailModal(d.id); return false; },
@@ -860,7 +859,7 @@ const actions = {
   deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from deck.'); detailModal(d.id); return false; },
   recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} points.`); } detailModal(d.id); return false; },
   gift(d) { const t = BY_ID[d.id];
-    showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Orbit Help → Codes. Each code works once.</p>
+    showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Market → Codes. Each code works once.</p>
       <div class="row center"><button class="obtn" data-action="giftConfirm" data-id="${d.id}">CREATE GIFT CODE</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
   giftConfirm(d) { const code = G.giftCtoon(d.id); if (!code) return;
     showModal(`<div class="ptab">GIFT CODE</div><p class="note">Send this to your friend:</p><div class="code">${code}</div>

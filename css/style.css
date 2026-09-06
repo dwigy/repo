@@ -526,7 +526,7 @@ body.pk-open { overflow: hidden; }
 .lnav.battle i svg { width: 28px; height: 28px; }
 @media (min-width: 900px) { .lnav { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 14px; height: 44px; font-size: 14px; } .lnav.battle { flex-direction: column; height: 72px; font-size: 18px; } }
 .frame.nosub .orbit-head { padding-bottom: 10px; }
-.wallet.inf b { color: #a86a00; }
+.wallet.inf b { color: var(--blue-d); }
 .ptab.grey { background: linear-gradient(180deg, #ffffff, #dfe7ef); color: var(--navy); text-shadow: none; }
 
 /* home hero */
@@ -606,6 +606,7 @@ body.pk-open { overflow: hidden; }
 .rung .who b { font-style: italic; color: var(--navy); display: block; line-height: 1.1; }
 .rung .who span { font-size: 11px; letter-spacing: .04em; color: var(--muted); }
 .rung .lock { font-size: 10px; letter-spacing: .12em; color: var(--muted); }
+.rung .lock.next { color: var(--blue-d); font-weight: 800; }
 
 /* profile */
 .pro { margin: -16px -14px 16px; padding: 22px 16px 18px; text-align: center; background: radial-gradient(120% 80% at 50% 0%, #ffffff, #e9eff5 60%, #d7e0ea); border-bottom: 1px solid var(--line); }
