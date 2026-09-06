@@ -1,6 +1,6 @@
 // Game rules: economy, packs, daily rewards, quests, trades, prizes.
-import { ZONES, NODES, zoneOf } from './campaign.js';
-import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, CHARACTERS, COLORS, TRAIN_WINS, setOf, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
+import { REGIONS, HEROES, STARTERS, REGION_PACKS, NODES, totalExplore } from './campaign.js';
+import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, CHARACTERS, COLORS, TRAIN_WINS, setOf, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, FEATURED_CODES } from './data.js';
 import { state, commit, todayKey, seededRng, parseGiftCode, makeGiftCode } from './store.js';
 
 export const DAILY_BASE = 100;
@@ -28,7 +28,7 @@ export function addCtoon(id, n = 1, src = 'pack') {
     state.prov = state.prov || {}; state.mint = (state.mint || 0) + 1;
     state.prov[id] = { t: Date.now(), src, mint: state.mint };
     const t = BY_ID[id];
-    if (t && t.series !== 'pz' && t.series !== 'tour') {
+    if (t && t.series !== 'pz' && t.series !== 'one') {
       const set = setOf(t.char);
       if (set.every(x => (state.collection[x.id] || 0) > 0)) {
         state.sets = state.sets || []; state.pendingSets = state.pendingSets || [];
@@ -67,9 +67,9 @@ export function removeCtoon(id, n = 1) {
 // ---- Onboarding ----
 export function startNewPlayer(name) {
   return commit(s => {
-    s.name = (name || 'Orbiter').trim().slice(0, 16) || 'Orbiter';
+    s.name = (name || 'player').trim().slice(0, 16) || 'player';
     s.points = 500;
-    const starters = ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1', 'hooligan1'];
+    const starters = ['alpha1', 'delta1', 'golf1', 'india1', 'juliett1', 'mike1', 'bravo1', 'echo1', 'hotel1', 'lima1', 'yankee1'];
     starters.forEach(id => addCtoon(id, 1, 'starter'));
     addCtoon('pz01', 1, 'prize'); s.prizes.push('pz01');
     // one random uncommon and one random rare to make the first deck fun
@@ -79,10 +79,10 @@ export function startNewPlayer(name) {
     s.deck = autoDeck(s);
     s.onboarded = true;
     s.pendingSets = [];
-    log('Welcome to the Orbit! Starter binder unlocked.');
+    log('Welcome. Starter binder unlocked.');
     // The first pack the player rips: the whole starter set, least rare first.
     const ids = starters.concat(extra).sort((a, b) => (BY_ID[a].rarity - BY_ID[b].rarity) || (BY_ID[a].pts - BY_ID[b].pts));
-    return { pack: { id: 'starter', name: 'Starter cPack', size: ids.length }, ids, newIds: ids.slice() };
+    return { pack: { id: 'starter', name: 'Starter Pack', size: ids.length }, ids, newIds: ids.slice() };
   });
 }
 
@@ -109,7 +109,7 @@ export function claimDaily() {
     const amount = Math.min(DAILY_STREAK_CAP, DAILY_BASE + DAILY_STREAK_BONUS * (streak - 1));
     s.points += amount;
     s.daily = { last: today, streak };
-    log(`Daily bonus: +${amount} points (day ${streak} streak).`);
+    log(`Daily bonus: +${amount} coins (day ${streak} streak).`);
     const prize = checkPrizes(s);
     return { amount, streak, prize };
   });
@@ -122,6 +122,7 @@ export function rollPack(pack, rnd = Math.random) {
     let r = 0, x = rnd(), acc = 0;
     for (let k = 0; k < pack.odds.length; k++) { acc += pack.odds[k]; if (x < acc) { r = k; break; } r = k; }
     if (i === 0 && r < pack.minRarity) r = pack.minRarity;
+    if (pack.maxRarity != null && r > pack.maxRarity) r = pack.maxRarity;
     let pool = PACKABLE.filter(t => t.rarity === r);
     while (!pool.length && r > 0) { r--; pool = PACKABLE.filter(t => t.rarity === r); }
     out.push(pool[Math.floor(rnd() * pool.length)].id);
@@ -152,7 +153,7 @@ export function grantPack(packId) {
   return ids;
 }
 
-// Free daily cToon at the vendor (seeded so it is the same all day).
+// Free daily chip at the vendor (seeded so it is the same all day).
 export function dailyFreeCtoon() {
   const rnd = seededRng('free:' + todayKey());
   const pool = PACKABLE.filter(t => t.rarity <= 1);
@@ -162,18 +163,18 @@ export function claimDailyFree() {
   const today = todayKey();
   if (state.dailyFree === today) return null;
   const t = dailyFreeCtoon();
-  return commit(s => { s.dailyFree = today; addCtoon(t.id, 1, 'free'); log(`Free daily cToon: ${t.name}.`); checkPrizes(s); return t; });
+  return commit(s => { s.dailyFree = today; addCtoon(t.id, 1, 'free'); log(`Free daily chip: ${t.name}.`); checkPrizes(s); return t; });
 }
 
 export function recycle(id) {
   const t = BY_ID[id];
-  if (!t || ownedCount(id) < 2 || t.series === 'pz' || t.series === 'tour') return null;
+  if (!t || ownedCount(id) < 2 || t.series === 'pz' || t.series === 'one') return null;
   return commit(s => {
     removeCtoon(id);
     const v = RARITY[t.rarity].recycle;
     s.points += v; s.stats.recycled++;
     bumpQuest(s, 'recycToday');
-    log(`Recycled ${t.name} for ${v} points.`);
+    log(`Recycled ${t.name} for ${v} coins.`);
     return v;
   });
 }
@@ -271,7 +272,7 @@ export function recordBattle(op, won, margin, boardIds = []) {
         s.beaten.push(op.id); firstWin = true; points += 200;
         bonus = grantPack('prem');
       }
-      log(`Beat ${op.name} (+${points} points).`);
+      log(`Beat ${op.name} (+${points} coins).`);
     } else {
       points = Math.floor(op.reward / 5);
       log(`Lost to ${op.name}. Consolation +${points}.`);
@@ -293,59 +294,43 @@ export const trainedWins = (id) => (state.trained && state.trained[id]) || 0;
 export const isAwake = (id) => !!BY_ID[id]?.secret && trainedWins(id) >= TRAIN_WINS;
 export function awakeIds() { return Object.keys(state.trained || {}).filter(isAwake); }
 
-// ---- The Orbit Tour ----
-export function ensureCampaign(s = state) { if (!s.campaign) s.campaign = { done: {}, badges: [], seen: [], best: {} }; return s.campaign; }
-export function tourZoneIndex() { const c = ensureCampaign(); return Math.min(ZONES.length - 1, c.badges.length); }
-export function zoneUnlocked(z) { return z.n - 1 <= ensureCampaign().badges.length; }
-export function tourComplete() { return ensureCampaign().badges.length >= ZONES.length; }
-export function nodeStatus(node) {
-  const c = ensureCampaign(); const z = zoneOf(node);
-  if (!zoneUnlocked(z)) return 'locked';
-  if (node.kind === 'keeper') return c.badges.includes(z.id) ? 'done' : z.challenges.every(ch => c.done[ch.id]) ? 'open' : 'locked';
-  if (node.kind === 'challenge') return c.done[node.id] ? 'done' : 'open';
-  return 'open';
+// ---- Campaign: three save slots, seven regions, heroes, completion ----
+export function saves() { if (!Array.isArray(state.saves) || state.saves.length !== 3) state.saves = [null, null, null]; return state.saves; }
+export function activeSave() { const i = state.activeSave; const sv = saves(); return i >= 0 && sv[i] ? sv[i] : null; }
+export function selectSave(i) { commit(s => { s.activeSave = saves()[i] ? i : -1; }); }
+export function leaveSave() { commit(s => { s.activeSave = -1; }); }
+export function newSave(slot) {
+  return commit(s => { saves()[slot] = { created: Date.now(), lastPlayed: Date.now(), played: 0, stage: 'intro', starter: null, region: 1, beaten: {}, gates: [], badges: [], explored: [], found: [], games: {}, heroes: [], complete: false, coinsEarned: 0 }; s.activeSave = slot; return saves()[slot]; });
 }
-export function timesCleared(node) { return ensureCampaign().done[node.id] || 0; }
-export function deckCheck(node, deck = state.deck) {
-  const d = node.deck; if (!d) return { ok: deck.length === 12, why: deck.length === 12 ? '' : 'Deck needs 12 gToons' };
-  const ts = deck.map(id => BY_ID[id]).filter(Boolean);
-  if (ts.length !== 12) return { ok: false, why: 'Deck needs 12 gToons' };
-  if (d.maxRarity != null && ts.some(t => t.rarity > d.maxRarity)) return { ok: false, why: 'Too rare for this challenge' };
-  if (d.maxTotal && ts.reduce((a, t) => a + t.pts, 0) > d.maxTotal) return { ok: false, why: `Deck total must be ${d.maxTotal} or less` };
-  if (d.minTour && ts.filter(t => t.series === 'tour').length < d.minTour) return { ok: false, why: `Needs ${d.minTour} Keeper's Frames` };
-  if (d.maxColor && ts.filter(t => t.color === d.maxColor.color).length > d.maxColor.n) return { ok: false, why: d.maxColor.n === 0 ? `No ${COLORS[d.maxColor.color].name} gToons` : `At most ${d.maxColor.n} ${COLORS[d.maxColor.color].name}` };
-  if (d.color && ts.some(t => t.color !== d.color)) return { ok: false, why: 'One colour only' };
-  if (d.series && ts.some(t => t.series !== d.series)) return { ok: false, why: 'One series only' };
-  return { ok: true, why: '' };
+export function deleteSave(slot) { commit(s => { saves()[slot] = null; if (s.activeSave === slot) s.activeSave = -1; }); }
+export function touchSave(ms = 0) { const sv = activeSave(); if (sv) commit(() => { sv.lastPlayed = Date.now(); sv.played = (sv.played || 0) + ms; }); }
+export function setStage(stage) { const sv = activeSave(); if (sv) commit(() => { sv.stage = stage; }); }
+export function chooseStarter(starterId) {
+  const st = STARTERS.find(x => x.id === starterId); const sv = activeSave(); if (!st || !sv) return false;
+  return commit(s => { sv.starter = st.id; sv.stage = 'play'; st.chips.forEach(id => addCtoon(id, 1, 'starter')); s.deck = st.chips.slice(); s.hero = st.hero; log(`Starter stack ${st.name} chosen. ${BY_ID[st.hero].short} leads it.`); return true; });
 }
-// Best legal 12 for a node from everything the player owns, or null.
-export function buildDeckFor(node) {
-  const d = node.deck || {};
-  const list = [];
-  Object.entries(state.collection).forEach(([id, n]) => { const t = BY_ID[id]; if (!t) return;
-    if (d.maxRarity != null && t.rarity > d.maxRarity) return; if (d.color && t.color !== d.color) return; if (d.series && t.series !== d.series) return;
-    for (let i = 0; i < n; i++) list.push(t); });
-  if (d.maxColor) { const same = list.filter(t => t.color === d.maxColor.color).sort((a, b) => b.pts - a.pts).slice(0, d.maxColor.n); const others = list.filter(t => t.color !== d.maxColor.color); list.length = 0; list.push(...others, ...same); }
-  if (list.length < 12) return null;
-  let deck;
-  if (d.minTour) {
-    const frames = list.filter(t => t.series === 'tour').sort((a, b) => b.pts - a.pts).slice(0, Math.max(d.minTour, 0));
-    if (frames.length < d.minTour) return null;
-    const rest = list.filter(t => !frames.includes(t)).sort((a, b) => b.pts - a.pts);
-    deck = frames.concat(rest).slice(0, 12);
-  } else if (d.maxTotal) {
-    list.sort((a, b) => a.pts - b.pts);
-    deck = list.slice(0, 12); let total = deck.reduce((a, t) => a + t.pts, 0);
-    if (total > d.maxTotal) return null;
-    // upgrade the weakest slots while the budget allows
-    const spare = list.slice(12).sort((a, b) => b.pts - a.pts);
-    for (const cand of spare) { const i = deck.findIndex(t => t.pts < cand.pts); if (i < 0) continue; const nt = total - deck[i].pts + cand.pts; if (nt <= d.maxTotal) { total = nt; deck[i] = cand; } }
-  } else {
-    deck = list.sort((a, b) => b.pts - a.pts).slice(0, 12);
-  }
-  return deck.map(t => t.id);
+export function heroChip() { return state.hero && ownedCount(state.hero) > 0 && state.deck.includes(state.hero) ? state.hero : null; }
+export function setHero(id) { commit(s => { s.hero = id; }); }
+export function regionUnlocked(n) { const sv = activeSave(); return !!sv && (n === 1 || sv.gates.includes(`g${n - 1}`)); }
+export function currentRegion() { const sv = activeSave(); if (!sv) return 1; let n = 1; while (n < 7 && sv.gates.includes(`g${n}`)) n++; return n; }
+export function heroesOpen() { const sv = activeSave(); return !!sv && sv.gates.length >= 7; }
+export function campStatus(node) {
+  const sv = activeSave(); if (!sv) return 'locked';
+  if (node.kind === 'hero') return !heroesOpen() ? 'locked' : sv.heroes.includes(node.id) ? 'done' : 'open';
+  if (!regionUnlocked(node.region)) return 'locked';
+  if (node.kind === 'train') return 'open';
+  if (node.kind === 'npc') return sv.beaten[node.id] ? 'done' : 'open';
+  if (node.kind === 'gate') { const r = REGIONS[node.region - 1]; return sv.gates.includes(node.id) ? 'done' : r.npcs.every(n => sv.beaten[n.id]) ? 'open' : 'locked'; }
+  if (node.kind === 'lore' || node.kind === 'find' || node.kind === 'game') return sv.explored.includes(node.id) ? 'done' : 'open';
+  return 'locked';
 }
-export function nodeDeck(node) {
+export function campOpponent(node) {
+  const r = node.kind === 'hero' ? null : REGIONS[node.region - 1];
+  const name = node.kind === 'train' ? 'Sparring' : node.kind === 'gate' ? `Gatekeeper ${node.region}` : node.kind === 'hero' ? `Hero ${node.id.slice(1)}` : `Player ${node.region}-${'abc'.indexOf(node.id.slice(-1)) + 1}`;
+  return { id: node.id, name, diff: node.diff ?? 0.5, smart: !!node.smart, avatar: node.avatar || 'rookie', reward: node.reward ? node.reward.coins : 0, taunt: '', node, region: r ? r.n : 8 };
+}
+export function campDeck(node) {
+  if (node.kind === 'train') { const pool = PACKABLE.filter(t => t.rarity >= node.minR && t.rarity <= node.maxR); const out = []; while (out.length < 12) out.push(pool[Math.floor(Math.random() * pool.length)].id); return out; }
   const pool = node.pool || {};
   if (pool.mirror) return state.deck.slice();
   if (pool.fixed) return pool.fixed.slice();
@@ -354,50 +339,75 @@ export function nodeDeck(node) {
   while (out.length < 12) { const r = (pool.minR ?? 0) + Math.floor(Math.pow(Math.random(), 1.4) * span); const p = cands.filter(t => t.rarity === r); const src = p.length ? p : cands; out.push(src[Math.floor(Math.random() * src.length)].id); }
   return out;
 }
-export function nodeOpponent(node) {
-  const z = zoneOf(node);
-  return { id: node.id, name: node.kind === 'challenge' ? node.opponent : node.name, diff: node.diff, smart: !!node.smart, avatar: node.avatar, reward: node.reward.points, taunt: node.taunt || node.intro || '', node, zone: z.id };
+export function campTrainOpponent(node) {
+  // training partners come from the roster, scaled to the region
+  const op = OPPONENTS[Math.min(OPPONENTS.length - 1, Math.floor((node.region - 1) * OPPONENTS.length / 7))];
+  return { ...op, id: node.id, node, reward: node.coins, region: node.region };
 }
-export function goalMet(node, ev) {
-  const won = ev.aTotal > ev.bTotal; const g = node.goal || { type: 'win' };
-  switch (g.type) {
-    case 'margin': return won && ev.aTotal - ev.bTotal >= g.n;
-    case 'score':  return won && ev.aTotal >= g.n;
-    case 'sets':   return won && Object.values(ev.aColors).reduce((a, n) => a + Math.floor(n / ev.rules.colorSet), 0) >= g.n;
-    default:       return won;
-  }
-}
-export function recordTour(node, ev, boardIds = []) {
+export function campRecord(node, ev, boardIds = []) {
   return commit(s => {
-    const c = ensureCampaign(s); const z = zoneOf(node);
-    const won = ev.aTotal > ev.bTotal; const cleared = goalMet(node, ev);
+    const sv = activeSave(); if (!sv) return null;
+    const won = ev.aTotal > ev.bTotal; const draw = ev.aTotal === ev.bTotal;
     s.stats.battles++; if (!ev.forfeit) { bumpQuest(s, 'playsToday'); s.lastBattle = todayKey(); }
     const woke = won ? train(s, boardIds) : [];
-    let points = 0, first = false; const chips = []; let pack = []; let badge = null;
-    if (won) { s.stats.wins++; bumpQuest(s, 'winsToday'); }
-    if (cleared) {
-      first = !c.done[node.id]; c.done[node.id] = (c.done[node.id] || 0) + 1;
-      points = first || node.kind === 'spar' ? node.reward.points : Math.floor(node.reward.points / 4);
-      if (first) {
-        if (node.reward.chip) { addCtoon(node.reward.chip, 1, 'tour'); chips.push(node.reward.chip); }
-        if (node.reward.pack) pack = grantPack(node.reward.pack);
-        if (node.kind === 'keeper' && !c.badges.includes(z.id)) { c.badges.push(z.id); badge = z.id; }
-      }
-      log(`${node.kind === 'keeper' ? 'Frame ' + z.n + ' won from ' + node.name : (node.kind === 'spar' ? 'Sparred with ' : 'Cleared ') + node.name}${points ? ' (+' + points + ')' : ''}.`);
-    } else {
-      points = ev.forfeit ? 0 : won ? Math.floor(node.reward.points / 5) : Math.floor(node.reward.points / 10);
-      log(`${ev.forfeit ? 'Walked out on' : won ? 'Won but missed the goal against' : ev.aTotal === ev.bTotal ? 'Drew with' : 'Lost to'} ${node.kind === 'challenge' ? node.opponent : node.name}.`);
-    }
-    if (!ev.forfeit) { const margin = ev.aTotal - ev.bTotal; c.best[node.id] = Math.max(c.best[node.id] ?? -999, margin); }
-    s.points += points;
+    let coins = 0, first = false, one = null, badge = null, complete = false; let pack = [];
+    if (won) {
+      s.stats.wins++; bumpQuest(s, 'winsToday');
+      if (node.kind === 'train') coins = node.coins;
+      else if (node.kind === 'npc') { first = !sv.beaten[node.id]; sv.beaten[node.id] = (sv.beaten[node.id] || 0) + 1; coins = first ? node.reward.coins : Math.floor(node.reward.coins / 4); }
+      else if (node.kind === 'gate') { first = !sv.gates.includes(node.id); if (first) { sv.gates.push(node.id); one = node.reward.one; if (one && !s.collection[one]) addCtoon(one, 1, 'gate'); badge = node.reward.badge; if (!sv.badges.includes(badge)) sv.badges.push(badge); if (!s.badges.includes(badge)) s.badges.push(badge); coins = node.reward.coins; } else coins = Math.floor(node.reward.coins / 5); }
+      else if (node.kind === 'hero') { first = !sv.heroes.includes(node.id); if (first) { sv.heroes.push(node.id); coins = node.reward.coins; } else coins = Math.floor(node.reward.coins / 5); }
+      log(`${node.kind === 'train' ? 'Training win' : node.kind === 'gate' ? 'Gatekeeper ' + node.region + ' beaten' : node.kind === 'hero' ? 'Hero beaten' : 'Beat ' + campOpponent(node).name}${coins ? ' (+' + coins + ')' : ''}.`);
+    } else if (!ev.forfeit) { coins = draw ? Math.floor((node.reward?.coins || node.coins || 0) / 6) : Math.floor((node.reward?.coins || node.coins || 0) / 10); log(`${draw ? 'Drew with' : 'Lost to'} ${campOpponent(node).name}.`); }
+    s.points += coins; sv.coinsEarned = (sv.coinsEarned || 0) + coins; sv.lastPlayed = Date.now();
+    if (won && !sv.complete && isComplete(sv)) { sv.complete = true; complete = true; if (!s.collection.one8) addCtoon('one8', 1, 'complete'); if (!sv.badges.includes('complete')) sv.badges.push('complete'); if (!s.badges.includes('complete')) s.badges.push('complete'); log('100% completion.'); }
     const prize = checkPrizes(s);
-    return { won, cleared, first, points, chips, pack, badge, woke, prize };
+    return { won, draw, first, coins, one, badge, pack, woke, prize, complete };
   });
 }
-export function storySeen(key) { return ensureCampaign().seen.includes(key); }
-export function markStory(key) { commit(s => { const c = ensureCampaign(s); if (!c.seen.includes(key)) c.seen.push(key); }); }
+// Explore places: lore cards, chip finds, mini-games.
+export function explore(placeId) {
+  const p = NODES[placeId]; const sv = activeSave(); if (!p || !sv || campStatus(p) !== 'open') return null;
+  return commit(s => {
+    if (p.kind === 'game') return { kind: 'game', place: p };  // recorded by finishGame()
+    sv.explored.push(p.id);
+    let chip = null; if (p.kind === 'find' && p.reward.chip) { chip = p.reward.chip; addCtoon(chip, 1, 'found'); sv.found.push(chip); log(`Found ${BY_ID[chip].name} in ${p.name}.`); }
+    if (!sv.complete && isComplete(sv)) { sv.complete = true; if (!s.collection.one8) addCtoon('one8', 1, 'complete'); if (!sv.badges.includes('complete')) sv.badges.push('complete'); if (!s.badges.includes('complete')) s.badges.push('complete'); }
+    return { kind: p.kind, place: p, chip };
+  });
+}
+export function finishGame(placeId, score, max) {
+  const p = NODES[placeId]; const sv = activeSave(); if (!p || !sv) return null;
+  return commit(s => {
+    const coins = Math.round((p.reward.coins || 0) * Math.max(0, Math.min(1, score / max)));
+    const first = !sv.explored.includes(p.id); if (first) sv.explored.push(p.id);
+    const best = Math.max(sv.games[p.id] || 0, score); sv.games[p.id] = best;
+    s.points += first ? coins : Math.floor(coins / 3); sv.coinsEarned = (sv.coinsEarned || 0) + coins;
+    log(`${p.name}: ${score}/${max}${coins ? ' (+' + coins + ')' : ''}.`);
+    if (!sv.complete && isComplete(sv)) { sv.complete = true; if (!s.collection.one8) addCtoon('one8', 1, 'complete'); if (!sv.badges.includes('complete')) sv.badges.push('complete'); if (!s.badges.includes('complete')) s.badges.push('complete'); }
+    return { coins: first ? coins : Math.floor(coins / 3), first, best };
+  });
+}
+export function isComplete(sv) {
+  const npcs = REGIONS.flatMap(r => r.npcs).every(n => sv.beaten[n.id]);
+  return npcs && sv.gates.length >= 7 && sv.heroes.length >= HEROES.length && sv.explored.length >= totalExplore;
+}
+export function completion(sv) {
+  if (!sv) return { pct: 0 };
+  const npcs = REGIONS.flatMap(r => r.npcs); const parts = [
+    ['players', Object.keys(sv.beaten).length, npcs.length], ['gates', sv.gates.length, 7], ['heroes', sv.heroes.length, HEROES.length], ['places', sv.explored.length, totalExplore]];
+  const done = parts.reduce((a, [, x]) => a + x, 0), total = parts.reduce((a, [, , t]) => a + t, 0);
+  return { pct: Math.round(100 * done / total), parts };
+}
+export function buyRegionPack(n) {
+  const pack = REGION_PACKS[n - 1]; if (!pack || !regionUnlocked(n) || !canAfford(pack.price)) return null;
+  return commit(s => { spend(s, pack.price); const ids = rollPack(pack); const newIds = []; ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'pack'); }); s.stats.packs++; bumpQuest(s, 'packsToday'); log(`Opened a ${pack.name}.`); checkPrizes(s); return { ids, newIds, pack }; });
+}
+export function deckCheck() { return state.deck.length === 12 ? { ok: true, why: '' } : { ok: false, why: 'Stack needs 12 chips' }; }
+export function storySeen(key) { const sv = activeSave(); return !sv || (sv.seen || []).includes(key); }
+export function markStory(key) { const sv = activeSave(); if (sv) commit(() => { sv.seen = sv.seen || []; if (!sv.seen.includes(key)) sv.seen.push(key); }); }
 
-// ---- cZone ----
+// ---- portfolio ----
 export function placeInZone(id, x, y) {
   if (ownedCount(id) <= state.czone.items.filter(it => it.id === id).length) return false;
   if (state.czone.items.length >= 20) return false;
@@ -408,7 +418,7 @@ export function removeFromZone(index) { commit(s => { s.czone.items.splice(index
 export function buyBackground(id) {
   const bg = BACKGROUNDS.find(b => b.id === id);
   if (!bg || state.unlockedBgs.includes(id) || !canAfford(bg.cost)) return false;
-  return commit(s => { spend(s, bg.cost); s.unlockedBgs.push(id); s.czone.bg = id; log(`Unlocked cZone background: ${bg.name}.`); return true; });
+  return commit(s => { spend(s, bg.cost); s.unlockedBgs.push(id); s.czone.bg = id; log(`Unlocked portfolio background: ${bg.name}.`); return true; });
 }
 
 // ---- Codes ----
@@ -417,14 +427,14 @@ export function redeemCode(raw) {
   if (!code) return { ok: false, text: 'Enter a code first.' };
   const gift = parseGiftCode(code);
   if (gift) {
-    if (!BY_ID[gift.id] || BY_ID[gift.id].series === 'tour') return { ok: false, text: 'That gift code is not valid.' };
+    if (!BY_ID[gift.id] || BY_ID[gift.id].series === 'one') return { ok: false, text: 'That gift code is not valid.' };
     if (state.redeemed.includes(gift.key)) return { ok: false, text: 'That gift code was already redeemed on this device.' };
     return commit(s => { s.redeemed.push(gift.key); addCtoon(gift.id, 1, 'gift'); log(`Gift received: ${BY_ID[gift.id].name}!`); checkPrizes(s); return { ok: true, text: `${BY_ID[gift.id].name} joins your binder!`, ctoons: [gift.id] }; });
   }
   if (code === featuredCode()) {
     const key = 'featured:' + todayKey() + ':' + code;
     if (state.redeemed.includes(key)) return { ok: false, text: 'You already used today\'s featured code.' };
-    return commit(s => { s.redeemed.push(key); s.points += 150; log(`Featured code ${code}: +150 points.`); return { ok: true, text: 'Featured code accepted! +150 points.', ctoons: [] }; });
+    return commit(s => { s.redeemed.push(key); s.points += 150; log(`Featured code ${code}: +150 coins.`); return { ok: true, text: 'Featured code accepted! +150 coins.', ctoons: [] }; });
   }
   if (code === 'UNLIMITED') {
     const on = !state.unlimited; setUnlimited(on); log(on ? 'Unlimited points switched on.' : 'Unlimited points switched off.');
@@ -437,24 +447,24 @@ export function redeemCode(raw) {
   const promo = PROMO_CODES[code];
   if (!promo) return { ok: false, text: 'Unknown code. Check the spelling and try again.' };
   const key = 'promo:' + code;
-  if (state.redeemed.includes(key)) return { ok: false, text: 'You already used that Orbit Code.' };
+  if (state.redeemed.includes(key)) return { ok: false, text: 'You already used that code.' };
   return commit(s => {
     s.redeemed.push(key);
     let ctoons = [];
     if (promo.points) s.points += promo.points;
     if (promo.ctoon) { addCtoon(promo.ctoon, 1, 'code'); ctoons = [promo.ctoon]; }
     if (promo.pack) ctoons = grantPack(promo.pack);
-    log(`Orbit Code ${code}: ${promo.text}`);
+    log(`code ${code}: ${promo.text}`);
     checkPrizes(s);
     return { ok: true, text: promo.text, ctoons };
   });
 }
 export function giftCtoon(id) {
-  if (ownedCount(id) < 1 || BY_ID[id].series === 'pz' || BY_ID[id].series === 'tour') return null;
+  if (ownedCount(id) < 1 || BY_ID[id].series === 'pz' || BY_ID[id].series === 'one') return null;
   return commit(s => { removeCtoon(id); const code = makeGiftCode(id); log(`Gift code created for ${BY_ID[id].name}.`); return code; });
 }
 
-// ---- Prize cToons ----
+// ---- Prize chips ----
 export function checkPrizes(s = state) {
   const award = (id) => { if (!s.prizes.includes(id)) { s.prizes.push(id); addCtoon(id, 1, 'prize'); log(`PRIZE unlocked: ${BY_ID[id].name}!`); return id; } return null; };
   const unique = Object.keys(s.collection).filter(id => s.collection[id] > 0).length;
@@ -479,8 +489,8 @@ export function featuredCode() {
   return FEATURED_CODES[Math.floor(rnd() * FEATURED_CODES.length)];
 }
 
-// ---- Visitable NPC cZones (generated daily from a seed) ----
-export function npcZones() {
+// ---- Visitable NPC portfolio (generated daily from a seed) ----
+export function npportfolio() {
   const rnd = seededRng('zones:' + todayKey());
   return NPC_ZONES.map(z => {
     const n = 5 + Math.floor(rnd() * 6);
@@ -493,7 +503,7 @@ export function npcZones() {
   });
 }
 
-// ---- Drop references to cToons that no longer exist (older catalogs) ----
+// ---- Drop references to chips that no longer exist (older catalogs) ----
 export function sanitize() {
   let changed = false;
   const known = (id) => !!BY_ID[id];
@@ -502,13 +512,13 @@ export function sanitize() {
   const items = state.czone.items.filter(it => known(it.id)); if (items.length !== state.czone.items.length) { state.czone.items = items; changed = true; }
   const prizes = state.prizes.filter(known); if (prizes.length !== state.prizes.length) { state.prizes = prizes; changed = true; }
   if (state.onboarded && Object.keys(state.collection).length === 0) {
-    ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1', 'pz01'].forEach(id => addCtoon(id));
+    ['alpha1', 'delta1', 'golf1', 'india1', 'juliett1', 'mike1', 'bravo1', 'echo1', 'hotel1', 'lima1', 'pz01'].forEach(id => addCtoon(id));
     if (!state.prizes.includes('pz01')) state.prizes.push('pz01');
     state.points += 500;
-    log('The Orbit got a fresh cast! Your binder has been restocked and you got 500 points for the trouble.');
+    log('The chip library changed. Your binder has been restocked and you got 500 coins.');
     changed = true;
   }
-  ensureCampaign(state); if (!state.trained) state.trained = {};
+  if (!state.trained) state.trained = {}; if (!Array.isArray(state.badges)) state.badges = [];
   if (state.catalog !== 3) { state.catalog = 3; changed = true; }
   if (changed) { if (state.deck.length < 12) state.deck = autoDeck(state); commit(); }
 }

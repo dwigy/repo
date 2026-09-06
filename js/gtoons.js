@@ -5,7 +5,7 @@
 // A match carries a `rules` object (house rules) so the campaign can bend
 // the game: colour-set size and bonus, swap cost, no swaps, no powers, a
 // bonus for a row, a smaller hand, and which chips have their secret power
-// awake. Everything defaults to the classic Orbit rules.
+// awake. Everything defaults to the classic rules.
 import { BY_ID, COLORS } from './data.js';
 
 export const SLOTS = 7;          // 0..2 back row, 3..6 front row
@@ -21,6 +21,7 @@ export const DEFAULT_RULES = Object.freeze({
   flipRows: false,     // back-row powers fire in the front row and vice versa
   lastBonus: 0,        // the chip each side plays last gets this
   reelChange: false,   // after three placements a side discards its hand and redraws
+  heroP: null, heroAi: null, heroBonus: 6, // stack leaders: +heroBonus when played first
 });
 export const withRules = (r) => ({ ...DEFAULT_RULES, ...(r || {}), rowBonus: { ...DEFAULT_RULES.rowBonus, ...((r && r.rowBonus) || {}) } });
 
@@ -97,8 +98,10 @@ function powersFor(me, rival, rules, silenced, rivalShield = new Set()) {
       case 'veto':          break; // handled by silencedBy()
     }
   };
+  const hero = me === undefined ? null : (me.isAi ? rules.heroAi : rules.heroP);
   for (let i = 0; i < SLOTS; i++) {
     const t = card(me, i); if (!t) continue;
+    if (hero && t.id === hero && me.order[0] === i) mods[i].push({ v: rules.heroBonus, why: 'leader played first' });
     if (silenced.has(i)) continue;
     apply(t.power, i, t, false);
     if (t.secret && awake(me, t.id)) apply(t.secret, i, t, true);
@@ -137,14 +140,14 @@ function shuffle(arr, rnd = Math.random) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
-function mkSide(deck, hand, awakeIds) { const d = shuffle(deck); return { slots: Array(SLOTS).fill(null), order: [], deck: d.slice(hand), hand: d.slice(0, hand), swaps: 0, awake: awakeIds || [] }; }
+function mkSide(deck, hand, awakeIds, isAi = false) { const d = shuffle(deck); return { slots: Array(SLOTS).fill(null), order: [], deck: d.slice(hand), hand: d.slice(0, hand), swaps: 0, awake: awakeIds || [], isAi }; }
 
 // opts: { rules, pAwake: [ids], aiAwake: [ids] | 'all', first: 'p'|'ai' }
 export function newMatch(playerDeck, aiDeck, opponent, opts = {}) {
   const rules = withRules(opts.rules);
   const first = opts.first || (Math.random() < 0.5 ? 'p' : 'ai');
   const aiAwake = opts.aiAwake ?? (rules.secretsOn ? 'all' : []);
-  return { opponent, rules, turn: first, p: mkSide(playerDeck, rules.handSize, opts.pAwake), ai: mkSide(aiDeck, rules.handSize, aiAwake), done: false, lastMove: null, round: 1 };
+  return { opponent, rules, turn: first, p: mkSide(playerDeck, rules.handSize, opts.pAwake), ai: mkSide(aiDeck, rules.handSize, aiAwake, true), done: false, lastMove: null, round: 1 };
 }
 
 export function place(match, who, handIndex, slot) {

@@ -17,14 +17,14 @@ export function freshState() {
     v: SAVE_VERSION,
     created: Date.now(),
     savedAt: 0,
-    name: 'Orbiter',
+    name: 'player',
     points: 0,
     collection: {},          // { ctoonId: count }
     deck: [],                // up to 12 ctoon ids
     czone: { bg: 'orbit', items: [] }, // items: [{id, x, y}] (x/y 0..1)
     unlockedBgs: ['orbit'],
     daily: { last: '', streak: 0 },
-    dailyFree: '',           // date the free vendor cToon was claimed
+    dailyFree: '',           // date the free vendor chip was claimed
     quests: { date: '', stats: {}, claimed: [] },
     trades: { date: '', done: [] },
     beaten: [],              // opponent ids beaten at least once
@@ -32,8 +32,12 @@ export function freshState() {
     redeemed: [],            // promo + gift codes used
     prizes: [],              // prize ctoon ids awarded
     log: [],                 // recent events for the home screen
-    settings: { sound: true },
+    settings: { sound: true, theme: 'system' },
     onboarded: false,
+    saves: [null, null, null],   // campaign save slots
+    activeSave: -1,
+    badges: [],                  // profile badges (status symbols, not chips)
+    favorites: [],               // chip ids shown on the portfolio
   };
 }
 
@@ -101,6 +105,9 @@ function migrate(s) {
   for (const k of ['czone', 'daily', 'quests', 'trades', 'stats', 'settings']) {
     out[k] = { ...base[k], ...(s[k] || {}) };
   }
+  if (!Array.isArray(out.saves) || out.saves.length !== 3) out.saves = [null, null, null];
+  if (!Array.isArray(out.badges)) out.badges = [];
+  if (!Array.isArray(out.favorites)) out.favorites = [];
   if (!Array.isArray(out.unlockedBgs)) out.unlockedBgs = [];
   if (!out.unlockedBgs.includes('orbit')) out.unlockedBgs.unshift('orbit');
   if (!out.czone.bg) out.czone.bg = 'orbit';
@@ -154,18 +161,18 @@ function b64d(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str
 
 export function exportCode() {
   const payload = b64e(JSON.stringify(state));
-  return `ORBITSAVE1.${payload}.${checksum(payload)}`;
+  return `SAVE1.${payload}.${checksum(payload)}`;
 }
 export function parseSaveCode(code) {
   const parts = String(code).trim().split('.');
-  if (parts.length !== 3 || parts[0] !== 'ORBITSAVE1') throw new Error('That is not an Orbit save code.');
+  if (parts.length !== 3 || parts[0] !== 'SAVE1') throw new Error('That is not a save code.');
   if (checksum(parts[1]) !== parts[2]) throw new Error('Save code is damaged (checksum mismatch).');
   const obj = JSON.parse(b64d(parts[1]));
   if (!obj || typeof obj !== 'object' || !obj.collection) throw new Error('Save code is missing data.');
   return obj;
 }
 
-// Gift codes move a single cToon from one player to another (for friends).
+// Gift codes move a single chip from one player to another (for friends).
 const GIFT_SALT = 'orbit-gift-2000';
 export function makeGiftCode(ctoonId) {
   const nonce = Math.random().toString(36).slice(2, 8);

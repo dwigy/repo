@@ -115,7 +115,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
     }
     async function flip() {
       busy = true; const t = cards[idx]; const card = root.querySelector('#pkCard'); const rays = root.querySelector('#pkRays');
-      sfx('flip');
+      sfx('lima');
       const slow = t.rarity >= MYTHIC;
       if (t.rarity >= LEGENDARY) { card.classList.add('shimmer'); sfx('drum'); await wait(900); }
       if (stage !== 'reveal' || !card.isConnected) { busy = false; return; }
@@ -158,7 +158,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
         <div class="pk-stage pk-summary">
           <div class="pk-hint">YOUR PULLS</div>
           <div class="pk-grid">${cards.map((t, i) => { const r = RARITY[t.rarity]; return `<div class="pk-cell" style="--rc:${r.color};animation-delay:${i * 90}ms">${tokenSVG(t, 100, { bubble: false })}<div class="pk-cell-name">${esc(t.short)}</div><div class="pk-cell-ed" style="color:${r.color}">${esc(t.edShort || t.edition)}</div>${newIds.includes(t.id) && cards.findIndex(c => c.id === t.id) === i ? '<span class="pk-new">NEW</span>' : ''}</div>`; }).join('')}</div>
-          <div class="pk-sub">${newIds.length ? `${newIds.length} NEW FOR YOUR BINDER` : 'ALL DUPLICATES · RECYCLE THEM FOR POINTS'}</div>
+          <div class="pk-sub">${newIds.length ? `${newIds.length} NEW FOR YOUR BINDER` : 'ALL DUPLICATES · RECYCLE THEM FOR COINS'}</div>
           <button class="obtn pk-btn" id="pkDone">COLLECT</button>
         </div>`;
       root.querySelector('#pkDone').addEventListener('click', close);

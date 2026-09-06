@@ -1,8 +1,9 @@
-// All screens and interactions, styled after the 2003 Cartoon Orbit site.
+// All screens and interactions, styled after the 2003 [GAME] site.
 // Rendering is string templates plus one delegated click handler keyed on
 // data-action attributes.
 import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, TRAIN_WINS, POWER_NAMES, setOf, powerText } from './data.js';
-import { ZONES, NODES, zoneOf, PROLOGUE, EPILOGUE, ruleText, goalText, deckText } from './campaign.js';
+import { NODES, REGIONS, HEROES, ruleText, lore } from './campaign.js';
+import * as CAMP from './camp.js';
 import { openPack } from './pack.js';
 import { play as snd, setEnabled as setSound } from './sound.js';
 import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG, packSVG, zoneBadgeSVG } from './art.js';
@@ -18,9 +19,9 @@ const fmt = (n) => n.toLocaleString();
 
 // navigation: section -> sub tab
 let section = 'home';
-const subs = { home: 'main', collection: 'binder', battle: 'tour', market: 'cmart', profile: 'me' };
-let zoneMode = 'mine';     // mine | visit (inside Collection > cZone)
-let tourZone = null;       // zone index shown on the Tour page
+const subs = { home: 'main', collection: 'binder', campaign: 'main', online: 'main', profile: 'portfolio' };
+let coverShown = false;    // launch cover, once per visit
+let campEnter = 0;         // when the campaign UI was opened (playtime)
 let binderFocus = null;    // character key to scroll to after the binder renders
 let verTaps = 0, verTapAt = 0;
 let binderFilter = 'all';
@@ -44,7 +45,7 @@ const sfx = { tap: () => snd('tap'), good: () => snd('good'), great: () => snd('
 const rtag = (t) => `<span class="rtag" style="--rc:${RARITY[t.rarity].color}">${RARITY[t.rarity].name}</span>`;
 const ctag = (t) => `<span class="ctag" style="--cc:${COLORS[t.color].hex}">${COLORS[t.color].name}</span>`;
 
-// Circular token with a label box beneath, like the cZones page.
+// Circular token with a label box beneath, like the portfolio page.
 function tokenHTML(t, opts = {}) {
   const owned = opts.owned ?? true;
   const cls = ['tok', owned ? '' : 'unowned', opts.selected ? 'selected' : '', opts.small ? 'small' : ''].join(' ');
@@ -69,31 +70,31 @@ const ICON = {
 const SECTIONS = [
   ['home',       'HOME',       ICON.home],
   ['collection', 'COLLECTION', ICON.binder],
-  ['battle',     'BATTLE',     ICON.battle],
-  ['market',     'MARKET',     ICON.pack],
+  ['campaign',   'CAMPAIGN',   ICON.battle],
+  ['online',     'ONLINE',     ICON.pack],
   ['profile',    'PROFILE',    ICON.user],
 ];
 const SUBTABS = {
   home:       [],
-  collection: [['binder', 'BINDER'], ['sets', 'SETS'], ['czone', 'cZONE']],
-  battle:     [['tour', 'THE TOUR'], ['arena', 'LADDER'], ['deck', 'MY DECK'], ['rules', 'HOW TO PLAY']],
-  market:     [['cmart', 'cMART'], ['auction', 'AUCTION'], ['codes', 'CODES']],
-  profile:    [['me', 'PROFILE'], ['settings', 'SETTINGS'], ['device', 'DEVICE']],
+  collection: [['binder', 'BINDER'], ['sets', 'SETS'], ['deck', 'STACK'], ['cmart', 'SHOP'], ['auction', 'TRADES'], ['codes', 'CODES']],
+  campaign:   [],
+  online:     [],
+  profile:    [['portfolio', 'PORTFOLIO'], ['settings', 'SETTINGS'], ['device', 'DEVICE']],
 };
 function subtabsFor(sec) { const t = SUBTABS[sec] || []; return sec === 'profile' && state.settings.debug ? [...t, ['debug', 'DEBUG']] : t; }
-const wallet = () => `<div class="wallet ${state.unlimited ? 'inf' : ''}" data-action="go" data-to="market" data-sub="cmart"><span>POINTS</span><b>${state.unlimited ? '∞' : fmt(state.points)}</b></div>`;
+const wallet = () => `<div class="wallet ${state.unlimited ? 'inf' : ''}" data-action="go" data-to="collection" data-sub="cmart"><span>COINS</span><b>${state.unlimited ? '∞' : fmt(state.points)}</b></div>`;
 
 function orbitFrame(inner) {
   const tabs = subtabsFor(section);
   const sub = tabs.length ? `<div class="subnav">${tabs.map(([k, n]) => `<button class="stab ${subs[section] === k ? 'on' : ''}" data-action="sub" data-id="${k}">${n}</button>`).join('')}</div>` : '';
   return `<div class="frame ${tabs.length ? '' : 'nosub'}">
     <div class="orbit-head">
-      <div class="orbit-row"><div class="orbit-logo" data-action="go" data-to="home">CARTOON <span class="o">O</span>RBIT<i>®</i></div>${wallet()}</div>
+      <div class="orbit-row"><div class="orbit-logo" data-action="go" data-to="home"><span class="ph">[GAME]</span></div>${wallet()}</div>
       ${sub}
     </div>
     <div class="content">${inner}</div>
   </div>
-  <nav class="leftnav">${SECTIONS.map(([k, n, ic]) => `<button class="lnav ${k === 'battle' ? 'battle' : ''} ${section === k ? 'on' : ''}" data-action="go" data-to="${k}"><i>${ic}</i><span>${n}</span></button>`).join('')}</nav>`;
+  <nav class="leftnav">${SECTIONS.map(([k, n, ic]) => `<button class="lnav ${k === 'campaign' ? 'battle' : ''} ${section === k ? 'on' : ''}" data-action="go" data-to="${k}"><i>${ic}</i><span>${n}</span></button>`).join('')}</nav>`;
 }
 
 // ---------- modal & toast ----------
@@ -111,7 +112,7 @@ export function toast(text, ms = 2200) {
 function isIOS() { return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
 function isStandalone() { return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches; }
 
-// ---------- ORBIT (front page) ----------
+// ---------- HOME ----------
 function skyFor(h) {
   if (h < 6) return ['#0b1b3a', '#1f3d7a', '#0d2350'];
   if (h < 9) return ['#f7c9a6', '#8fb8e8', '#2f5fa8'];
@@ -142,7 +143,7 @@ function seriesHero() {
   const sky = skyFor(hourNow());
   const stars = Object.values(CHARACTERS).filter(c => c.series === key).length;
   return `<section class="hero" style="--s1:${sky[0]};--s2:${sky[1]};--s3:${sky[2]}">
-      <div class="hero-kicker">THIS WEEK IN ORBIT</div>
+      <div class="hero-kicker">THIS WEEK</div>
       <div class="hero-fan">${order.map((t, i) => { const k = i - mid; const own = G.ownedCount(t.id) > 0;
         return `<div class="fan ${k === 0 ? 'centre' : ''}" style="--i:${k};--z:${5 - Math.abs(k)}" data-action="detail" data-id="${t.id}">${own ? tokenSVG(t, 150, { bubble: false }) : shadowTokenSVG(t, 150)}</div>`; }).join('')}</div>
       <div class="hero-name">${esc(s.name)}</div>
@@ -161,23 +162,24 @@ function todayCard() {
       <div class="ritual">
         <div class="rit ${dailyDone ? 'done' : ''}"><i>${dailyDone ? '✓' : '1'}</i><div><b>Daily bonus</b><span>${dailyDone ? 'Claimed' : '+' + G.nextDailyAmount() + ' points'}</span></div>${dailyDone ? '' : '<button class="obtn small primary" data-action="claimDaily">CLAIM</button>'}</div>
         <div class="rit ${freeDone ? 'done' : ''}"><i>${freeDone ? '✓' : '2'}</i><div class="mini-tok">${tokenSVG(free, 40, { bubble: false })}</div><div><b>Free chip</b><span>${esc(free.short)}</span></div>${freeDone ? '' : '<button class="obtn small primary" data-action="claimFree">TAKE</button>'}</div>
-        <div class="rit ${played ? 'done' : ''}"><i>${played ? '✓' : '3'}</i><div><b>One battle</b><span>${played ? 'Played' : 'vs ' + esc(nextOp.name)}</span></div>${played ? '' : '<button class="obtn small" data-action="go" data-to="battle">GO</button>'}</div>
+        <div class="rit ${played ? 'done' : ''}"><i>${played ? '✓' : '3'}</i><div><b>One match</b><span>${played ? 'Played' : 'In the campaign'}</span></div>${played ? '' : '<button class="obtn small" data-action="go" data-to="campaign">GO</button>'}</div>
       </div>
       <div class="goals">${goals}</div>
     </div>`;
 }
 const ticketSVG = () => `<svg viewBox="0 0 64 44" width="64" height="44"><defs><linearGradient id="tkt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#dfe7ef"/></linearGradient></defs><path d="M4 6h56v10a6 6 0 0 0 0 12v10H4V28a6 6 0 0 0 0-12z" fill="url(#tkt)" stroke="#14356d" stroke-width="2"/><path d="M14 16h36M14 22h36M14 28h24" stroke="#2f7ff5" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 5"/></svg>`;
 function menuTiles() {
-  const nextOp = nextOpponent(); const show = BY_ID[G.showcaseId()];
-  const offers = G.todaysTrades(); const open = offers.filter(o => !G.tradeDoneToday(o.idx)).length;
+  const show = BY_ID[G.showcaseId()];
   const zoneN = state.czone.items.length;
+  const sv = G.activeSave(); const saves = G.saves().filter(Boolean);
+  const campLine = sv ? `SAVE ${state.activeSave + 1} · REGION ${G.currentRegion()}` : saves.length ? `${saves.length} SAVE${saves.length > 1 ? 'S' : ''}` : 'BEGIN';
   const tiles = [
-    { to: 'market', sub: 'cmart', title: 'RIP A PACK', line: G.canAfford(PACKS[0].price) ? `FROM ${fmt(PACKS[0].price)} PTS` : `${fmt(PACKS[0].price - state.points)} PTS TO GO`, art: packSVG(PACKS[0], { size: 52 }) },
-    { to: 'battle', sub: 'tour', title: 'THE TOUR', line: G.tourComplete() ? 'REEL RESTORED' : `ZONE ${G.tourZoneIndex() + 1} · ${esc(ZONES[G.tourZoneIndex()].name).toUpperCase()}`, art: zoneBadgeSVG(ZONES[G.tourZoneIndex()], 64, true) },
-    { to: 'collection', sub: 'binder', title: 'MY BINDER', line: `${G.uniqueOwned()}/${CTOONS.length} cTOONS`, art: tokenSVG(show, 64, { bubble: false }) },
-    { to: 'collection', sub: 'czone', title: 'MY cZONE', line: zoneN ? `${zoneN} ON DISPLAY` : 'NOTHING ON DISPLAY', art: zoneN ? badgeSVG(BY_ID[state.czone.items[0].id], 64) : socketSVG(64) },
-    { to: 'market', sub: 'auction', title: 'AUCTION', line: open ? `${open} OFFER${open > 1 ? 'S' : ''} TODAY` : 'ALL TRADED', art: tokenSVG(BY_ID[offers[0].get], 64, { bubble: false }) },
-    { to: 'market', sub: 'codes', title: 'ORBIT CODES', line: `TODAY: ${G.featuredCode()}`, art: ticketSVG() },
+    { to: 'campaign', sub: 'main', title: 'CAMPAIGN', line: campLine, art: CAMP.badgeSVG(`region${sv ? G.currentRegion() : 1}`, 64) },
+    { to: 'collection', sub: 'cmart', title: 'RIP A PACK', line: G.canAfford(PACKS[0].price) ? `FROM ${fmt(PACKS[0].price)} COINS` : `${fmt(PACKS[0].price - state.points)} COINS TO GO`, art: packSVG(PACKS[0], { size: 52 }) },
+    { to: 'collection', sub: 'binder', title: 'MY BINDER', line: `${G.uniqueOwned()}/${CTOONS.length} CHIPS`, art: tokenSVG(show, 64, { bubble: false }) },
+    { to: 'profile', sub: 'portfolio', title: 'PORTFOLIO', line: state.badges.length ? `${state.badges.length} BADGE${state.badges.length > 1 ? 'S' : ''}` : 'SHOW OFF', art: zoneN ? badgeSVG(BY_ID[state.czone.items[0].id], 64) : socketSVG(64) },
+    { to: 'online', sub: 'main', title: 'ONLINE', line: 'COMING SOON', art: socketSVG(64) },
+    { to: 'collection', sub: 'codes', title: 'CODES', line: `TODAY: ${G.featuredCode()}`, art: ticketSVG() },
   ];
   return `<div class="tiles">${tiles.map(t => `<button class="tile" data-action="go" data-to="${t.to}" data-sub="${t.sub}"><div class="tile-art">${t.art}</div><b>${t.title}</b><span>${t.line}</span></button>`).join('')}</div>`;
 }
@@ -194,7 +196,7 @@ function newsCard() {
     </div>`;
 }
 function newsModal() {
-  showModal(`<div class="ptab">ORBIT UPDATES</div>
+  showModal(`<div class="ptab">UPDATES</div>
     <div class="updates tall">${NEWS.map(n => `<div class="rel"><div class="rel-head"><b>v${n.v}</b><span>${esc(n.title)}</span><em>${n.date}</em></div><ul class="news-list">${n.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}
       <div class="ptab grey">COMING UP</div><div class="roadmap">${roadmapRows(ROADMAP)}</div></div>
     <button class="obtn grey block" data-action="closeModal">CLOSE</button>`);
@@ -202,7 +204,7 @@ function newsModal() {
 function homeView() {
   const install = (!isStandalone() && !installDismissed) ? `<div class="panel slim row between"><div><b>ADD TO HOME SCREEN</b><div class="small">${isIOS() ? 'Share, then Add to Home Screen.' : 'Open in Safari on iPhone.'}</div></div><div class="row"><button class="obtn small" data-action="go" data-to="profile" data-sub="device">HOW</button><button class="obtn small grey" data-action="dismissInstall">LATER</button></div></div>` : '';
   return `${seriesHero()}
-    <div class="notice" data-action="go" data-to="market" data-sub="codes"><i>TODAY</i><span>Featured code ${G.featuredCode()} · +150 points</span><em>›</em></div>
+    <div class="notice" data-action="go" data-to="collection" data-sub="codes"><i>TODAY</i><span>Featured code ${G.featuredCode()} · +150 coins</span><em>›</em></div>
     ${todayCard()}${menuTiles()}${newsCard()}${install}`;
 }
 
@@ -225,10 +227,10 @@ function binderView() {
       <div class="tokgrid">${shown.map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
     </div>`;
   }).join('');
-  const frames = (binderFilter === 'all' || binderFilter === 'tour') && binderTier !== 'mythic' ? `<div class="charset"><div class="charset-head"><div><b>Keeper's Frames</b><span class="small">Won on the Orbit Tour</span></div></div><div class="tokgrid">${CTOONS.filter(t => t.series === 'tour').map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div></div>` : '';
+  const frames = (binderFilter === 'all' || binderFilter === 'one') && binderTier !== 'mythic' ? `<div class="charset"><div class="charset-head"><div><b>One of One</b><span class="small">Won from gatekeepers</span></div></div><div class="tokgrid">${CTOONS.filter(t => t.series === 'one').map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div></div>` : '';
   const prizes = (binderFilter === 'all' || binderFilter === 'pz') && binderTier === 'all' ? `<div class="charset"><div class="charset-head"><div><b>Orbit Prizes</b><span class="small">Earn only</span></div></div><div class="tokgrid">${CTOONS.filter(t => t.series === 'pz').map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div></div>` : '';
   return `<div class="panel">
-    <div class="ptab">MY BINDER <em>${G.uniqueOwned()}/${CTOONS.length} cTOONS · ${sets} SETS</em></div>
+    <div class="ptab">MY BINDER <em>${G.uniqueOwned()}/${CTOONS.length} CHIPS · ${sets} SETS</em></div>
     <div class="chips scroll">${tabs.map(([k, n]) => `<button class="chip ${binderFilter === k ? 'on' : ''}" data-action="binderFilter" data-id="${k}">${n} <em>${ownedIn(k)}/${totalIn(k)}</em></button>`).join('')}</div>
     <div class="chips tiers">${[['all', 'ALL TIERS', '#5d6f88'], ['mythic', 'MYTHIC', RARITY[MYTHIC].color], ['legendary', 'LEGENDARY', RARITY[LEGENDARY].color]].map(([k, n, col]) => `<button class="chip tier ${binderTier === k ? 'on' : ''}" style="--tc:${col}" data-action="binderTier" data-id="${k}">${n}</button>`).join('')}</div>
     ${binderFilter !== 'all' && SERIES[binderFilter] ? `<div class="series-blurb">${esc(SERIES[binderFilter].blurb)}</div>` : ''}
@@ -258,30 +260,29 @@ function detailModal(id) {
   if (n > 0) {
     if (inDeck < n && state.deck.length < 12) actions.push(`<button class="obtn" data-action="deckAdd" data-id="${id}">ADD TO DECK</button>`);
     if (inDeck > 0) actions.push(`<button class="obtn grey" data-action="deckRemove" data-id="${id}">REMOVE FROM DECK</button>`);
-    if (inZone < n) actions.push(`<button class="obtn" data-action="zoneAdd" data-id="${id}">PUT IN cZONE</button>`);
-    if (n > 1 && t.series !== 'pz' && t.series !== 'tour') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
-    if (t.series !== 'pz' && t.series !== 'tour') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
+    if (n > 1 && t.series !== 'pz' && t.series !== 'one') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
+    if (t.series !== 'pz' && t.series !== 'one') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
   }
   const prov = (state.prov || {})[id];
-  const srcName = { pack: 'a cPack', free: 'the free daily chip', trade: 'the Auction', gift: 'a gift', code: 'an Orbit Code', starter: 'your starter pack', prize: 'a prize' };
+  const srcName = { pack: 'a Pack', free: 'the free daily chip', trade: 'the Auction', gift: 'a gift', code: 'an code', starter: 'your starter pack', prize: 'a prize' };
   if (n > 0 && t.series !== 'pz') actions.push(`<button class="obtn small ${state.showcase === id ? '' : 'grey'}" data-action="showcase" data-id="${id}">${state.showcase === id ? 'ON FRONT PAGE' : 'FEATURE ON FRONT PAGE'}</button>`);
   showModal(`<div class="detail">
-      <div class="ptab">cTOON DETAILS</div>
+      <div class="ptab">CHIP DETAILS</div>
       <div class="detail-top">
         <div class="tilt" id="tilt"><div class="tilt-in"><div class="tilt-face">${n ? tokenSVG(t, 150) : shadowTokenSVG(t, 150)}</div><div class="tilt-back">${n ? `<div class="back-card" style="--rc:${RARITY[t.rarity].color}"><b>No. ${prov ? String(prov.mint).padStart(4, '0') : '----'}</b><span>${prov ? new Date(prov.t).toLocaleDateString() : ''}</span><span>${prov ? 'from ' + (srcName[prov.src] || prov.src) : ''}</span><em>ORBIT</em></div>` : ''}</div></div>${n ? '<button class="flipbtn" data-action="flipDetail">FLIP</button>' : ''}</div>
         <div class="detail-info">
           <h2>${n ? esc(t.name) : '???'}</h2>
           <div class="row wrap"><span class="stag">${esc(s.name)}</span>${rtag(t)}${t.edition && t.edition !== 'Prize' ? `<span class="etag">${esc(t.edition)}</span>` : ''}</div>
-          <div class="statline"><span>VALUE</span><b>${t.points}</b><span>gTOON</span><b>${t.pts}</b>${ctag(t)}</div>
+          <div class="statline"><span>VALUE</span><b>${t.points}</b><span>CHIP</span><b>${t.pts}</b>${ctag(t)}</div>
         </div>
       </div>
-      ${n ? `<p class="blurb">“${esc(t.blurb)}”</p>` : '<p class="blurb muted">Not in your binder yet. Find it in cPacks, trades or by winning gToons.</p>'}
+      ${n ? `<p class="blurb">“${esc(t.blurb)}”</p>` : '<p class="blurb muted">Not in your binder yet. Find it in packs, trades or by winning chips.</p>'}
       <div class="power"><span>POWER</span> <b>${POWER_NAMES[t.power.t] || ''}</b> ${esc(powerText(t.power))}</div>
       ${t.secret ? `<div class="power secret ${G.isAwake(id) ? '' : 'locked'}"><span>SECRET</span> ${G.isAwake(id) ? `<b>${POWER_NAMES[t.secret.t] || ''}</b> ${esc(powerText(t.secret))}` : `Wakes after ${TRAIN_WINS} wins on the board · ${Math.min(TRAIN_WINS, G.trainedWins(id))}/${TRAIN_WINS}`}</div>` : ''}
-      <div class="small">Owned ${n} · In deck ${inDeck} · In cZone ${inZone}</div>
+      <div class="small">Owned ${n} · In deck ${inDeck} · In portfolio ${inZone}</div>
       <div class="row wrap">${actions.join('')}</div>
       ${artSection(t)}
-      <div class="byline">Portrait drawn for Cartoon Orbit · ${esc(SERIES[t.series].name)} · ${t.year}</div>
+      <div class="byline">[Placeholder art] · ${esc(SERIES[t.series].name)} · No. ${esc(t.id)}</div>
       <button class="obtn grey block" data-action="closeModal">CLOSE</button>
     </div>`);
   bindTilt();
@@ -316,15 +317,15 @@ function artSection(t) {
 function cmartView() {
   const free = G.dailyFreeCtoon(); const freeDone = state.dailyFree === todayKey();
   return `<div class="panel">
-    <div class="ptab">cMART <em>YOUR 24-HOUR ORBIT MARKETPLACE</em></div>
-    <div class="promo free-promo ${freeDone ? 'done' : ''}"><div class="row"><div class="promo-tok">${tokenSVG(free, 72)}</div><div><div class="promo-title">FREE cTOON OF THE DAY</div><p>${esc(free.name)} · ${RARITY[free.rarity].name}</p>${freeDone ? '<span class="okchip">COLLECTED</span>' : '<button class="obtn hot" data-action="claimFree">TAKE IT</button>'}</div></div></div>
+    <div class="ptab">SHOP <em>PACKS AND THE FREE CHIP OF THE DAY</em></div>
+    <div class="promo free-promo ${freeDone ? 'done' : ''}"><div class="row"><div class="promo-tok">${tokenSVG(free, 72)}</div><div><div class="promo-title">FREE CHIP OF THE DAY</div><p>${esc(free.name)} · ${RARITY[free.rarity].name}</p>${freeDone ? '<span class="okchip">COLLECTED</span>' : '<button class="obtn hot" data-action="claimFree">TAKE IT</button>'}</div></div></div>
     ${PACKS.map(p => `<div class="pack ${p.id}">
       <div class="pack-art">${packSVG(p, { size: 58 })}</div>
-      <div class="pack-info"><b>${esc(p.name).toUpperCase().replace('CPACK', 'cPACK')}</b><div class="small">${esc(p.desc)}</div>
+      <div class="pack-info"><b>${esc(p.name).toUpperCase().replace('CPACK', 'PACK')}</b><div class="small">${esc(p.desc)}</div>
         <div class="odds">${p.odds.map((o, i) => `<span style="--rc:${RARITY[i].color}">${RARITY[i].name.split(' ').map(w => w[0]).join('')} ${(o * 100).toFixed(o < 0.01 ? 1 : 0)}%</span>`).join('')}</div></div>
       <button class="obtn ${G.canAfford(p.price) ? 'hot' : ''}" data-action="buyPack" data-id="${p.id}" ${G.canAfford(p.price) ? '' : 'disabled'}>${state.unlimited ? 'FREE' : fmt(p.price) + ' PTS'}</button>
     </div>`).join('')}
-    <p class="note">Earn points from the daily bonus, quests, gToons wins and by recycling duplicate cToons.</p>
+    <p class="note">Earn points from the daily bonus, quests, match wins and by recycling duplicate chips.</p>
   </div>`;
 }
 function revealModal(ids, title = 'YOU GOT…') {
@@ -346,132 +347,20 @@ function auctionView() {
           <div class="trade-side">${tokenHTML(get, { count: 0 })}<div class="small">YOU GET</div></div>
           ${done ? '<span class="okchip">TRADED</span>' : `<button class="obtn ${have >= o.giveN ? 'hot' : ''}" data-action="trade" data-i="${o.idx}" ${have >= o.giveN ? '' : 'disabled'}>TRADE</button>`}
         </div></div>`; }).join('')}
-    <p class="note">Trading with a real friend? Open a cToon in your Binder and choose <b>GIFT TO A FRIEND</b> to make a code they redeem under Market → Codes.</p>
+    <p class="note">Trading with a real friend? Open a chip in your Binder and choose <b>GIFT TO A FRIEND</b> to make a code they redeem under Market → Codes.</p>
   </div>`;
 }
 
-// ---------- COMPETE ----------
-// ---------- THE ORBIT TOUR ----------
-function tourMap(cur) {
-  const c = state.campaign;
-  const pts = [];
-  for (let i = 0; i < 9; i++) pts.push([50 + 34 * Math.sin(i * 1.15 + 0.6), 6 + i * 11]);
-  const d = pts.map((p, i) => i === 0 ? `M${p[0]} ${p[1]}` : `C${pts[i - 1][0]} ${pts[i - 1][1] + 5.5},${p[0]} ${p[1] - 5.5},${p[0]} ${p[1]}`).join(' ');
-  const stops = ZONES.map((z, i) => { const [x, y] = pts[i + 1]; const lit = c.badges.includes(z.id); const un = G.zoneUnlocked(z); const right = x < 50;
-    return `<div class="stop ${i === cur && !G.tourComplete() ? 'cur' : ''}" style="left:${x}%;top:${y}%" data-action="tourZone" data-id="${i}">${zoneBadgeSVG(z, 48, lit || un)}</div>
-      <div class="stop-lbl ${un ? '' : 'locked'}" style="top:${y}%;${right ? `left:calc(${x}% + 32px)` : `right:calc(${100 - x}% + 32px)`}" data-action="tourZone" data-id="${i}">${esc(z.name)}</div>`; }).join('');
-  return `<div class="tourmap"><svg class="track" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#c8d4e1" stroke-width="2.2" vector-effect="non-scaling-stroke"/><path d="${d}" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/></svg>
-    <div class="station" style="left:${pts[0][0]}%;top:${pts[0][1]}%">ORBIT STATION</div>${stops}<div class="station" style="left:${pts[8][0]}%;top:${pts[8][1]}%">ORBIT STATION</div></div>`;
-}
-function tourNodeCard(n) {
-  const st = G.nodeStatus(n); const times = G.timesCleared(n);
-  const kind = n.kind === 'keeper' ? 'KEEPER' : n.kind === 'spar' ? 'SPARRING' : 'CHALLENGE';
-  const goal = n.kind === 'spar' ? '' : goalText(n.goal); const dk = deckText(n.deck);
-  const line = st === 'done' ? (n.kind === 'spar' ? `SPARRED ×${times}` : `CLEARED${times > 1 ? ' ×' + times : ''}`) : st === 'locked' ? (n.kind === 'keeper' ? 'CLEAR BOTH CHALLENGES FIRST' : 'LOCKED') : [goal, dk].filter(Boolean).join(' · ') || `+${n.reward.points} PTS`;
-  return `<div class="tnode ${st} ${n.kind}" data-action="tourNode" data-id="${n.id}">
-    <div class="tnode-av">${st === 'locked' ? socketSVG(56) : tokenSVG(BY_ID[n.avatar], 56, { bubble: false })}</div>
-    <div class="tnode-info"><span class="tnode-kind">${kind}${n.kicker ? ' · ' + esc(n.kicker) : ''}</span><b>${esc(n.name)}</b><em>${line}</em></div>
-    <span class="tnode-go">${st === 'done' ? '✓' : st === 'locked' ? '·' : '›'}</span>
-  </div>`;
-}
-function tourView() {
-  const c = G.ensureCampaign(); const cur = G.tourZoneIndex();
-  if (tourZone == null || tourZone < 0 || tourZone >= ZONES.length) tourZone = cur;
-  const z = ZONES[tourZone]; const un = G.zoneUnlocked(z); const complete = G.tourComplete();
-  const frames = `<div class="frames">${ZONES.map((zz, i) => `<div class="frame-slot ${c.badges.includes(zz.id) ? 'lit' : ''}" data-action="tourZone" data-id="${i}">${zoneBadgeSVG(zz, 40, c.badges.includes(zz.id))}</div>`).join('')}</div>`;
-  return `<section class="tour-head" style="--s1:${z.sky[0]};--s2:${z.sky[1]};--s3:${z.sky[2]}">
-      <div class="hero-kicker">THE ORBIT TOUR · ${complete ? 'THE REEL IS WHOLE' : c.badges.length + '/7 FRAMES'}</div>
-      ${frames}
-      <div class="tour-zone-name">${esc(z.name)}</div>
-      <div class="tour-zone-place">${esc(z.place)}</div>
-      ${z.tagline ? `<div class="tour-tag">“${esc(z.tagline)}”</div>` : ''}
-    </section>
-    <div class="panel">
-      <div class="ptab">ZONE ${z.n} OF 7 <em>${un ? (c.badges.includes(z.id) ? 'FRAME WON' : 'OPEN') : 'LOCKED · WIN THE FRAME BEFORE IT'}</em></div>
-      <div class="tnodes">${z.nodes.map(tourNodeCard).join('')}</div>
-    </div>
-    <div class="panel"><div class="ptab">THE ROUTE</div>${tourMap(cur)}<p class="note">Orbit Station to Orbit Station. Tap a stop.</p></div>`;
-}
-function tourNodeModal(id) {
-  const n = NODES[id]; if (!n) return; const st = G.nodeStatus(n); const chk = G.deckCheck(n);
-  const who = n.kind === 'challenge' ? n.opponent : n.name; const title = n.kind === 'keeper' ? n.title : n.kind === 'spar' ? 'SPARRING PARTNER' : 'CHALLENGER';
-  const rules = ruleText(n.rules); const sig = n.pool.fixed ? n.pool.fixed.slice(0, 4) : [];
-  const cols = n.pool.fixed ? B.topColors(n.pool.fixed) : [];
-  const packName = n.reward.pack ? PACKS.find(p => p.id === n.reward.pack).name : '';
-  const rc = n.reward.chip ? BY_ID[n.reward.chip] : null;
-  const playable = st !== 'locked' && chk.ok;
-  showModal(`<div class="scout">
-    <div class="scout-top"><div class="scout-av">${st === 'locked' ? socketSVG(110) : tokenSVG(BY_ID[n.avatar], 110, { bubble: false })}</div><div><div class="scout-kind">${title}</div><div class="scout-name">${esc(who)}</div>${(n.taunt || n.intro) ? `<div class="scout-line">“${esc(n.taunt || n.intro)}”</div>` : ''}</div></div>
-    <div class="ptab">${esc(n.name).toUpperCase()}</div>
-    ${n.kicker ? `<div class="kicker">${esc(n.kicker)}</div>` : ''}
-    <div class="scout-rows">
-      <div><span>GOAL</span><b>${goalText(n.goal)}</b></div>
-      ${rules.length ? `<div><span>HOUSE RULES</span><b>${rules.join(' ')}</b></div>` : ''}
-      ${n.deck ? `<div><span>YOUR DECK</span><b>${deckText(n.deck)}</b></div>` : ''}
-      ${n.pool.mirror ? '<div><span>THEY BRING</span><b>A COPY OF YOUR DECK</b></div>' : sig.length ? `<div><span>THEY BRING</span><b class="sig">${sig.map(i => tokenSVG(BY_ID[i], 36, { bubble: false })).join('')}</b></div>` : ''}
-      ${cols.length ? `<div><span>THEY LEAN</span><b>${cols.map(k => `<span class="ctag" style="--cc:${COLORS[k].hex}">${COLORS[k].name}</span>`).join(' ')}</b></div>` : ''}
-      ${n.smart ? '<div><span>WARNING</span><b>READS YOUR HAND</b></div>' : ''}
-      <div><span>REWARD</span><b>+${n.reward.points} PTS${packName ? ' · ' + esc(packName).toUpperCase() : ''}${rc ? ' · ' + esc(rc.name).toUpperCase() : ''}${st === 'done' && n.kind !== 'spar' ? ' (WON)' : ''}</b></div>
-    </div>
-    ${rc ? `<div class="scout-chip">${G.ownedCount(rc.id) ? tokenSVG(rc, 84, { bubble: false }) : shadowTokenSVG(rc, 84)}</div>` : ''}
-    <div class="deckline ${chk.ok ? 'ok' : 'bad'}">${chk.ok ? 'DECK READY' : esc(chk.why).toUpperCase()}${chk.ok ? '' : n.deck ? ` <button class="obtn small" data-action="tourBuild" data-id="${n.id}">BUILD ONE</button>` : ` <button class="obtn small" data-action="tourBuild" data-id="${n.id}">AUTO-FILL</button>`}</div>
-    <div class="row center"><button class="obtn primary big" data-action="tourPlay" data-id="${n.id}" ${playable ? '' : 'disabled'}>${st === 'done' && n.kind !== 'spar' ? 'PLAY AGAIN' : 'PLAY'}</button><button class="obtn grey" data-action="closeModal">BACK</button></div>
-  </div>`);
-}
-// Title cards: a sequence of story lines, tap to advance.
+// ---------- CAMPAIGN (see camp.js) ----------
 function showCards(cards, onDone) {
   if (!cards || !cards.length) { if (onDone) onDone(); return; }
   const el = document.createElement('div'); el.className = 'tcard'; let i = 0;
   const draw = () => { el.innerHTML = `<div class="tcard-in"><div class="tcard-frame"><p>${esc(cards[i])}</p></div><div class="tcard-dots">${cards.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div><div class="tcard-hint">${i < cards.length - 1 ? 'TAP' : 'TAP TO CONTINUE'}</div></div>`; };
   draw();
-  el.addEventListener('click', () => { i++; if (i >= cards.length) { el.classList.add('out'); setTimeout(() => { el.remove(); if (onDone) onDone(); }, 300); } else { snd('flip'); draw(); } });
-  document.body.appendChild(el); snd('flip');
+  el.addEventListener('click', () => { i++; if (i >= cards.length) { el.classList.add('out'); setTimeout(() => { el.remove(); if (onDone) onDone(); }, 300); } else { snd('lima'); draw(); } });
+  document.body.appendChild(el); snd('lima');
 }
 // Show the next unseen story beat for the Tour, if any.
-function queueTourStory() {
-  if (section !== 'battle' || subs.battle !== 'tour' || match || document.querySelector('.tcard, .setpost') || document.body.classList.contains('pk-open') || !$('#modal').hidden) return;
-  const c = G.ensureCampaign(); const cur = G.tourZoneIndex();
-  const beats = [];
-  if (PROLOGUE.length) beats.push(['prologue', PROLOGUE]);
-  ZONES.forEach((z, i) => {
-    if (i > cur) return;
-    if (G.zoneUnlocked(z)) beats.push(['arrive:' + z.id, z.story.arrive]);
-    if (z.challenges.some(ch => c.done[ch.id])) beats.push(['mid:' + z.id, z.story.midway]);
-    if (G.nodeStatus(z.keeper) !== 'locked') beats.push(['before:' + z.id, z.story.beforeKeeper]);
-    if (c.badges.includes(z.id)) beats.push(['after:' + z.id, z.story.afterKeeper]);
-  });
-  if (G.tourComplete() && EPILOGUE.length) beats.push(['epilogue', EPILOGUE]);
-  const next = beats.find(([k, cards]) => cards && cards.length && !G.storySeen(k));
-  if (!next) return;
-  G.markStory(next[0]);
-  showCards(next[1], () => { if (next[0].startsWith('after:')) tourZone = G.tourZoneIndex(); render(); });
-}
-
-function arenaView() {
-  const deckOk = state.deck.length === 12;
-  const next = nextOpponent(); const un = G.opponentUnlocked(next);
-  const champion = OPPONENTS.every(o => state.beaten.includes(o.id));
-  const st = state.stats; const deckPts = state.deck.reduce((s, id) => s + BY_ID[id].pts, 0);
-  return `<section class="challenger">
-      <div class="ch-kicker">${champion ? 'CHAMPION · PICK ANY CHALLENGER' : 'NEXT CHALLENGER'}</div>
-      <div class="ch-row"><div class="ch-av">${tokenSVG(BY_ID[next.avatar], 120, { bubble: false })}</div>
-        <div class="ch-info"><div class="ch-name">${esc(next.name)}</div><div class="ch-taunt">“${esc(next.taunt)}”</div>
-        <div class="ch-reward">WIN +${next.reward} PTS${state.beaten.includes(next.id) ? '' : ' · FIRST WIN +200 & A PREMIUM cPACK'}</div></div></div>
-      <button class="obtn primary big block" data-action="battle" data-id="${next.id}" ${deckOk && un ? '' : 'disabled'}>PLAY</button>
-      ${deckOk ? '' : '<div class="ch-note">Your deck needs 12 gToons. <b data-action="autoDeck">AUTO-FILL IT</b> or <b data-action="sub" data-id="deck">PICK THEM</b>.</div>'}
-    </section>
-    <div class="panel">
-      <div class="row between"><div class="ptab">YOUR DECK <em>${state.deck.length}/12 · ${deckPts} PTS</em></div><div class="row"><button class="obtn small grey" data-action="autoDeck">AUTO</button><button class="obtn small" data-action="sub" data-id="deck">EDIT</button></div></div>
-      <div class="deck-strip">${state.deck.map(id => `<div class="mini">${tokenSVG(BY_ID[id], 44)}</div>`).join('')}${Array(12 - state.deck.length).fill(`<div class="mini">${socketSVG(44)}</div>`).join('')}</div>
-      <div class="ptab">THE LADDER <em>${st.wins} W · ${st.battles - st.wins} L</em></div>
-      <div class="ladder">${OPPONENTS.map((op, i) => { const u = G.opponentUnlocked(op); const beat = state.beaten.includes(op.id); const isNext = op.id === next.id && !champion;
-        return `<div class="rung ${u ? '' : 'locked'} ${isNext ? 'next' : ''}">
-          <span class="n">0${i + 1}</span><div class="av">${u ? tokenSVG(BY_ID[op.avatar], 44, { bubble: false }) : socketSVG(44)}</div>
-          <div class="who"><b>${esc(op.name)}</b><span>${beat ? 'BEATEN · +' + op.reward + ' PTS A WIN' : u ? '+' + op.reward + ' PTS · FIRST WIN BONUS' : 'BEAT THE ONE ABOVE TO UNLOCK'}</span></div>
-          ${isNext ? '<span class="lock next">UP NEXT</span>' : u ? `<button class="obtn small grey" data-action="battle" data-id="${op.id}" ${deckOk ? '' : 'disabled'}>PLAY</button>` : '<span class="lock">LOCKED</span>'}
-        </div>`; }).join('')}</div>
-    </div>`;
-}
 function deckView() {
   const owned = [];
   Object.entries(state.collection).forEach(([id, n]) => { if (n > 0) owned.push({ id, n }); });
@@ -480,20 +369,20 @@ function deckView() {
   return `<div class="panel">
     <div class="ptab">MY DECK <em>${state.deck.length}/12</em></div>
     <div class="deckbar"><div class="small">Top colours: ${cols.map(c => `<span class="ctag" style="--cc:${COLORS[c].hex}">${COLORS[c].name}</span>`).join(' ')} · 3 of a colour on the board = +${B.COLOR_BONUS}</div><div class="row"><button class="obtn grey" data-action="autoDeck">AUTO</button><button class="obtn" data-action="sub" data-id="arena">DONE</button></div></div>
-    <p class="note">Tap a gToon to add it to your deck, tap again to remove it.</p>
+    <p class="note">Tap a chip to add it to your deck, tap again to remove it.</p>
     <div class="tokgrid">${owned.map(({ id, n }) => { const t = BY_ID[id]; const inDeck = state.deck.filter(d => d === id).length;
       return tokenHTML(t, { count: n, selected: inDeck > 0, action: 'deckToggle', name: inDeck ? `${t.name} (${inDeck})` : t.name }); }).join('')}</div>
   </div>`;
 }
 function rulesView() {
-  return `<div class="panel"><div class="ptab">HOW TO PLAY gTOONS</div>
+  return `<div class="panel"><div class="ptab">HOW TO PLAY</div>
     <div class="rules">
       <p><b>THE BOARD.</b> Each player has 7 sockets: a back row of 3 and a front row of 4. The front rows face each other across the VS line.</p>
-      <p><b>THE DECK.</b> Bring 12 gToons. You hold 5 in your hand and draw one after every play. Take turns placing one gToon until all 14 sockets are full.</p>
-      <p><b>POINTS.</b> Every gToon has a point value (1–16) and a colour. Highest total wins.</p>
-      <p><b>POWERS.</b> Most gToons have a power: doubling a buddy, bonuses per colour, penalties to the rival across the line, back-row or front-row bonuses and more. Powers are shown on the right when you select a gToon.</p>
-      <p><b>COLOURS.</b> Every 3 gToons of the same colour on your side earns +${B.COLOR_BONUS}.</p>
-      <p><b>SWAPPING.</b> Don't like your hand? Swap a gToon for the next one in your deck for -${B.SWAP_COST} points.</p>
+      <p><b>THE DECK.</b> Bring 12 chips. You hold 5 in your hand and draw one after every play. Take turns placing one chip until all 14 sockets are full.</p>
+      <p><b>POINTS.</b> Every chip has a point value (1–16) and a colour. Highest total wins.</p>
+      <p><b>POWERS.</b> Most chips have a power: doubling a buddy, bonuses per colour, penalties to the rival across the line, back-row or front-row bonuses and more. Powers are shown on the right when you select a chip.</p>
+      <p><b>COLOURS.</b> Every 3 chips of the same colour on your side earns +${B.COLOR_BONUS}.</p>
+      <p><b>SWAPPING.</b> Don't like your hand? Swap a chip for the next one in your deck for -${B.SWAP_COST} coins.</p>
     </div></div>`;
 }
 
@@ -530,12 +419,12 @@ function matchScreen() {
   const op = match.opponent;
   const sel = selectedHand >= 0 ? BY_ID[match.p.hand[selectedHand]] : null;
   const status = match.done ? (ev.aTotal > ev.bTotal ? 'GAME OVER — YOU WIN!' : ev.aTotal < ev.bTotal ? `GAME OVER — ${op.name.toUpperCase()} WINS.` : 'GAME OVER — IT’S A DRAW!')
-    : match.turn === 'p' ? (sel ? 'NOW TAP AN EMPTY SOCKET ON YOUR SIDE OF THE BOARD.' : `ROUND ${match.round}: PICK A gTOON FROM YOUR HAND.`) : `${op.name.toUpperCase()} IS THINKING…`;
+    : match.turn === 'p' ? (sel ? 'NOW TAP AN EMPTY SOCKET ON YOUR SIDE OF THE BOARD.' : `ROUND ${match.round}: PICK A CHIP FROM YOUR HAND.`) : `${op.name.toUpperCase()} IS THINKING…`;
   const pCols = B.topColors(state.deck), aCols = B.topColors(match.ai.slots.filter(Boolean).concat(match.ai.hand, match.ai.deck));
   const canSwap = match.turn === 'p' && !match.done && selectedHand >= 0 && match.p.deck.length > 0 && !match.rules.noSwap;
   return `<div class="gz">
-    <div class="gz-title">${match.node ? esc(zoneOf(match.node).name).toUpperCase() : 'GTOON GAME ZONE'}</div>
-    ${(() => { const r = ruleText(match.rules); if (match.node && match.node.kind !== 'spar') r.push(goalText(match.node.goal)); return r.length ? `<div class="gz-rules">${r.join(' · ')}</div>` : ''; })()}
+    <div class="gz-title">${match.node ? esc(match.node.region <= 7 ? REGIONS[match.node.region - 1].name : 'THE HEROES').toUpperCase() : 'MATCH'}</div>
+    ${(() => { const r = ruleText(match.rules); if (match.rules.heroP) r.unshift(`LEADER ${esc(BY_ID[match.rules.heroP].short).toUpperCase()} +${match.rules.heroBonus} IF FIRST.`); return r.length ? `<div class="gz-rules">${r.join(' · ')}</div>` : ''; })()}
     <div class="gz-grid">
       <aside class="gz-left">
         ${scoreBox(op.name, op.avatar, ev, 'ai', aCols, 'ai')}
@@ -556,9 +445,9 @@ function matchScreen() {
       <aside class="gz-right">
         <div class="gz-sel">
           ${sel ? `<div class="gz-sel-color">${COLORS[sel.color].abbr}</div><div class="gz-sel-tok">${tokenSVG(sel, 96)}</div><div class="gz-sel-name">${esc(sel.name)}</div><div class="gz-sel-power">${esc(powerText(sel.power)).toUpperCase()}</div>`
-               : `<div class="gz-sel-tok">${socketSVG(96)}</div><div class="gz-sel-name">SELECT A gTOON</div>`}
+               : `<div class="gz-sel-tok">${socketSVG(96)}</div><div class="gz-sel-name">SELECT A CHIP</div>`}
         </div>
-        <div class="gz-hand-title">YOUR gTOONS</div>
+        <div class="gz-hand-title">YOUR CHIPS</div>
         <div class="gz-hand">${[0, 1, 2, 3, 4, 5].map(hi => { const id = match.p.hand[hi]; if (!id) return `<div class="hslot empty">${socketSVG(100)}</div>`;
           return `<div class="hslot ${selectedHand === hi ? 'sel' : ''}" data-action="pickHand" data-i="${hi}">${tokenSVG(BY_ID[id], 100)}</div>`; }).join('')}</div>
         <div class="gz-tools"><button class="obtn small ${canSwap ? '' : 'grey'}" data-action="swapCard" ${canSwap ? '' : 'disabled'}>SWAP −${match.rules.swapCost}</button><span class="small">DECK ${match.p.deck.length}</span><button class="obtn small grey" data-action="forfeit">${match.done ? 'EXIT' : 'QUIT'}</button></div>
@@ -603,7 +492,7 @@ function diffHits(before, after, landedWho, landedSlot) {
 
 function startMatch(op, aiDeck, opts = {}, node = null) {
   if (state.deck.length !== 12) return;
-  match = B.newMatch(state.deck.slice(), aiDeck, op, { rules: opts.rules, pAwake: G.awakeIds() });
+  match = B.newMatch(state.deck.slice(), aiDeck, op, { rules: { ...(opts.rules || {}), heroP: G.heroChip(), heroAi: node && node.kind !== 'train' ? node.avatar : null }, pAwake: G.awakeIds() });
   match.node = node;
   selectedHand = -1; lastTotals = null; pendingLand = null; pendingHits = {}; busy = true;
   render();
@@ -613,15 +502,10 @@ function startMatch(op, aiDeck, opts = {}, node = null) {
   sfx.good(); setTimeout(() => sfx.great(), 650);
   setTimeout(() => { intro.remove(); busy = false; render(); if (match && match.turn === 'ai') setTimeout(aiTurn, 500); }, 1500);
 }
-function startBattle(opId) {
-  const op = OPPONENTS.find(o => o.id === opId);
-  if (!op || !G.opponentUnlocked(op)) return;
-  startMatch(op, G.opponentDeck(op));
-}
-function startTour(nodeId) {
-  const n = NODES[nodeId]; if (!n || G.nodeStatus(n) === 'locked') return;
-  const chk = G.deckCheck(n); if (!chk.ok) { toast(chk.why); return; }
-  startMatch(G.nodeOpponent(n), G.nodeDeck(n), { rules: n.rules }, n);
+function startCamp(nodeId) {
+  const n = NODES[nodeId]; if (!n || G.campStatus(n) === 'locked') return;
+  const chk = G.deckCheck(); if (!chk.ok) { toast(chk.why); return; }
+  startMatch(n.kind === 'train' ? G.campTrainOpponent(n) : G.campOpponent(n), G.campDeck(n), { rules: n.rules }, n);
 }
 function aiTurn() {
   if (!match || match.done || match.turn !== 'ai' || busy) return;
@@ -673,23 +557,24 @@ async function finishMatch() {
   const lineup = (side) => `<div class="lineup">${side.slots.filter(Boolean).map(id => `<div class="mini">${tokenSVG(BY_ID[id], 40)}</div>`).join('')}</div>`;
   const wokeHTML = (ids) => ids && ids.length ? `<div>${ids.map(id => `<span class="woke">SECRET AWAKE · ${esc(BY_ID[id].short).toUpperCase()}</span>`).join('')}</div>` : '';
   if (match.node) {
-    const node = match.node; const res = G.recordTour(node, ev, match.p.slots);
-    snd(res.cleared ? 'win' : won || draw ? 'good' : 'lose');
-    const title = res.cleared ? (node.kind === 'keeper' ? 'FRAME WON' : node.kind === 'spar' ? 'GOOD SPAR' : 'CLEARED') : won ? 'GOAL MISSED' : draw ? 'DRAW' : 'DEFEAT';
-    const packName = node.reward.pack ? PACKS.find(p => p.id === node.reward.pack).name : '';
-    showModal(`<div class="reveal result ${res.cleared ? 'won' : draw ? 'drew' : 'lost'}">
+    const node = match.node; const res = G.campRecord(node, ev, match.p.slots); const op = match.opponent;
+    snd(res.won ? 'win' : res.draw ? 'good' : 'lose');
+    const title = res.won ? (node.kind === 'gate' ? 'GATE OPEN' : node.kind === 'hero' ? 'HERO DOWN' : node.kind === 'train' ? 'GOOD SESSION' : 'VICTORY') : res.draw ? 'DRAW' : 'DEFEAT';
+    const key = node.kind === 'npc' ? `r${node.region}.npc${node.id.slice(-1)}.${res.won ? 'win' : 'lose'}` : node.kind === 'gate' ? `r${node.region}.gate.${res.won ? 'win' : 'lose'}` : '';
+    const line = key ? lore(key) : '';
+    showModal(`<div class="reveal result ${res.won ? 'won' : res.draw ? 'drew' : 'lost'}">
       <div class="result-title">${title}</div>
       <div class="result-score"><span class="me">${ev.aTotal}</span><i>–</i><span class="them">${ev.bTotal}</span></div>
-      <div class="result-names"><span>${esc(state.name)}</span><span>${esc(match.opponent.name)}</span></div>
-      ${node.kind !== 'spar' ? `<div class="result-goal">${goalText(node.goal)}${res.cleared ? ' ✓' : ''}</div>` : ''}
+      <div class="result-names"><span>${esc(state.name)}</span><span>${esc(op.name)}</span></div>
+      ${line ? `<div class="scout-line center">“${esc(line)}”</div>` : ''}
       <div class="result-lineups">${lineup(match.p)}${lineup(match.ai)}</div>
-      <div class="result-pts">+${res.points} POINTS${res.first && node.kind !== 'spar' ? ' · FIRST CLEAR' : ''}</div>
-      ${res.chips.length ? `<div class="small">YOURS NOW</div><div class="reveal-toks">${res.chips.map(id => `<div class="flip">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
-      ${res.pack.length ? `<div class="small">${esc(packName).toUpperCase()}</div><div class="reveal-toks">${res.pack.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
-      ${res.badge ? `<div class="result-pts">FRAME ${zoneOf(node).n} OF 7</div>` : ''}
+      <div class="result-pts">+${res.coins} COINS${res.first && node.kind !== 'train' ? ' · FIRST WIN' : ''}</div>
+      ${res.one ? `<div class="small">ONE OF ONE</div><div class="reveal-toks"><div class="flip">${tokenHTML(BY_ID[res.one], { count: 0 })}</div></div>` : ''}
+      ${res.badge ? `<div class="result-pts">BADGE · REGION ${node.region}</div><div class="center">${CAMP.badgeSVG(res.badge, 72)}</div>` : ''}
+      ${res.complete ? '<div class="result-pts">100% COMPLETE</div>' : ''}
       ${wokeHTML(res.woke)}
-      ${res.prize ? `<div class="result-pts">PRIZE: ${esc(BY_ID[res.prize].name).toUpperCase()}</div>` : ''}
-      <div class="row center"><button class="obtn primary" data-action="leaveMatch">CONTINUE</button><button class="obtn grey" data-action="rematch">${res.cleared ? 'AGAIN' : 'RETRY'}</button></div></div>`);
+      ${res.prize ? `<div class="result-pts">AWARD: ${esc(BY_ID[res.prize].name).toUpperCase()}</div>` : ''}
+      <div class="row center"><button class="obtn primary" data-action="leaveMatch">CONTINUE</button><button class="obtn grey" data-action="rematch">${res.won ? 'AGAIN' : 'RETRY'}</button></div></div>`);
     return;
   }
   const res = draw ? { points: 0, firstWin: false, bonus: [], prize: null, woke: [] } : G.recordBattle(match.opponent, won, ev.aTotal - ev.bTotal, match.p.slots);
@@ -699,78 +584,71 @@ async function finishMatch() {
     <div class="result-score"><span class="me">${ev.aTotal}</span><i>–</i><span class="them">${ev.bTotal}</span></div>
     <div class="result-names"><span>${esc(state.name)}</span><span>${esc(match.opponent.name)}</span></div>
     <div class="result-lineups">${lineup(match.p)}${lineup(match.ai)}</div>
-    ${draw ? '<div class="small">No points this time.</div>' : `<div class="result-pts">+${res.points} POINTS${res.firstWin ? ' · FIRST WIN' : ''}</div>`}
-    ${res.bonus.length ? `<div class="small">PREMIUM cPACK</div><div class="reveal-toks">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
+    ${draw ? '<div class="small">No points this time.</div>' : `<div class="result-pts">+${res.points} COINS${res.firstWin ? ' · FIRST WIN' : ''}</div>`}
+    ${res.bonus.length ? `<div class="small">PREMIUM PACK</div><div class="reveal-toks">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
     ${wokeHTML(res.woke)}
     ${res.prize ? `<div class="result-pts">PRIZE: ${esc(BY_ID[res.prize].name).toUpperCase()}</div>` : ''}
-    <div class="row center"><button class="obtn primary" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">LADDER</button></div></div>`);
+    <div class="row center"><button class="obtn primary" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">DONE</button></div></div>`);
 }
 
-// ---------- cZONES ----------
-function zoneStage(items, bgId, editable) {
-  const bg = BACKGROUNDS.find(b => b.id === bgId) || BACKGROUNDS[0];
-  return `<div class="stage ${editable ? 'editable' : ''}" id="${editable ? 'stage' : ''}" style="background:${bg.css}">
-    ${items.map((it, i) => `<div class="placed" data-i="${i}" style="left:${(it.x * 100).toFixed(1)}%;top:${(it.y * 100).toFixed(1)}%">${badgeSVG(BY_ID[it.id], 72)}<span>${esc(BY_ID[it.id].name)}</span></div>`).join('')}
-    ${items.length ? '' : '<div class="stage-hint">THIS cZONE IS EMPTY</div>'}
-  </div>`;
-}
-function myZoneView() {
-  const rating = state.czone.items.reduce((s, it) => s + BY_ID[it.id].points, 0);
-  const ownedIds = Object.keys(state.collection).filter(id => state.collection[id] > state.czone.items.filter(it => it.id === id).length);
-  return `<div class="panel">
-    <div class="zone-head"><div class="zone-pill"><i>c</i>cZONES</div><div class="zone-owner"><b>${esc(state.name)}</b><span>THE ORBITER</span></div></div>
-    <div class="zone-strip"><span>MY cZONE:</span><b>RATING ${fmt(rating)}</b><button class="zbtn" data-action="zonePicker">ADD cTOON</button><button class="zbtn" data-action="bgPicker">BACKGROUND</button><button class="zbtn" data-action="zoneMode" data-id="visit">VISIT cZONES</button></div>
-    ${zoneStage(state.czone.items, state.czone.bg, true)}
-    <p class="note">Drag cToons to arrange them. Double-tap one to send it back to your binder. Up to 20 on display.</p>
-    ${zonePick ? `<div class="ptab">PICK A cTOON</div><div class="tokgrid">${ownedIds.map(id => tokenHTML(BY_ID[id], { count: state.collection[id], action: 'zoneAdd' })).join('') || '<p class="note">Every cToon you own is already on display.</p>'}</div>` : ''}
-  </div>`;
-}
-function visitView() {
-  const zones = G.npcZones();
-  visitIndex = ((visitIndex % zones.length) + zones.length) % zones.length;
-  const z = zones[visitIndex];
-  return `<div class="panel">
-    <div class="zone-head"><div class="zone-pill"><i>c</i>cZONES</div><div class="zone-owner"><b>${esc(z.owner)}</b><span>${z.award ? z.award.toUpperCase() + ' AWARD' : 'ORBITER'}</span></div></div>
-    <div class="zone-strip"><span>cZONES:</span><button class="zbtn" data-action="visit" data-id="prev">PREVIOUS</button><button class="zbtn" data-action="visit" data-id="random">RANDOM</button><button class="zbtn" data-action="visit" data-id="next">NEXT</button><button class="zbtn" data-action="zoneMode" data-id="mine">MY cZONE</button><b>RATING ${fmt(z.rating)}</b></div>
-    <div class="badgegrid">${z.items.map(it => `<div class="badge" data-action="detail" data-id="${it.id}">${badgeSVG(BY_ID[it.id], 100)}<span>${esc(BY_ID[it.id].name).toUpperCase()}</span></div>`).join('')}
-      ${z.award ? `<div class="badge award"><div class="award-ring">${characterSVG(BY_ID[z.items[0].id], 70)}</div><span class="award-lbl">${esc(z.award).toUpperCase()} AWARD</span></div>` : ''}</div>
-    <p class="note">Tap a cToon to see its details. cZones refresh every day.</p>
-  </div>`;
-}
-function zoneView() { return zoneMode === 'visit' ? visitView() : myZoneView(); }
+// ---------- PORTFOLIO ----------
 function bgModal() {
-  showModal(`<div class="ptab">cZONE BACKGROUNDS</div><div class="bg-grid">${BACKGROUNDS.map(b => { const un = state.unlockedBgs.includes(b.id);
+  showModal(`<div class="ptab">PORTFOLIO BACKGROUNDS</div><div class="bg-grid">${BACKGROUNDS.map(b => { const un = state.unlockedBgs.includes(b.id);
     return `<button class="bg-opt ${state.czone.bg === b.id ? 'on' : ''}" data-action="${un ? 'setBg' : 'buyBg'}" data-id="${b.id}" style="background:${b.css}"><span>${esc(b.name).toUpperCase()}${un ? '' : ` · ${b.cost} PTS`}</span></button>`; }).join('')}</div>
     <button class="obtn grey block" data-action="closeModal">CLOSE</button>`);
 }
 let drag = null;
-function bindStage() {
-  const stage = $('#stage'); if (!stage) return;
-  let lastTap = { i: -1, t: 0 };
-  stage.addEventListener('pointerdown', (e) => {
-    const el = e.target.closest('.placed'); if (!el) return;
-    const i = +el.dataset.i; const now = Date.now();
-    if (lastTap.i === i && now - lastTap.t < 350) { G.removeFromZone(i); render(); return; }
-    lastTap = { i, t: now };
-    drag = { el, i, rect: stage.getBoundingClientRect() };
-    el.setPointerCapture(e.pointerId); el.classList.add('dragging');
-  });
-  stage.addEventListener('pointermove', (e) => {
-    if (!drag) return;
-    const x = Math.min(0.9, Math.max(0.0, (e.clientX - drag.rect.left) / drag.rect.width - 0.08));
-    const y = Math.min(0.82, Math.max(0.0, (e.clientY - drag.rect.top) / drag.rect.height - 0.12));
-    drag.el.style.left = (x * 100) + '%'; drag.el.style.top = (y * 100) + '%'; drag.pos = { x, y };
-  });
-  const end = () => { if (!drag) return; drag.el.classList.remove('dragging'); if (drag.pos) G.moveInZone(drag.i, drag.pos.x, drag.pos.y); drag = null; };
-  stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+// ---------- PORTFOLIO (profile stage) ----------
+function portfolioView() {
+  const bg = BACKGROUNDS.find(b => b.id === state.czone.bg) || BACKGROUNDS[0];
+  const favs = (state.favorites || []).filter(id => G.ownedCount(id) > 0).slice(0, 6);
+  const badges = state.badges || [];
+  return `<div class="panel">
+    <div class="zone-head"><div class="zone-pill"><i>P</i>PORTFOLIO</div><div class="zone-owner"><b>${esc(state.name)}</b><span>${badges.length} BADGE${badges.length === 1 ? '' : 'S'} · ${G.uniqueOwned()} CHIPS</span></div></div>
+    <div class="stage folio" style="background:${bg.css}">
+      <div class="folio-name">${esc(state.name)}</div>
+      <div class="folio-favs">${favs.length ? favs.map(id => `<div class="folio-chip" data-action="detail" data-id="${id}">${tokenSVG(BY_ID[id], 84, { bubble: false })}</div>`).join('') : '<div class="stage-hint">PICK YOUR FAVOURITE CHIPS</div>'}</div>
+      <div class="folio-badges">${badges.map(b => CAMP.badgeSVG(b, 36)).join('')}</div>
+    </div>
+    <div class="row wrap folio-tools"><button class="obtn small" data-action="favPicker">FAVOURITES</button><button class="obtn small" data-action="bgPicker">BACKGROUND</button><button class="obtn small" data-action="renamePrompt">NAME</button><button class="obtn small grey" data-action="go" data-to="collection" data-sub="deck">GO TO STACK</button></div>
+    <div class="ptab">BADGES <em>${badges.length}/8</em></div>
+    <div class="awards">${['region1', 'region2', 'region3', 'region4', 'region5', 'region6', 'region7', 'complete'].map(b => `<div class="award ${badges.includes(b) ? '' : 'off'}"><div>${CAMP.badgeSVG(b, 56)}</div>${b === 'complete' ? '100%' : 'REGION ' + b.slice(-1)}</div>`).join('')}</div>
+    <p class="note">Badges are won in the campaign and shown here and, later, online.</p>
+  </div>`;
+}
+function favPicker() {
+  const owned = Object.keys(state.collection).filter(id => state.collection[id] > 0 && BY_ID[id]).sort((a, b) => byRank(BY_ID[a], BY_ID[b]));
+  const favs = state.favorites || [];
+  showModal(`<div class="ptab">FAVOURITES <em>${favs.length}/6</em></div><p class="note">Tap up to six chips for your portfolio.</p>
+    <div class="tokgrid">${owned.map(id => tokenHTML(BY_ID[id], { count: 0, selected: favs.includes(id), action: 'favToggle' })).join('')}</div>
+    <button class="obtn primary block" data-action="closeModal">DONE</button>`);
+}
+function onlineView() {
+  return `<div class="panel online"><div class="ptab">ONLINE <em>COMING SOON</em></div>
+    <div class="online-art">${socketSVG(120)}</div>
+    <h2>Matches against other players.</h2>
+    <p class="note">Your portfolio, badges and stack will carry over. Until then, the campaign is the game.</p>
+    <button class="obtn primary" data-action="go" data-to="campaign">GO TO THE CAMPAIGN</button></div>`;
+}
+function coverScreen() {
+  const rings = Array.from({ length: 7 }, (_, i) => `<circle cx="50" cy="50" r="${12 + i * 6}" fill="none" stroke="#fff" stroke-opacity="${(0.55 - i * 0.06).toFixed(2)}" stroke-width=".6" transform="rotate(${i * 11} 50 50)" style="animation-delay:${i * -1.3}s" class="ring"/>`).join('');
+  return `<div class="cover" data-action="coverStart">
+    <svg class="cover-art" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"><defs><radialGradient id="cvg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#2f7ff5"/><stop offset=".5" stop-color="#14356d"/><stop offset="1" stop-color="#05070f"/></radialGradient></defs><rect width="100" height="100" fill="url(#cvg)"/>${rings}</svg>
+    <div class="cover-in"><div class="cover-mark">${socketSVG(150)}</div><div class="cover-title">[GAME]</div><div class="cover-sub">WORKING TITLE</div><div class="cover-tap">TAP TO START</div></div>
+    <div class="cover-ver">v${APP_VERSION}</div></div>`;
+}
+function applyTheme() {
+  const t = state.settings.theme || 'system';
+  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) ? '#0f1622' : '#ffffff';
 }
 
-// ---------- MARKET: codes ----------
+// ---------- codes ----------
 function codesView() {
-  return `<div class="panel"><div class="ptab">ORBIT CODES</div>
-    <p class="note">Promo codes give points, packs or cToons. Gift codes from friends move a cToon into your binder.</p>
+  return `<div class="panel"><div class="ptab">CODES</div>
+    <p class="note">Promo codes give points, packs or chips. Gift codes from friends move a chip into your binder.</p>
     <div class="row"><input id="codeInput" class="oinput" placeholder="ENTER CODE" autocapitalize="characters" autocomplete="off"><button class="obtn" data-action="redeem">SUBMIT</button></div>
-    <div class="featured">FEATURED CODE: <b>${G.featuredCode()}</b> <span class="small">(new every day, worth 150 points)</span></div>
+    <div class="featured">FEATURED CODE: <b>${G.featuredCode()}</b> <span class="small">(new every day, worth 150 coins)</span></div>
     <p class="note">Psst: a few more codes are hiding in the game's README on GitHub.</p></div>`;
 }
 
@@ -778,35 +656,37 @@ function codesView() {
 function profileView() {
   const show = BY_ID[G.showcaseId()]; const st = state.stats;
   const rating = state.czone.items.reduce((s, it) => s + BY_ID[it.id].points, 0);
-  const stats = [['cTOONS', `${G.uniqueOwned()}/${CTOONS.length}`], ['SETS', `${G.completeSets().length}/${Object.keys(CHARACTERS).length}`], ['BINDER VALUE', fmt(G.binderValue())], ['RECORD', `${st.wins}–${st.battles - st.wins}`],
-    ['PACKS', st.packs], ['TRADES', st.trades], ['RECYCLED', st.recycled], ['cZONE', fmt(rating)]];
+  const stats = [['CHIPS', `${G.uniqueOwned()}/${CTOONS.length}`], ['SETS', `${G.completeSets().length}/${Object.keys(CHARACTERS).length}`], ['BINDER VALUE', fmt(G.binderValue())], ['RECORD', `${st.wins}–${st.battles - st.wins}`],
+    ['PACKS', st.packs], ['TRADES', st.trades], ['RECYCLED', st.recycled], ['PORTFOLIO', fmt(rating)]];
   const d = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const prizes = CTOONS.filter(t => t.series === 'pz');
   return `<section class="pro">
       <div class="pro-chip" data-action="detail" data-id="${show.id}">${tokenSVG(show, 120, { bubble: false })}</div>
       <div class="pro-name">${esc(state.name)}</div>
-      <div class="pro-since">ORBITER SINCE ${new Date(state.created).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }).toUpperCase()}</div>
+      <div class="pro-since">PLAYER SINCE ${new Date(state.created).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }).toUpperCase()}</div>
       ${streakOrbs()}
     </section>
     <div class="panel">
       <div class="statgrid">${stats.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
       <div class="ptab">AWARDS <em>${state.prizes.length}/${prizes.length}</em></div>
       <div class="awards">${prizes.map(t => { const has = state.prizes.includes(t.id); return `<div class="award ${has ? '' : 'off'}" data-action="detail" data-id="${t.id}"><div>${has ? tokenSVG(t, 64, { bubble: false }) : shadowTokenSVG(t, 64)}</div>${esc(t.short)}</div>`; }).join('')}</div>
-      <div class="ptab">ORBIT LOG</div>
+      <div class="ptab">LOG</div>
       <div class="updates">${state.log.length ? state.log.slice(0, 6).map(l => `<div class="upd"><div class="upd-date">${d(l.t)}</div><div>${esc(l.text)}</div></div>`).join('') : '<div class="upd"><div>Nothing yet. Rip a pack.</div></div>'}</div>
       ${state.log.length > 6 ? '<button class="obtn grey block" data-action="allLog">FULL LOG</button>' : ''}
     </div>`;
 }
 function settingsView() {
-  return `<div class="panel"><div class="ptab">ORBIT NAME</div>
+  return `<div class="panel"><div class="ptab">PLAYER NAME</div>
     <div class="row"><input id="nameInput" class="oinput" value="${esc(state.name)}" maxlength="16"><button class="obtn" data-action="saveName">SAVE</button></div>
     <div class="ptab">SOUND</div><button class="obtn ${state.settings.sound ? '' : 'grey'}" data-action="toggleSound">SOUND EFFECTS: ${state.settings.sound ? 'ON' : 'OFF'}</button>
+    <div class="ptab">THEME</div><div class="row wrap">${['system', 'light', 'dark'].map(t => `<button class="obtn small ${(state.settings.theme || 'system') === t ? '' : 'grey'}" data-action="theme" data-id="${t}">${t.toUpperCase()}</button>`).join('')}</div>
+    <div class="ptab">HOW TO PLAY</div><button class="obtn grey" data-action="howTo">THE RULES</button>
     <div class="ptab">REAL ARTWORK</div>
     <p class="note">Chips show the free-licensed image from each character's Wikipedia article, downloaded once and kept for offline play. Characters without one keep their drawn portrait. You can set your own image on any chip's details page.</p>
     <div class="row wrap"><button class="obtn ${artEnabled() ? '' : 'grey'}" data-action="toggleArt">REAL ARTWORK: ${artEnabled() ? 'ON' : 'OFF'}</button><button class="obtn grey" data-action="refreshArt">CHECK AGAIN</button></div>
     <div class="ptab danger">RESET</div><p class="note">Deletes your binder and progress on this device. Make a backup under Device first.</p><button class="obtn grey" data-action="resetConfirm">RESET GAME</button>
-    <p class="fine">Cartoon Orbit is a fan-made homage to the classic collect-and-battle web game. It is free and not for sale. Characters are public-domain cartoon stars; portraits are original. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
-    <div class="verline" data-action="versionTap">CARTOON ORBIT v${APP_VERSION}${state.settings.debug ? ' · DEBUG' : ''}</div></div>`;
+    <p class="fine">[GAME] is a fan-made homage to the classic collect-and-battle web game. It is free and not for sale. Characters are public-domain cartoon stars; portraits are original. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
+    <div class="verline" data-action="versionTap">[GAME] v${APP_VERSION}${state.settings.debug ? ' · DEBUG' : ''}</div></div>`;
 }
 function deviceView() {
   return `<div class="panel"><div class="ptab">INSTALL ON iPHONE OR iPAD</div>
@@ -824,7 +704,7 @@ function deviceView() {
     <div class="row"><button class="obtn" data-action="copySave">COPY CODE</button>${navigator.share ? '<button class="obtn grey" data-action="shareSave">SHARE…</button>' : ''}</div>
     <div class="ptab">RESTORE</div>
     <p class="note">Paste a backup code. This replaces the save on this device.</p>
-    <textarea id="restoreInput" class="oinput" rows="3" placeholder="ORBITSAVE1.…"></textarea>
+    <textarea id="restoreInput" class="oinput" rows="3" placeholder="SAVE1.…"></textarea>
     <button class="obtn grey" data-action="restoreSave">RESTORE</button></div>`;
 }
 function debugView() {
@@ -858,18 +738,17 @@ function debugView() {
 }
 
 function onboardingScreen() {
-  return `<div class="cn-bar"><div class="cn-strip"><span class="cn-strip-hot">WHAT'S ON IN ORBIT</span><span class="cn-strip-txt">Membership is FREE!</span></div></div>
+  return `<div class="cn-bar"><div class="cn-strip"><span class="cn-strip-hot">[GAME]</span><span class="cn-strip-txt">Working title</span></div></div>
   <div class="frame onboard">
-    <div class="orbit-head"><div class="orbit-logo">CARTOON <span class="o">O</span>RBIT<i>®</i></div></div>
+    <div class="orbit-head"><div class="orbit-logo"><span class="ph">[GAME]</span></div></div>
     <div class="content">
       <div class="panel join">
-        <div class="ptab">JOIN ORBIT NOW</div>
-        <div class="join-toks">${['felix1', 'betty1', 'popeye1', 'willie1', 'koko1', 'krazy1'].map(id => tokenSVG(BY_ID[id], 64)).join('')}</div>
-        <p>Start collecting, trading and competing today! Collect <b>cToons</b>, play <b>gToons</b>, build your <b>cZone</b>. Everything saves automatically on this device.</p>
-        <label class="small">ORBIT NAME</label>
-        <input id="nameInput" class="oinput big" placeholder="Orbiter" maxlength="16" autocomplete="off">
-        <button class="obtn hot block" data-action="start">LOG IN NOW ›</button>
-        <div class="free-burst">MEMBERSHIP IS FREE!</div>
+        <div class="ptab">NEW PLAYER</div>
+        <div class="join-toks">${['alpha1', 'foxtrot1', 'golf1', 'juliett1', 'delta1', 'mike1'].map(id => tokenSVG(BY_ID[id], 64)).join('')}</div>
+        <p>Collect chips, build a stack, play the campaign. Everything saves automatically on this device.</p>
+        <label class="small">PLAYER NAME</label>
+        <input id="nameInput" class="oinput big" placeholder="player" maxlength="16" autocomplete="off">
+        <button class="obtn hot block" data-action="start">START ›</button>
       </div>
     </div>
   </div>`;
@@ -893,25 +772,30 @@ function showSetPoster(charKey) {
 }
 
 // ---------- render ----------
+function campStory() {
+  if (section !== 'campaign' || match || document.querySelector('.tcard, .setpost') || document.body.classList.contains('pk-open') || !$('#modal').hidden) return;
+  const p = CAMP.pendingStory(); if (!p) return;
+  G.markStory(p[0]); showCards(p[1], () => render());
+}
 export function render() {
   const app = $('#app');
   document.body.classList.toggle('in-match', !!match && state.onboarded);
+  document.body.classList.toggle('in-camp', section === 'campaign' && state.onboarded && !match);
+  if (!coverShown) { app.innerHTML = coverScreen(); return; }
   if (!state.onboarded) { app.innerHTML = onboardingScreen(); return; }
   G.ensureQuests(state);
   if (match) { app.innerHTML = matchScreen(); afterMatchRender(); return; }
+  if (section === 'campaign') { app.innerHTML = CAMP.view(); setTimeout(campStory, 250); return; }
   const views = {
     home: { main: homeView },
-    collection: { binder: binderView, sets: setsView, czone: zoneView },
-    battle: { tour: tourView, arena: arenaView, deck: deckView, rules: rulesView },
-    market: { cmart: cmartView, auction: auctionView, codes: codesView },
-    profile: { me: profileView, settings: settingsView, device: deviceView, debug: debugView },
+    collection: { binder: binderView, sets: setsView, deck: deckView, cmart: cmartView, auction: auctionView, codes: codesView },
+    online: { main: onlineView },
+    profile: { portfolio: portfolioView, settings: settingsView, device: deviceView, debug: debugView },
   };
   if (!views[section]) section = 'home';
   if (!views[section][subs[section]] || (subs[section] === 'debug' && !state.settings.debug)) subs[section] = Object.keys(views[section])[0];
   app.innerHTML = orbitFrame(views[section][subs[section]]());
-  if (section === 'collection' && subs.collection === 'czone' && zoneMode === 'mine') bindStage();
   if (binderFocus) { const el = $('#cs-' + binderFocus); binderFocus = null; if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
-  if (section === 'battle' && subs.battle === 'tour') setTimeout(queueTourStory, 250);
   if ((state.pendingSets || []).length && !document.body.classList.contains('pk-open') && !document.querySelector('.setpost')) {
     const c = G.popPendingSet(); if (c) setTimeout(() => showSetPoster(c), 400);
   }
@@ -940,24 +824,23 @@ function afterMatchRender() {
 
 // ---------- actions ----------
 const actions = {
-  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; if (d.sub === 'tour') tourZone = null; zonePick = false; zoneMode = 'mine'; window.scrollTo(0, 0); },
-  sub(d) { subs[section] = d.id; zonePick = false; window.scrollTo(0, 0); },
+  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; window.scrollTo(0, 0); },
+  sub(d) { subs[section] = d.id; window.scrollTo(0, 0); },
   none() {},
   closeModal() { closeModal(); },
   dismissInstall() { installDismissed = true; try { sessionStorage.setItem('installDismissed', '1'); } catch { /* ignore */ } },
   start() { const r = G.startNewPlayer($('#nameInput')?.value); section = 'home'; render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
-  flipDetail() { const t = $('#tilt .tilt-in'); if (t) { t.classList.toggle('flipped'); snd('flip'); } return false; },
+  flipDetail() { const t = $('#tilt .tilt-in'); if (t) { t.classList.toggle('flipped'); snd('lima'); } return false; },
   showcase(d) { G.setShowcase(d.id); snd('clink'); toast('Featured on your front page.'); detailModal(d.id); return false; },
-  claimDaily() { const r = G.claimDaily(); if (r) { sfx.good(); toast(`+${r.amount} points! Day ${r.streak} streak.`); if (r.prize) setTimeout(() => revealModal([r.prize], 'PRIZE UNLOCKED!'), 300); } },
-  claimQuest(d) { const v = G.claimQuest(d.id); if (v) { sfx.good(); toast(`Quest complete! +${v} points.`); } },
+  claimDaily() { const r = G.claimDaily(); if (r) { sfx.good(); toast(`+${r.amount} coins! Day ${r.streak} streak.`); if (r.prize) setTimeout(() => revealModal([r.prize], 'PRIZE UNLOCKED!'), 300); } },
+  claimQuest(d) { const v = G.claimQuest(d.id); if (v) { sfx.good(); toast(`Quest complete! +${v} coins.`); } },
   binderFilter(d) { binderFilter = d.id; },
   binderTier(d) { binderTier = d.id; },
   binderSeries(d) { binderFilter = d.id; binderTier = 'all'; section = 'collection'; subs.collection = 'binder'; window.scrollTo(0, 0); },
   binderChar(d) { const c = CHARACTERS[d.id]; if (!c) return false; binderFilter = c.series; binderTier = 'all'; binderFocus = d.id; section = 'collection'; subs.collection = 'binder'; },
-  zoneMode(d) { zoneMode = d.id; zonePick = false; window.scrollTo(0, 0); },
   allNews() { newsModal(); return false; },
   allLog() { const d = (t) => new Date(t).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' });
-    showModal(`<div class="ptab">ORBIT LOG</div><div class="updates tall">${state.log.map(l => `<div class="upd"><div class="upd-date">${d(l.t)}</div><div>${esc(l.text)}</div></div>`).join('')}</div><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false; },
+    showModal(`<div class="ptab">LOG</div><div class="updates tall">${state.log.map(l => `<div class="upd"><div class="upd-date">${d(l.t)}</div><div>${esc(l.text)}</div></div>`).join('')}</div><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false; },
   versionTap() { const now = Date.now(); if (now - verTapAt > 2500) verTaps = 0; verTapAt = now; verTaps++;
     if (verTaps >= 7) { verTaps = 0; const on = !state.settings.debug; commit(s => { s.settings.debug = on; if (!on) delete s.settings.debugHour; }); snd(on ? 'great' : 'tap'); toast(on ? 'Debug menu unlocked.' : 'Debug menu hidden.'); if (on) subs.profile = 'debug'; return; }
     if (verTaps >= 4) toast(`${7 - verTaps} more…`, 800); return false; },
@@ -971,18 +854,18 @@ const actions = {
       case 'tier': { const t = G.debug.giveTier(+arg); if (t) toast(`${t.name} added.`); break; }
       case 'set': { const k = $('#dbgChar')?.value; if (k) { G.debug.giveSet(k); toast(`${CHARACTERS[k].name} set added.`); } break; }
       case 'poster': { const k = $('#dbgChar')?.value; if (k) showSetPoster(k); return false; }
-      case 'all': G.debug.giveAll(); toast('Every packable cToon added.'); break;
+      case 'all': G.debug.giveAll(); toast('Every packable chip added.'); break;
       case 'dupes': G.debug.clearDupes(); break;
       case 'wipesets': G.debug.wipeSets(); break;
       case 'daily': G.debug.resetDaily(); toast('Today reset.'); break;
       case 'streak': G.debug.streak(arg === '+1' ? state.daily.streak + 1 : +arg); break;
       case 'beatall': G.debug.beatAll(); break;
       case 'clearbeaten': G.debug.clearBeaten(); break;
-      case 'fakewin': { const r = G.debug.fakeWin(nextOpponent().id); toast(`+${r.points} points${r.bonus.length ? ' and a Premium cPack' : ''}.`); break; }
+      case 'fakewin': { const r = G.debug.fakeWin(OPPONENTS[0].id); toast(`+${r.points} coins.`); break; }
       case 'bgs': G.debug.unlockBgs(); break;
       case 'reveal': revealModal(CTOONS.filter(t => t.rarity === LEGENDARY).slice(0, 3).map(t => t.id), 'TEST REVEAL'); return false;
       case 'prize': revealModal(['pz01'], 'PRIZE UNLOCKED!'); return false;
-      case 'sfx': ['tap', 'good', 'great', 'bad', 'clink', 'flip', 'pick', 'whoosh', 'land', 'quip', 'win', 'lose', 'set'].forEach((k, i) => setTimeout(() => snd(k), i * 420)); return false;
+      case 'sfx': ['tap', 'good', 'great', 'bad', 'clink', 'lima', 'pick', 'whoosh', 'land', 'quip', 'win', 'lose', 'set'].forEach((k, i) => setTimeout(() => snd(k), i * 420)); return false;
       case 'dump': showModal(`<div class="ptab">SAVE</div><pre class="dump">${esc(JSON.stringify(state, null, 1))}</pre><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false;
       case 'sanitize': G.sanitize(); toast('Save checked.'); break;
       case 'reload': (async () => { try { const regs = await navigator.serviceWorker?.getRegistrations?.() || []; await Promise.all(regs.map(r => r.unregister())); const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch { /* ignore */ } location.reload(); })(); return false;
@@ -992,7 +875,7 @@ const actions = {
   detail(d) { snd('clink'); detailModal(d.id); return false; },
   deckAdd(d) { commit(s => { if (s.deck.length < 12) s.deck.push(d.id); }); toast('Added to deck.'); detailModal(d.id); return false; },
   deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from deck.'); detailModal(d.id); return false; },
-  recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} points.`); } detailModal(d.id); return false; },
+  recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} coins.`); } detailModal(d.id); return false; },
   gift(d) { const t = BY_ID[d.id];
     showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Market → Codes. Each code works once.</p>
       <div class="row center"><button class="obtn" data-action="giftConfirm" data-id="${d.id}">CREATE GIFT CODE</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
@@ -1000,13 +883,12 @@ const actions = {
     showModal(`<div class="ptab">GIFT CODE</div><p class="note">Send this to your friend:</p><div class="code">${code}</div>
       <div class="row center"><button class="obtn" data-action="copyText" data-text="${code}">COPY</button>${navigator.share ? `<button class="obtn grey" data-action="shareText" data-text="${code}">SHARE…</button>` : ''}<button class="obtn grey" data-action="closeModal">DONE</button></div>`); return false; },
   copyText(d) { copy(d.text); return false; },
-  shareText(d) { navigator.share({ text: `A cToon gift for you in Cartoon Orbit! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
-  claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'FREE cTOON!'); },
+  shareText(d) { navigator.share({ text: `A chip gift for you in [GAME]! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
+  claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'FREE CHIP!'); },
   buyPack(d) { const r = G.buyPack(d.id); if (!r) { toast('Not enough points.'); return; } render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
-  autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Deck auto-filled with your best gToons.'); },
+  autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Deck auto-filled with your best chips.'); },
   deckToggle(d) { commit(s => { const inDeck = s.deck.filter(x => x === d.id).length; const own = s.collection[d.id] || 0;
     if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Deck is full (12).'); }); sfx.tap(); },
-  battle(d) { startBattle(d.id); return false; },
   pickHand(d) { if (!match || match.turn !== 'p' || match.done || busy) return false; selectedHand = selectedHand === +d.i ? -1 : +d.i; snd('pick'); },
   placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false;
     const slot = +d.i; if (match.p.slots[slot]) return false;
@@ -1023,35 +905,57 @@ const actions = {
       if (match.done) setTimeout(finishMatch, 900); else setTimeout(aiTurn, 700);
     });
     return false; },
-  swapCard() { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false; if (B.swap(match, 'p', selectedHand)) { sfx.bad(); toast('Swapped. -10 points.'); } },
+  swapCard() { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false; if (B.swap(match, 'p', selectedHand)) { sfx.bad(); toast('Swapped. -10 coins.'); } },
   slotInfo(d) { const side = match[d.who]; const id = side.slots[+d.i]; if (!id) return; const ev = B.evaluate(match.p, match.ai, match.rules); const v = (d.who === 'p' ? ev.a : ev.b)[+d.i]; const t = BY_ID[id];
     showModal(`<div class="detail"><div class="ptab">${esc(t.name).toUpperCase()}</div><div class="detail-tok center">${tokenSVG(t, 120)}</div><div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
       <div class="mods"><div>BASE <b>${v.base}</b></div>${v.mods.map(m => `<div>${m.v > 0 ? '+' : ''}${m.v} <span class="small">${esc(m.why)}</span></div>`).join('')}<div>TOTAL <b>${v.total}</b></div></div>
       <button class="obtn grey block" data-action="closeModal">CLOSE</button></div>`); return false; },
-  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; if (match.node) G.recordTour(match.node, { aTotal: 0, bTotal: 1, aColors: {}, rules: match.rules, forfeit: true }, []); else G.recordBattle(match.opponent, false, 0); } const wasTour = !!(match && match.node); match = null; closeModal(); if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
-  rematch() { const op = match.opponent; const node = match.node; closeModal(); if (node) startTour(node.id); else startBattle(op.id); return false; },
-  leaveMatch() { const wasTour = !!(match && match.node); closeModal(); match = null; if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
-  tourZone(d) { tourZone = +d.id; },
-  tourNode(d) { const n = NODES[d.id]; if (!n) return false; snd('clink'); tourNodeModal(d.id); return false; },
-  tourPlay(d) { closeModal(); startTour(d.id); return false; },
-  tourBuild(d) { const n = NODES[d.id]; const deck = n && G.buildDeckFor(n); if (!deck) { toast('Not enough legal gToons in your binder yet.'); return false; } commit(s => { s.deck = deck; }); sfx.good(); toast('Deck built for this challenge.'); tourNodeModal(d.id); return false; },
-  zonePicker() { zonePick = !zonePick; },
-  zoneAdd(d) { const ok = G.placeInZone(d.id, 0.05 + Math.random() * 0.7, 0.05 + Math.random() * 0.6); if (ok) { toast('Placed in your cZone.'); sfx.tap(); closeModal(); section = 'collection'; subs.collection = 'czone'; zoneMode = 'mine'; zonePick = false; } else toast('cZone is full or you have no spare copy.'); },
+  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; if (match.node) G.campRecord(match.node, { aTotal: 0, bTotal: 1, aColors: {}, rules: match.rules, forfeit: true }, []); else G.recordBattle(match.opponent, false, 0); } const wasCamp = !!(match && match.node); match = null; closeModal(); if (wasCamp) section = 'campaign'; },
+  rematch() { const node = match.node; closeModal(); if (node) startCamp(node.id); else { match = null; } return false; },
+  leaveMatch() { const wasCamp = !!(match && match.node); closeModal(); match = null; if (wasCamp) section = 'campaign'; },
+  coverStart() { coverShown = true; snd('great'); },
+  theme(d) { commit(s => { s.settings.theme = d.id; }); applyTheme(); sfx.tap(); },
+  howTo() { showModal(rulesView() + '<button class="obtn grey block" data-action="closeModal">CLOSE</button>'); return false; },
+  favToggle(d) { commit(s => { s.favorites = s.favorites || []; const i = s.favorites.indexOf(d.id); if (i >= 0) s.favorites.splice(i, 1); else if (s.favorites.length < 6) s.favorites.push(d.id); else { toast('Six favourites. Remove one first.'); } }); sfx.tap(); favPicker(); return false; },
+  favPicker() { favPicker(); return false; },
+  renamePrompt() { const v = prompt('Player name', state.name); if (v && v.trim()) commit(s => { s.name = v.trim().slice(0, 16); }); },
+  // campaign
+  campExit() { if (campEnter) { G.touchSave(Date.now() - campEnter); campEnter = 0; } CAMP.clearGame(); G.leaveSave(); section = 'home'; window.scrollTo(0, 0); },
+  campSelect(d) { G.selectSave(+d.id); CAMP.setRegion(null); campEnter = Date.now(); snd('clink'); },
+  campNew(d) { G.newSave(+d.id); CAMP.setRegion(null); campEnter = Date.now(); snd('great'); },
+  campDelete(d) { const i = +d.id; showModal(`<div class="ptab danger">DELETE SAVE ${i + 1}?</div><p class="note">Campaign progress in this slot is lost. Your binder keeps every chip.</p><div class="row center"><button class="obtn danger-btn" data-action="campDeleteDo" data-id="${i}">DELETE</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
+  campDeleteDo(d) { G.deleteSave(+d.id); closeModal(); },
+  campIntro() { showCards(lore('intro'), () => { G.setStage('starter'); render(); }); return false; },
+  campStarter(d) { if (G.chooseStarter(d.id)) { snd('set'); CAMP.setRegion(1); toast('Stack chosen. It leads your binder too.'); } },
+  campRegion(d) { CAMP.clearGame(); CAMP.setRegion(+d.id); closeModal(); window.scrollTo(0, 0); },
+  campNode(d) { snd('clink'); CAMP.nodeModal(d.id); return false; },
+  campPlay(d) { closeModal(); startCamp(d.id); return false; },
+  autoDeckCamp(d) { commit(s => { s.deck = G.autoDeck(s); }); toast('Stack filled with your best chips.'); CAMP.nodeModal(d.id); return false; },
+  campShop() { CAMP.shopModal(); return false; },
+  campBuy(d) { const r = G.buyRegionPack(+d.id); if (!r) { toast('Not enough coins.'); return false; } closeModal(); render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
+  campExplore() { CAMP.exploreModal(); return false; },
+  campPlace(d) { const r = G.explore(d.id); if (!r) { const p = NODES[d.id]; if (p && p.kind === 'game') { closeModal(); CAMP.gameView(d.id); return; } return false; }
+    closeModal();
+    if (r.kind === 'game') { CAMP.gameView(d.id); return; }
+    if (r.kind === 'lore') { showCards(lore(`r${r.place.region}.place${r.place.id.slice(-1)}`, ['[Lore placeholder]']), () => render()); return false; }
+    if (r.kind === 'find') { revealModal([r.chip], 'FOUND!'); return false; }
+  },
+  campGuess(d) { CAMP.guess(d.id); },
+  campMap() { CAMP.mapModal(); return false; },
   bgPicker() { bgModal(); return false; },
   setBg(d) { commit(s => { s.czone.bg = d.id; }); closeModal(); },
   buyBg(d) { if (G.buyBackground(d.id)) { sfx.good(); toast('Background unlocked!'); closeModal(); } else toast('Not enough points.'); return false; },
-  visit(d) { const n = G.npcZones().length; if (d.id === 'prev') visitIndex--; else if (d.id === 'next') visitIndex++; else visitIndex = Math.floor(Math.random() * n); sfx.tap(); },
   trade(d) { const o = G.todaysTrades()[+d.i]; if (G.doTrade(o)) revealModal([o.get], 'TRADE COMPLETE!'); },
   redeem() { const r = G.redeemCode($('#codeInput')?.value); if (r.ok) { sfx.great(); if (r.ctoons?.length) revealModal(r.ctoons, r.text.toUpperCase()); else toast(r.text); } else { sfx.bad(); toast(r.text); } },
   copySave() { copy(exportCode()); return false; },
-  shareSave() { navigator.share({ title: 'Cartoon Orbit save', text: exportCode() }).catch(() => {}); return false; },
+  shareSave() { navigator.share({ title: '[GAME] save', text: exportCode() }).catch(() => {}); return false; },
   restoreSave() { try { const obj = parseSaveCode($('#restoreInput').value); if (!confirm('Replace the save on this device with this backup?')) return false; replaceState(obj); G.sanitize(); sfx.great(); toast('Save restored!'); section = 'home'; } catch (e) { sfx.bad(); toast(e.message); return false; } },
   saveName() { const v = ($('#nameInput')?.value || '').trim().slice(0, 16); if (v) { commit(s => { s.name = v; }); toast('Name saved.'); } },
   toggleSound() { commit(s => { s.settings.sound = !s.settings.sound; }); setSound(state.settings.sound); sfx.tap(); },
   toggleArt() { commit(s => { s.settings.realArt = s.settings.realArt === false; }); if (artEnabled()) refreshWiki(); sfx.tap(); },
   refreshArt() { if (!navigator.onLine) { toast('You are offline. Try again when connected.'); return false; } forgetWiki().then(() => refreshWiki(true)); toast('Looking up artwork…'); return false; },
   clearArt(d) { clearCustomArt(d.id).then(() => { toast('Your image was removed.'); detailModal(CTOONS.find(t => t.char === d.id).id); }); return false; },
-  resetConfirm() { showModal(`<div class="ptab danger">RESET GAME?</div><p class="note">This permanently deletes your binder, points and cZone on this device.</p><div class="row center"><button class="obtn danger-btn" data-action="resetDo">YES, RESET</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
+  resetConfirm() { showModal(`<div class="ptab danger">RESET GAME?</div><p class="note">This permanently deletes your binder, points and portfolio on this device.</p><div class="row center"><button class="obtn danger-btn" data-action="resetDo">YES, RESET</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
   resetDo() { resetState(); closeModal(); match = null; section = 'home'; toast('Game reset.'); },
 };
 
@@ -1062,6 +966,9 @@ async function copy(text) {
 
 export function bind() {
   setSound(state.settings.sound !== false);
+  applyTheme();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
+  CAMP.init({ esc, fmt, showModal, closeModal, toast, snd, tokenHTML, showCards, startMatch, render, openPack });
   document.body.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]'); if (!el) return;
     const fn = actions[el.dataset.action]; if (!fn) return;
@@ -1076,6 +983,7 @@ export function bind() {
     setCustomArt(char, inp.files[0]).then(() => { sfx.good(); toast('Artwork updated!'); detailModal(CTOONS.find(t => t.char === char).id); })
       .catch(err => { sfx.bad(); toast(err.message || 'Could not use that image.'); });
   });
+  window.addEventListener('pagehide', () => { if (campEnter) { G.touchSave(Date.now() - campEnter); campEnter = Date.now(); } });
   document.body.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'codeInput') { if (actions.redeem() !== false) render(); }
     if (e.key === 'Enter' && e.target.id === 'nameInput' && !state.onboarded) { actions.start(); render(); }
