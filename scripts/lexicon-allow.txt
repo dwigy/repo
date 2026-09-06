@@ -1,0 +1,6 @@
+# One exception per line: <regex>|<reason>. Matched case-insensitively against the hit's surrounding line.
+release notes?|"release note" is a product term, not music
+singer|the Choir Keeper's craft (allowed by the brief)
+cartoon-orbit-save-v1|storage key kept for save compatibility; never shown
+tinker's night|proper noun from the lexicon
+docs/chips\.|old file path referenced in history only
