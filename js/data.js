@@ -33,6 +33,8 @@ export const SERIES = {
   thm: { name: 'Thimble Theatre',     color: '#4aa3df', bg: ['#0b3a5c', '#2e86c1'], blurb: 'Sailors, spinach and the funny pages of 1929.' },
   rub: { name: 'Rubber Hose Rascals', color: '#e05a5a', bg: ['#5c0f14', '#c0392b'], blurb: 'Pie-cut eyes, bendy arms and a whole lot of whistling.' },
   fun: { name: 'Funny Pages',         color: '#f4b942', bg: ['#6b3f00', '#f4b942'], blurb: 'Bricks, dreams and the wildest Sunday comics ever printed.' },
+  lot: { name: 'The Studio Lot',      color: '#7fd1c8', bg: ['#0f3d3a', '#2aa198'], blurb: 'Ink, paint and a cat with a detachable tail. The 1920s backlot.' },
+  tour: { name: 'Orbit Tour',         color: '#ffd166', bg: ['#2b1a4a', '#7b4dd6'], blurb: 'Keeper chips. Won on the Tour, never sold in a pack.' },
   pz:  { name: 'Orbit Prizes',        color: '#ffffff', bg: ['#1f1f3a', '#4a4a8a'], blurb: 'Exclusive cToons you can only earn, never buy.' },
 };
 
@@ -69,6 +71,29 @@ export const CHARACTERS = {
              stats: [['slv', 2, { t: 'opp', n: 2 }], ['org', 5, { t: 'steal', n: 2 }], ['slv', 7, { t: 'opp', n: 5 }], ['slv', 10, { t: 'steal', n: 5 }]] },
   nemo:    { name: 'Little Nemo', wiki: 'Little_Nemo', quips: ["Am I dreaming?", "Whoa, Slumberland!", "Just five more minutes."],            series: 'fun', year: 1905, film: 'Slumberland',           top: 4, blurb: 'Falls out of bed at the end of every adventure.',
              stats: [['blu', 3, { t: 'first', n: 4 }], ['yel', 6, { t: 'lonely', n: 4 }], ['blu', 8, { t: 'last', n: 6 }], ['blu', 12, { t: 'last', n: 12 }]] },
+  // ---- arrivals with the Orbit Tour ----
+  bobby:   { name: 'Bobby Bumps', wiki: 'Bobby_Bumps', quips: ["C'mon, Fido!", "Gee whiz.", "I got a plan."],                 series: 'sil', year: 1915, film: 'Bobby Bumps Starts a Lodge', top: 3, blurb: 'A kid, a dog and a scheme a minute.',
+             stats: [['yel', 3, { t: 'first', n: 2 }], ['yel', 6, { t: 'chain', n: 1 }], ['org', 8, { t: 'underdog', n: 5 }], ['yel', 11, { t: 'chain', n: 2 }]] },
+  heeza:   { name: 'Colonel Heeza Liar', wiki: 'Colonel_Heeza_Liar', quips: ["As I was saying…", "True story.", "Harrumph."],   series: 'sil', year: 1913, film: 'Colonel Heeza Liar in Africa', top: 4, blurb: 'The tallest tales in the shortest colonel.',
+             stats: [['org', 4, { t: 'crown', n: 3 }], ['org', 6, { t: 'bomb', n: 2 }], ['red', 9, { t: 'veto' }], ['org', 13, { t: 'crown', n: 6 }]] },
+  julius:  { name: 'Julius the Cat', wiki: 'Julius_the_Cat', quips: ["Mind the tail.", "Alice? Alice!", "Watch this."],        series: 'lot', year: 1923, film: "Alice's Wonderland",      top: 4, blurb: 'The cat with the detachable tail. Handy in a pinch.',
+             stats: [['slv', 3, { t: 'lonely', n: 3 }], ['slv', 6, { t: 'shield' }], ['blu', 9, { t: 'underdog', n: 6 }], ['slv', 13, { t: 'minusOppColor', color: 'red', n: 3 }]] },
+  pete:    { name: 'Pete', wiki: 'Pete_(Disney)', quips: ["Outta my way.", "Grrr.", "Nobody crosses Pete."],                   series: 'lot', year: 1925, film: 'Alice Solves the Puzzle', top: 5, blurb: 'Big, mean and older than the mouse. The original heavy.',
+             stats: [['red', 5, { t: 'opp', n: 3 }], ['red', 8, { t: 'bomb', n: 2 }], ['red', 10, { t: 'veto' }], ['red', 16, { t: 'bomb', n: 4 }]] },
+  clara:   { name: 'Clarabelle Cow', wiki: 'Clarabelle_Cow', quips: ["Mooo-ving on.", "Oh my.", "Ring my bell."],              series: 'lot', year: 1928, film: 'Plane Crazy',             top: 3, blurb: 'Flower on her hat, bell on her collar, song in her heart.',
+             stats: [['yel', 3, { t: 'plusOwnColor', color: 'yel', n: 1 }], ['yel', 6, { t: 'back', n: 4 }], ['yel', 8, { t: 'perOwnColor', color: 'yel', n: 2 }], ['yel', 11, { t: 'plusAll', n: 1 }]] },
+  horace:  { name: 'Horace Horsecollar', wiki: 'Horace_Horsecollar', quips: ["Neigh!", "Giddy-up.", "Hay there."],             series: 'lot', year: 1929, film: 'The Plowboy',             top: 3, blurb: 'Wears his collar with pride. Pulls his weight.',
+             stats: [['org', 3, { t: 'chain', n: 1 }], ['org', 6, { t: 'front', n: 3 }], ['blu', 8, { t: 'crown', n: 4 }], ['org', 11, { t: 'chain', n: 2 }]] },
+  minnie:  { name: 'Minnie (1928)', wiki: 'Minnie_Mouse', quips: ["Oh, Willie.", "Tee-hee.", "Hold my hat."],                  series: 'lot', year: 1928, film: 'Plane Crazy',             top: 4, blurb: 'The 1928 original. Flower hat, quick temper.',
+             stats: [['red', 4, { t: 'x2', id: 'willie' }], ['red', 7, { t: 'plusOwnColor', color: 'red', n: 2 }], ['prp', 9, { t: 'shield' }], ['red', 13, { t: 'plusAll', n: 2 }]] },
+  mutt:    { name: 'Mutt', wiki: 'Mutt_and_Jeff', quips: ["Sure thing, Jeff.", "Long shot.", "Easy money."],                     series: 'fun', year: 1907, film: 'Mutt and Jeff',           top: 4, blurb: 'Tall, broke and always betting on the wrong horse.',
+             stats: [['grn', 4, { t: 'x2', id: 'jeff' }], ['grn', 7, { t: 'late', n: 4 }], ['grn', 9, { t: 'underdog', n: 6 }], ['grn', 13, { t: 'plusOwnColor', color: 'grn', n: 3 }]] },
+  jeff:    { name: 'Jeff', wiki: 'Mutt_and_Jeff', quips: ["Says you.", "I'm all ears.", "Who, me?"],                          series: 'fun', year: 1908, film: 'Mutt and Jeff',           top: 3, blurb: 'Short, bald and convinced he is Napoleon. Sometimes right.',
+             stats: [['grn', 2, { t: 'x2', id: 'mutt' }], ['yel', 5, { t: 'lonely', n: 4 }], ['grn', 7, { t: 'first', n: 5 }], ['grn', 10, { t: 'late', n: 6 }]] },
+  hooligan:{ name: 'Happy Hooligan', wiki: 'Happy_Hooligan', quips: ["Top of the mornin'.", "Can do.", "Ain't life grand?"],  series: 'fun', year: 1900, film: 'Happy Hooligan',          top: 3, blurb: 'A tin can for a hat and nothing but good luck. Mostly.',
+             stats: [['org', 3, { t: 'underdog', n: 3 }], ['org', 5, { t: 'steal', n: 2 }], ['org', 8, { t: 'lonely', n: 5 }], ['org', 11, { t: 'underdog', n: 8 }]] },
+  buster:  { name: 'Buster Brown', wiki: 'Buster_Brown', quips: ["Resolved!", "Tige, sic 'em.", "Oops."],                     series: 'fun', year: 1902, film: 'Buster Brown',            top: 4, blurb: 'Bow tie, bulldog and a resolution after every disaster.',
+             stats: [['red', 3, { t: 'bomb', n: 1 }], ['red', 6, { t: 'opp', n: 3 }], ['yel', 9, { t: 'chain', n: 2 }], ['red', 12, { t: 'bomb', n: 3 }]] },
 };
 
 // Eight editions per character. Common/Uncommon/Rare are the base set; Mythic and
@@ -87,6 +112,16 @@ export const EDITIONS = [
 const RIVAL_COLOR = { grn: 'red', yel: 'blu', org: 'blu', red: 'grn', blu: 'org', prp: 'yel', slv: 'prp' };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+// Secret powers: a second power on Mythic and Legendary editions that wakes up
+// after the chip has been on the board for three wins (see game.train()).
+const SECRETS = {
+  holo:     { t: 'chain', n: 1 },
+  silver:   { t: 'shield' },
+  dark:     { t: 'bomb', n: 2 },
+  gold:     { t: 'crown', n: 4 },
+  platinum: { t: 'veto' },
+};
+export const TRAIN_WINS = 3;
 function editionStats(c, e, i) {
   if (i < 3) return c.stats[i];
   const [topColor, topPts, topPower] = c.stats[3];
@@ -109,7 +144,7 @@ function build() {
       const [color, pts, power] = editionStats(c, e, i);
       out.push({ id: `${key}${e.n}`, char: key, series: c.series, name: e.label(c), short: c.name, edition: typeof e.tag === 'function' ? e.tag(c) : e.tag,
         edShort: typeof e.short === 'function' ? e.short(c) : e.short,
-        variant: e.variant, pose: e.pose, rarity, points: VALUE[rarity], color, pts, power, blurb: c.blurb, year: c.year });
+        variant: e.variant, pose: e.pose, rarity, points: VALUE[rarity], color, pts, power, secret: SECRETS[e.variant] || null, blurb: c.blurb, year: c.year });
     });
   }
   const prize = (id, char, name, color, pts, power, blurb) => ({ id, char, series: 'pz', name, short: name, edition: 'Prize', edShort: 'Prize', variant: 'holo', pose: 'normal', rarity: 5, points: VALUE[5], color, pts, power, blurb, year: 2000 });
@@ -121,11 +156,22 @@ function build() {
     prize('pz05', 'badge',  'Battle Badge',      'red', 12, { t: 'opp', n: 7 },                            'Earned by winning 25 gToons matches.'),
     prize('pz06', 'champ',  "Champion's Star",   'slv', 16, { t: 'plusAll', n: 2 },                        'Earned by defeating the Orbit Master.'),
   );
+  // Keeper's Frame chips: won from the seven Keepers of the Orbit Tour.
+  const keeper = (n, char, name, color, pts, power, secret, blurb) => ({ id: `kp${n}`, char, series: 'tour', name: `${name} · Keeper's Frame`, short: name, edition: "Keeper's Frame", edShort: 'Frame', variant: 'gold', pose: 'hero', rarity: 4, points: VALUE[4], color, pts, power, secret, blurb, year: 2000, zone: n });
+  out.push(
+    keeper(1, 'koko',   'Koko',     'slv', 12, { t: 'mirror' },                       { t: 'shield' },                'Frame one of seven. Inky Alley remembers.'),
+    keeper(2, 'popeye', 'Popeye',   'blu', 14, { t: 'opp', n: 6 },                    { t: 'crown', n: 4 },           'Frame two of seven. Strong to the finish.'),
+    keeper(3, 'ignatz', 'Ignatz',   'org', 12, { t: 'bomb', n: 3 },                   { t: 'late', n: 5 },            'Frame three of seven. Brick, meet Kat.'),
+    keeper(4, 'nemo',   'Nemo',     'blu', 13, { t: 'last', n: 9 },                   { t: 'veto' },                  'Frame four of seven. Everything bends in Slumberland.'),
+    keeper(5, 'oswald', 'Oswald',   'prp', 14, { t: 'plusOwnColor', color: 'prp', n: 3 }, { t: 'chain', n: 2 },       'Frame five of seven. Lucky by design.'),
+    keeper(6, 'mutt',   'Mutt',     'grn', 13, { t: 'chain', n: 2 },                  { t: 'underdog', n: 8 },        'Frame six of seven. Hold the front page.'),
+    keeper(7, 'felix',  'Felix',    'slv', 16, { t: 'plusAll', n: 2 },                { t: 'crown', n: 6 },           'Frame seven of seven. The reel is whole again.'),
+  );
   return out;
 }
 export const CTOONS = build();
 export const BY_ID = Object.fromEntries(CTOONS.map(t => [t.id, t]));
-export const PACKABLE = CTOONS.filter(t => t.series !== 'pz');
+export const PACKABLE = CTOONS.filter(t => t.series !== 'pz' && t.series !== 'tour');
 
 export const PACKS = [
   { id: 'std',  name: 'Standard cPack', price: 300, size: 3, desc: '3 cToons. Uncommon or better guaranteed.',
@@ -210,6 +256,15 @@ export function powerText(p) {
     case 'first':         return `+${p.n} if played first`;
     case 'last':          return `+${p.n} if played last`;
     case 'lonely':        return `+${p.n} if no gToons are next to it`;
+    case 'late':          return `+${p.n} if played in the last three turns`;
+    case 'pair':          return `+${p.n} if next to another ${p.id ? CHARACTERS[p.id]?.name : 'chip of the same star'}`;
+    case 'chain':         return `+${p.n} for each other gToon in its row`;
+    case 'crown':         return `+${p.n} if nothing on your side has more points`;
+    case 'underdog':      return `+${p.n} if the opposing gToon has more points`;
+    case 'bomb':          return `-${p.n} to the opposing gToon and its row neighbours`;
+    case 'shield':        return 'Cannot lose points to opposing powers';
+    case 'veto':          return 'Cancels the opposing gToon\'s power';
   }
   return '';
 }
+export const POWER_NAMES = { x2: 'Buddy', perOppColor: 'Counter', perOwnColor: 'Rally', minusOppColor: 'Hex', plusOwnColor: 'Boost', plusAll: 'Anthem', opp: 'Jab', steal: 'Pickpocket', mirror: 'Mirror', back: 'Backstage', front: 'Spotlight', first: 'Opener', last: 'Closer', late: 'Encore', lonely: 'Loner', pair: 'Twins', chain: 'Chorus Line', crown: 'Crown', underdog: 'Underdog', bomb: 'Brick', shield: 'Shield', veto: 'Veto', none: 'None' };

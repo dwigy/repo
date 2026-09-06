@@ -1,5 +1,6 @@
 // Game rules: economy, packs, daily rewards, quests, trades, prizes.
-import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
+import { ZONES, NODES, zoneOf } from './campaign.js';
+import { CTOONS, BY_ID, PACKABLE, PACKS, RARITY, SERIES, CHARACTERS, COLORS, TRAIN_WINS, QUESTS, TRADERS, OPPONENTS, PROMO_CODES, BACKGROUNDS, NPC_ZONES, FEATURED_CODES } from './data.js';
 import { state, commit, todayKey, seededRng, parseGiftCode, makeGiftCode } from './store.js';
 
 export const DAILY_BASE = 100;
@@ -68,7 +69,7 @@ export function startNewPlayer(name) {
   return commit(s => {
     s.name = (name || 'Orbiter').trim().slice(0, 16) || 'Orbiter';
     s.points = 500;
-    const starters = ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1'];
+    const starters = ['felix1', 'koko1', 'popeye1', 'oswald1', 'willie1', 'krazy1', 'gertie1', 'bimbo1', 'olive1', 'flip1', 'hooligan1'];
     starters.forEach(id => addCtoon(id, 1, 'starter'));
     addCtoon('pz01', 1, 'prize'); s.prizes.push('pz01');
     // one random uncommon and one random rare to make the first deck fun
@@ -94,6 +95,11 @@ export function autoDeck(s = state) {
 }
 
 // ---- Daily login ----
+export function nextDailyAmount() {
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const streak = state.daily.last === todayKey(y) ? state.daily.streak + 1 : 1;
+  return Math.min(DAILY_STREAK_CAP, DAILY_BASE + DAILY_STREAK_BONUS * (streak - 1));
+}
 export function claimDaily() {
   const today = todayKey();
   if (state.daily.last === today) return null;
@@ -250,12 +256,13 @@ export function opponentUnlocked(op) {
   const i = OPPONENTS.indexOf(op);
   return i === 0 || state.beaten.includes(OPPONENTS[i - 1].id);
 }
-export function recordBattle(op, won, margin) {
+export function recordBattle(op, won, margin, boardIds = []) {
   return commit(s => {
     s.stats.battles++;
     bumpQuest(s, 'playsToday');
     s.lastBattle = todayKey();
     let points = 0, firstWin = false, bonus = [];
+    const woke = won ? train(s, boardIds) : [];
     if (won) {
       s.stats.wins++;
       bumpQuest(s, 'winsToday');
@@ -271,9 +278,124 @@ export function recordBattle(op, won, margin) {
     }
     s.points += points;
     const prize = checkPrizes(s);
-    return { points, firstWin, bonus, prize };
+    return { points, firstWin, bonus, prize, woke };
   });
 }
+
+// ---- Training: chips on a winning board earn a win; secrets wake at TRAIN_WINS ----
+export function train(s, ids) {
+  s.trained = s.trained || {};
+  const woke = [];
+  ids.filter(Boolean).forEach(id => { const t = BY_ID[id]; if (!t || !t.secret) return; const before = s.trained[id] || 0; s.trained[id] = before + 1; if (before < TRAIN_WINS && s.trained[id] >= TRAIN_WINS) { woke.push(id); log(`${t.name} woke its secret power.`); } });
+  return woke;
+}
+export const trainedWins = (id) => (state.trained && state.trained[id]) || 0;
+export const isAwake = (id) => !!BY_ID[id]?.secret && trainedWins(id) >= TRAIN_WINS;
+export function awakeIds() { return Object.keys(state.trained || {}).filter(isAwake); }
+
+// ---- The Orbit Tour ----
+export function ensureCampaign(s = state) { if (!s.campaign) s.campaign = { done: {}, badges: [], seen: [], best: {} }; return s.campaign; }
+export function tourZoneIndex() { const c = ensureCampaign(); return Math.min(ZONES.length - 1, c.badges.length); }
+export function zoneUnlocked(z) { return z.n - 1 <= ensureCampaign().badges.length; }
+export function tourComplete() { return ensureCampaign().badges.length >= ZONES.length; }
+export function nodeStatus(node) {
+  const c = ensureCampaign(); const z = zoneOf(node);
+  if (!zoneUnlocked(z)) return 'locked';
+  if (node.kind === 'keeper') return c.badges.includes(z.id) ? 'done' : z.challenges.every(ch => c.done[ch.id]) ? 'open' : 'locked';
+  if (node.kind === 'challenge') return c.done[node.id] ? 'done' : 'open';
+  return 'open';
+}
+export function timesCleared(node) { return ensureCampaign().done[node.id] || 0; }
+export function deckCheck(node, deck = state.deck) {
+  const d = node.deck; if (!d) return { ok: deck.length === 12, why: deck.length === 12 ? '' : 'Deck needs 12 gToons' };
+  const ts = deck.map(id => BY_ID[id]).filter(Boolean);
+  if (ts.length !== 12) return { ok: false, why: 'Deck needs 12 gToons' };
+  if (d.maxRarity != null && ts.some(t => t.rarity > d.maxRarity)) return { ok: false, why: 'Too rare for this challenge' };
+  if (d.maxTotal && ts.reduce((a, t) => a + t.pts, 0) > d.maxTotal) return { ok: false, why: `Deck total must be ${d.maxTotal} or less` };
+  if (d.minTour && ts.filter(t => t.series === 'tour').length < d.minTour) return { ok: false, why: `Needs ${d.minTour} Keeper's Frames` };
+  if (d.maxColor && ts.filter(t => t.color === d.maxColor.color).length > d.maxColor.n) return { ok: false, why: d.maxColor.n === 0 ? `No ${COLORS[d.maxColor.color].name} gToons` : `At most ${d.maxColor.n} ${COLORS[d.maxColor.color].name}` };
+  if (d.color && ts.some(t => t.color !== d.color)) return { ok: false, why: 'One colour only' };
+  if (d.series && ts.some(t => t.series !== d.series)) return { ok: false, why: 'One series only' };
+  return { ok: true, why: '' };
+}
+// Best legal 12 for a node from everything the player owns, or null.
+export function buildDeckFor(node) {
+  const d = node.deck || {};
+  const list = [];
+  Object.entries(state.collection).forEach(([id, n]) => { const t = BY_ID[id]; if (!t) return;
+    if (d.maxRarity != null && t.rarity > d.maxRarity) return; if (d.color && t.color !== d.color) return; if (d.series && t.series !== d.series) return;
+    for (let i = 0; i < n; i++) list.push(t); });
+  if (d.maxColor) { const same = list.filter(t => t.color === d.maxColor.color).sort((a, b) => b.pts - a.pts).slice(0, d.maxColor.n); const others = list.filter(t => t.color !== d.maxColor.color); list.length = 0; list.push(...others, ...same); }
+  if (list.length < 12) return null;
+  let deck;
+  if (d.minTour) {
+    const frames = list.filter(t => t.series === 'tour').sort((a, b) => b.pts - a.pts).slice(0, Math.max(d.minTour, 0));
+    if (frames.length < d.minTour) return null;
+    const rest = list.filter(t => !frames.includes(t)).sort((a, b) => b.pts - a.pts);
+    deck = frames.concat(rest).slice(0, 12);
+  } else if (d.maxTotal) {
+    list.sort((a, b) => a.pts - b.pts);
+    deck = list.slice(0, 12); let total = deck.reduce((a, t) => a + t.pts, 0);
+    if (total > d.maxTotal) return null;
+    // upgrade the weakest slots while the budget allows
+    const spare = list.slice(12).sort((a, b) => b.pts - a.pts);
+    for (const cand of spare) { const i = deck.findIndex(t => t.pts < cand.pts); if (i < 0) continue; const nt = total - deck[i].pts + cand.pts; if (nt <= d.maxTotal) { total = nt; deck[i] = cand; } }
+  } else {
+    deck = list.sort((a, b) => b.pts - a.pts).slice(0, 12);
+  }
+  return deck.map(t => t.id);
+}
+export function nodeDeck(node) {
+  const pool = node.pool || {};
+  if (pool.mirror) return state.deck.slice();
+  if (pool.fixed) return pool.fixed.slice();
+  const cands = PACKABLE.filter(t => (!pool.series || pool.series.includes(t.series)) && t.rarity >= (pool.minR ?? 0) && t.rarity <= (pool.maxR ?? 4));
+  const out = []; const span = (pool.maxR ?? 4) - (pool.minR ?? 0) + 1;
+  while (out.length < 12) { const r = (pool.minR ?? 0) + Math.floor(Math.pow(Math.random(), 1.4) * span); const p = cands.filter(t => t.rarity === r); const src = p.length ? p : cands; out.push(src[Math.floor(Math.random() * src.length)].id); }
+  return out;
+}
+export function nodeOpponent(node) {
+  const z = zoneOf(node);
+  return { id: node.id, name: node.kind === 'challenge' ? node.opponent : node.name, diff: node.diff, smart: !!node.smart, avatar: node.avatar, reward: node.reward.points, taunt: node.taunt || node.intro || '', node, zone: z.id };
+}
+export function goalMet(node, ev) {
+  const won = ev.aTotal > ev.bTotal; const g = node.goal || { type: 'win' };
+  switch (g.type) {
+    case 'margin': return won && ev.aTotal - ev.bTotal >= g.n;
+    case 'score':  return won && ev.aTotal >= g.n;
+    case 'sets':   return won && Object.values(ev.aColors).reduce((a, n) => a + Math.floor(n / ev.rules.colorSet), 0) >= g.n;
+    default:       return won;
+  }
+}
+export function recordTour(node, ev, boardIds = []) {
+  return commit(s => {
+    const c = ensureCampaign(s); const z = zoneOf(node);
+    const won = ev.aTotal > ev.bTotal; const cleared = goalMet(node, ev);
+    s.stats.battles++; bumpQuest(s, 'playsToday'); s.lastBattle = todayKey();
+    const woke = won ? train(s, boardIds) : [];
+    let points = 0, first = false; const chips = []; let pack = []; let badge = null;
+    if (won) { s.stats.wins++; bumpQuest(s, 'winsToday'); }
+    if (cleared) {
+      first = !c.done[node.id]; c.done[node.id] = (c.done[node.id] || 0) + 1;
+      points = first || node.kind === 'spar' ? node.reward.points : Math.floor(node.reward.points / 4);
+      if (first) {
+        if (node.reward.chip) { addCtoon(node.reward.chip, 1, 'tour'); chips.push(node.reward.chip); }
+        if (node.reward.pack) pack = grantPack(node.reward.pack);
+        if (node.kind === 'keeper' && !c.badges.includes(z.id)) { c.badges.push(z.id); badge = z.id; }
+      }
+      log(`${node.kind === 'keeper' ? 'Frame ' + z.n + ' won from ' + node.name : (node.kind === 'spar' ? 'Sparred with ' : 'Cleared ') + node.name}${points ? ' (+' + points + ')' : ''}.`);
+    } else {
+      points = won ? Math.floor(node.reward.points / 5) : Math.floor(node.reward.points / 10);
+      log(`${won ? 'Won but missed the goal against' : 'Lost to'} ${node.kind === 'challenge' ? node.opponent : node.name}.`);
+    }
+    const margin = ev.aTotal - ev.bTotal; c.best[node.id] = Math.max(c.best[node.id] ?? -999, margin);
+    s.points += points;
+    const prize = checkPrizes(s);
+    return { won, cleared, first, points, chips, pack, badge, woke, prize };
+  });
+}
+export function storySeen(key) { return ensureCampaign().seen.includes(key); }
+export function markStory(key) { commit(s => { const c = ensureCampaign(s); if (!c.seen.includes(key)) c.seen.push(key); }); }
 
 // ---- cZone ----
 export function placeInZone(id, x, y) {
@@ -308,7 +430,7 @@ export function redeemCode(raw) {
     return { ok: true, text: on ? 'Unlimited points. Packs are on the house.' : 'Unlimited points switched off.', ctoons: [] };
   }
   if (code === 'DEBUG') {
-    const on = !state.settings.debug; commit(s => { s.settings.debug = on; });
+    const on = !state.settings.debug; commit(s => { s.settings.debug = on; if (!on) delete s.settings.debugHour; });
     return { ok: true, text: on ? 'Debug menu unlocked. Find it under Profile.' : 'Debug menu hidden.', ctoons: [] };
   }
   const promo = PROMO_CODES[code];
@@ -344,6 +466,7 @@ export function checkPrizes(s = state) {
   return got[0] || null;
 }
 
+export function completeSets() { return Object.keys(CHARACTERS).filter(k => CTOONS.filter(t => t.char === k).every(t => (state.collection[t.id] || 0) > 0)); }
 export function catalogProgress() {
   const total = CTOONS.length;
   return { have: uniqueOwned(), total };
@@ -384,7 +507,8 @@ export function sanitize() {
     log('The Orbit got a fresh cast! Your binder has been restocked and you got 500 points for the trouble.');
     changed = true;
   }
-  if (state.catalog !== 2) { state.catalog = 2; changed = true; }
+  ensureCampaign(state); if (!state.trained) state.trained = {};
+  if (state.catalog !== 3) { state.catalog = 3; changed = true; }
   if (changed) { if (state.deck.length < 12) state.deck = autoDeck(state); commit(); }
 }
 
@@ -399,16 +523,16 @@ export function featuredSeriesKey() {
 // ---- Debug helpers (only reachable from the hidden debug menu) ----
 export const debug = {
   points(n) { commit(s => { s.points = Math.max(0, s.points + n); }); },
-  give(id, n = 1) { if (!BY_ID[id]) return; commit(s => { addCtoon(id, n, 'debug'); checkPrizes(s); }); },
+  give(id, n = 1) { if (!BY_ID[id]) return; commit(s => { addCtoon(id, n, 'debug'); if (BY_ID[id].series === 'pz' && !s.prizes.includes(id)) s.prizes.push(id); checkPrizes(s); }); },
   giveTier(r) { const pool = PACKABLE.filter(t => t.rarity === r); if (!pool.length) return; const t = pool[Math.floor(Math.random() * pool.length)]; commit(s => { addCtoon(t.id, 1, 'debug'); checkPrizes(s); }); return t; },
   giveSet(charKey) { commit(s => { CTOONS.filter(t => t.char === charKey).forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
   giveAll() { commit(s => { PACKABLE.forEach(t => { if (!s.collection[t.id]) addCtoon(t.id, 1, 'debug'); }); checkPrizes(s); }); },
   freePack(packId) { const pack = PACKS.find(p => p.id === packId); if (!pack) return null;
     return commit(s => { const ids = rollPack(pack); const newIds = []; ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'debug'); }); s.stats.packs++; checkPrizes(s); return { ids, newIds, pack }; }); },
   legendaryPack() { const pack = PACKS[2]; return commit(s => { const ids = rollPack(pack); const leg = PACKABLE.filter(t => t.rarity === 4); ids[ids.length - 1] = leg[Math.floor(Math.random() * leg.length)].id; const newIds = []; ids.forEach(id => { if (!(s.collection[id] > 0) && !newIds.includes(id)) newIds.push(id); addCtoon(id, 1, 'debug'); }); s.stats.packs++; checkPrizes(s); return { ids, newIds, pack }; }); },
-  resetDaily() { commit(s => { s.daily.last = ''; s.dailyFree = ''; s.quests = { date: '', stats: {}, claimed: [] }; s.trades = { date: '', done: [] }; s.lastBattle = ''; s.redeemed = s.redeemed.filter(k => !k.startsWith('featured:')); }); },
-  streak(n) { commit(s => { s.daily.streak = Math.max(0, n); }); },
-  beatAll() { commit(s => { s.beaten = OPPONENTS.map(o => o.id); }); },
+  resetDaily() { commit(s => { const y = new Date(); y.setDate(y.getDate() - 1); s.daily.last = s.daily.streak ? todayKey(y) : ''; s.dailyFree = ''; s.quests = { date: '', stats: {}, claimed: [] }; s.trades = { date: '', done: [] }; s.lastBattle = ''; s.redeemed = s.redeemed.filter(k => !k.startsWith('featured:')); }); },
+  streak(n) { commit(s => { s.daily.streak = Math.max(0, n); if (s.daily.streak && !s.daily.last) { const y = new Date(); y.setDate(y.getDate() - 1); s.daily.last = todayKey(y); } checkPrizes(s); }); },
+  beatAll() { commit(s => { s.beaten = OPPONENTS.map(o => o.id); checkPrizes(s); }); },
   clearBeaten() { commit(s => { s.beaten = []; }); },
   unlockBgs() { commit(s => { s.unlockedBgs = BACKGROUNDS.map(b => b.id); }); },
   fakeWin(opId) { const op = OPPONENTS.find(o => o.id === opId) || OPPONENTS[0]; return recordBattle(op, true, 5); },

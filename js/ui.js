@@ -1,10 +1,11 @@
 // All screens and interactions, styled after the 2003 Cartoon Orbit site.
 // Rendering is string templates plus one delegated click handler keyed on
 // data-action attributes.
-import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, powerText } from './data.js';
+import { CTOONS, BY_ID, SERIES, RARITY, COLORS, PACKS, OPPONENTS, BACKGROUNDS, CHARACTERS, EDITIONS, MYTHIC, LEGENDARY, TRAIN_WINS, POWER_NAMES, powerText } from './data.js';
+import { ZONES, NODES, zoneOf, PROLOGUE, EPILOGUE, ruleText, goalText, deckText } from './campaign.js';
 import { openPack } from './pack.js';
 import { play as snd, setEnabled as setSound } from './sound.js';
-import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG, packSVG } from './art.js';
+import { tokenSVG, shadowTokenSVG, socketSVG, badgeSVG, characterSVG, packSVG, zoneBadgeSVG } from './art.js';
 import { APP_VERSION, NEWS, ROADMAP } from './news.js';
 import { state, commit, exportCode, parseSaveCode, replaceState, resetState, todayKey } from './store.js';
 import * as G from './game.js';
@@ -17,8 +18,9 @@ const fmt = (n) => n.toLocaleString();
 
 // navigation: section -> sub tab
 let section = 'home';
-const subs = { home: 'main', collection: 'binder', battle: 'arena', market: 'cmart', profile: 'me' };
+const subs = { home: 'main', collection: 'binder', battle: 'tour', market: 'cmart', profile: 'me' };
 let zoneMode = 'mine';     // mine | visit (inside Collection > cZone)
+let tourZone = null;       // zone index shown on the Tour page
 let binderFocus = null;    // character key to scroll to after the binder renders
 let verTaps = 0, verTapAt = 0;
 let binderFilter = 'all';
@@ -74,7 +76,7 @@ const SECTIONS = [
 const SUBTABS = {
   home:       [],
   collection: [['binder', 'BINDER'], ['sets', 'SETS'], ['czone', 'cZONE']],
-  battle:     [['arena', 'ARENA'], ['deck', 'MY DECK'], ['rules', 'HOW TO PLAY']],
+  battle:     [['tour', 'THE TOUR'], ['arena', 'LADDER'], ['deck', 'MY DECK'], ['rules', 'HOW TO PLAY']],
   market:     [['cmart', 'cMART'], ['auction', 'AUCTION'], ['codes', 'CODES']],
   profile:    [['me', 'PROFILE'], ['settings', 'SETTINGS'], ['device', 'DEVICE']],
 };
@@ -157,7 +159,7 @@ function todayCard() {
   return `<div class="panel today">
       <div class="row between"><div class="ptab">TODAY</div>${streakOrbs()}</div>
       <div class="ritual">
-        <div class="rit ${dailyDone ? 'done' : ''}"><i>${dailyDone ? '✓' : '1'}</i><div><b>Daily bonus</b><span>${dailyDone ? 'Claimed' : '+' + Math.min(G.DAILY_STREAK_CAP, G.DAILY_BASE + G.DAILY_STREAK_BONUS * Math.max(0, state.daily.streak)) + ' points'}</span></div>${dailyDone ? '' : '<button class="obtn small primary" data-action="claimDaily">CLAIM</button>'}</div>
+        <div class="rit ${dailyDone ? 'done' : ''}"><i>${dailyDone ? '✓' : '1'}</i><div><b>Daily bonus</b><span>${dailyDone ? 'Claimed' : '+' + G.nextDailyAmount() + ' points'}</span></div>${dailyDone ? '' : '<button class="obtn small primary" data-action="claimDaily">CLAIM</button>'}</div>
         <div class="rit ${freeDone ? 'done' : ''}"><i>${freeDone ? '✓' : '2'}</i><div class="mini-tok">${tokenSVG(free, 40, { bubble: false })}</div><div><b>Free chip</b><span>${esc(free.short)}</span></div>${freeDone ? '' : '<button class="obtn small primary" data-action="claimFree">TAKE</button>'}</div>
         <div class="rit ${played ? 'done' : ''}"><i>${played ? '✓' : '3'}</i><div><b>One battle</b><span>${played ? 'Played' : 'vs ' + esc(nextOp.name)}</span></div>${played ? '' : '<button class="obtn small" data-action="go" data-to="battle">GO</button>'}</div>
       </div>
@@ -171,7 +173,7 @@ function menuTiles() {
   const zoneN = state.czone.items.length;
   const tiles = [
     { to: 'market', sub: 'cmart', title: 'RIP A PACK', line: G.canAfford(PACKS[0].price) ? `FROM ${fmt(PACKS[0].price)} PTS` : `${fmt(PACKS[0].price - state.points)} PTS TO GO`, art: packSVG(PACKS[0], { size: 52 }) },
-    { to: 'battle', sub: 'arena', title: 'BATTLE', line: `VS ${esc(nextOp.name).toUpperCase()}`, art: tokenSVG(BY_ID[nextOp.avatar], 64, { bubble: false }) },
+    { to: 'battle', sub: 'tour', title: 'THE TOUR', line: G.tourComplete() ? 'REEL RESTORED' : `ZONE ${G.tourZoneIndex() + 1} · ${esc(ZONES[G.tourZoneIndex()].name).toUpperCase()}`, art: zoneBadgeSVG(ZONES[G.tourZoneIndex()], 64, true) },
     { to: 'collection', sub: 'binder', title: 'MY BINDER', line: `${G.uniqueOwned()}/${CTOONS.length} cTOONS`, art: tokenSVG(show, 64, { bubble: false }) },
     { to: 'collection', sub: 'czone', title: 'MY cZONE', line: zoneN ? `${zoneN} ON DISPLAY` : 'NOTHING ON DISPLAY', art: zoneN ? badgeSVG(BY_ID[state.czone.items[0].id], 64) : socketSVG(64) },
     { to: 'market', sub: 'auction', title: 'AUCTION', line: open ? `${open} OFFER${open > 1 ? 'S' : ''} TODAY` : 'ALL TRADED', art: tokenSVG(BY_ID[offers[0].get], 64, { bubble: false }) },
@@ -198,10 +200,9 @@ function newsModal() {
     <button class="obtn grey block" data-action="closeModal">CLOSE</button>`);
 }
 function homeView() {
-  const n = NEWS[0];
   const install = (!isStandalone() && !installDismissed) ? `<div class="panel slim row between"><div><b>ADD TO HOME SCREEN</b><div class="small">${isIOS() ? 'Share, then Add to Home Screen.' : 'Open in Safari on iPhone.'}</div></div><div class="row"><button class="obtn small" data-action="go" data-to="profile" data-sub="device">HOW</button><button class="obtn small grey" data-action="dismissInstall">LATER</button></div></div>` : '';
   return `${seriesHero()}
-    <div class="notice" data-action="allNews"><i>NEW</i><span>v${APP_VERSION} · ${esc(n.title)}</span><em>›</em></div>
+    <div class="notice" data-action="go" data-to="market" data-sub="codes"><i>TODAY</i><span>Featured code ${G.featuredCode()} · +150 points</span><em>›</em></div>
     ${todayCard()}${menuTiles()}${newsCard()}${install}`;
 }
 
@@ -274,7 +275,8 @@ function detailModal(id) {
         </div>
       </div>
       ${n ? `<p class="blurb">“${esc(t.blurb)}”</p>` : '<p class="blurb muted">Not in your binder yet. Find it in cPacks, trades or by winning gToons.</p>'}
-      <div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
+      <div class="power"><span>POWER</span> <b>${POWER_NAMES[t.power.t] || ''}</b> ${esc(powerText(t.power))}</div>
+      ${t.secret ? `<div class="power secret ${G.isAwake(id) ? '' : 'locked'}"><span>SECRET</span> ${G.isAwake(id) ? `<b>${POWER_NAMES[t.secret.t] || ''}</b> ${esc(powerText(t.secret))}` : `Wakes after ${TRAIN_WINS} wins on the board · ${Math.min(TRAIN_WINS, G.trainedWins(id))}/${TRAIN_WINS}`}</div>` : ''}
       <div class="small">Owned ${n} · In deck ${inDeck} · In cZone ${inZone}</div>
       <div class="row wrap">${actions.join('')}</div>
       ${artSection(t)}
@@ -348,6 +350,102 @@ function auctionView() {
 }
 
 // ---------- COMPETE ----------
+// ---------- THE ORBIT TOUR ----------
+function tourMap(cur) {
+  const c = state.campaign;
+  const pts = [];
+  for (let i = 0; i < 9; i++) pts.push([50 + 34 * Math.sin(i * 1.15 + 0.6), 6 + i * 11]);
+  const d = pts.map((p, i) => i === 0 ? `M${p[0]} ${p[1]}` : `C${pts[i - 1][0]} ${pts[i - 1][1] + 5.5},${p[0]} ${p[1] - 5.5},${p[0]} ${p[1]}`).join(' ');
+  const stops = ZONES.map((z, i) => { const [x, y] = pts[i + 1]; const lit = c.badges.includes(z.id); const un = G.zoneUnlocked(z); const right = x < 50;
+    return `<div class="stop ${i === cur && !G.tourComplete() ? 'cur' : ''}" style="left:${x}%;top:${y}%" data-action="tourZone" data-id="${i}">${zoneBadgeSVG(z, 48, lit || un)}</div>
+      <div class="stop-lbl ${un ? '' : 'locked'}" style="top:${y}%;${right ? `left:calc(${x}% + 32px)` : `right:calc(${100 - x}% + 32px)`}" data-action="tourZone" data-id="${i}">${esc(z.name)}</div>`; }).join('');
+  return `<div class="tourmap"><svg class="track" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#c8d4e1" stroke-width="2.2" vector-effect="non-scaling-stroke"/><path d="${d}" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/></svg>
+    <div class="station" style="left:${pts[0][0]}%;top:${pts[0][1]}%">ORBIT STATION</div>${stops}<div class="station" style="left:${pts[8][0]}%;top:${pts[8][1]}%">ORBIT STATION</div></div>`;
+}
+function tourNodeCard(n) {
+  const st = G.nodeStatus(n); const times = G.timesCleared(n);
+  const kind = n.kind === 'keeper' ? 'KEEPER' : n.kind === 'spar' ? 'SPARRING' : 'CHALLENGE';
+  const goal = n.kind === 'spar' ? '' : goalText(n.goal); const dk = deckText(n.deck);
+  const line = st === 'done' ? (n.kind === 'spar' ? `SPARRED ×${times}` : `CLEARED${times > 1 ? ' ×' + times : ''}`) : st === 'locked' ? (n.kind === 'keeper' ? 'CLEAR BOTH CHALLENGES FIRST' : 'LOCKED') : [goal, dk].filter(Boolean).join(' · ') || `+${n.reward.points} PTS`;
+  return `<div class="tnode ${st} ${n.kind}" data-action="tourNode" data-id="${n.id}">
+    <div class="tnode-av">${st === 'locked' ? socketSVG(56) : tokenSVG(BY_ID[n.avatar], 56, { bubble: false })}</div>
+    <div class="tnode-info"><span class="tnode-kind">${kind}${n.kicker ? ' · ' + esc(n.kicker) : ''}</span><b>${esc(n.name)}</b><em>${line}</em></div>
+    <span class="tnode-go">${st === 'done' ? '✓' : st === 'locked' ? '·' : '›'}</span>
+  </div>`;
+}
+function tourView() {
+  const c = G.ensureCampaign(); const cur = G.tourZoneIndex();
+  if (tourZone == null || tourZone > cur) tourZone = cur;
+  const z = ZONES[tourZone]; const un = G.zoneUnlocked(z); const complete = G.tourComplete();
+  const frames = `<div class="frames">${ZONES.map((zz, i) => `<div class="frame-slot ${c.badges.includes(zz.id) ? 'lit' : ''}" data-action="tourZone" data-id="${i}">${zoneBadgeSVG(zz, 40, c.badges.includes(zz.id))}</div>`).join('')}</div>`;
+  return `<section class="tour-head" style="--s1:${z.sky[0]};--s2:${z.sky[1]};--s3:${z.sky[2]}">
+      <div class="hero-kicker">THE ORBIT TOUR · ${complete ? 'THE REEL IS WHOLE' : c.badges.length + '/7 FRAMES'}</div>
+      ${frames}
+      <div class="tour-zone-name">${esc(z.name)}</div>
+      <div class="tour-zone-place">${esc(z.place)}</div>
+      ${z.tagline ? `<div class="tour-tag">“${esc(z.tagline)}”</div>` : ''}
+    </section>
+    <div class="panel">
+      <div class="ptab">ZONE ${z.n} OF 7 <em>${un ? (c.badges.includes(z.id) ? 'FRAME WON' : 'OPEN') : 'LOCKED · WIN THE FRAME BEFORE IT'}</em></div>
+      <div class="tnodes">${z.nodes.map(tourNodeCard).join('')}</div>
+    </div>
+    <div class="panel"><div class="ptab">THE ROUTE</div>${tourMap(cur)}<p class="note">Orbit Station to Orbit Station. Tap a stop.</p></div>`;
+}
+function tourNodeModal(id) {
+  const n = NODES[id]; if (!n) return; const st = G.nodeStatus(n); const chk = G.deckCheck(n);
+  const who = n.kind === 'challenge' ? n.opponent : n.name; const title = n.kind === 'keeper' ? n.title : n.kind === 'spar' ? 'SPARRING PARTNER' : 'CHALLENGER';
+  const rules = ruleText(n.rules); const sig = n.pool.fixed ? n.pool.fixed.slice(0, 4) : [];
+  const cols = n.pool.fixed ? B.topColors(n.pool.fixed) : [];
+  const packName = n.reward.pack ? PACKS.find(p => p.id === n.reward.pack).name : '';
+  const rc = n.reward.chip ? BY_ID[n.reward.chip] : null;
+  const playable = st !== 'locked' && chk.ok;
+  showModal(`<div class="scout">
+    <div class="scout-top"><div class="scout-av">${st === 'locked' ? socketSVG(110) : tokenSVG(BY_ID[n.avatar], 110, { bubble: false })}</div><div><div class="scout-kind">${title}</div><div class="scout-name">${esc(who)}</div>${(n.taunt || n.intro) ? `<div class="scout-line">“${esc(n.taunt || n.intro)}”</div>` : ''}</div></div>
+    <div class="ptab">${esc(n.name).toUpperCase()}</div>
+    ${n.kicker ? `<div class="kicker">${esc(n.kicker)}</div>` : ''}
+    <div class="scout-rows">
+      <div><span>GOAL</span><b>${goalText(n.goal)}</b></div>
+      ${rules.length ? `<div><span>HOUSE RULES</span><b>${rules.join(' ')}</b></div>` : ''}
+      ${n.deck ? `<div><span>YOUR DECK</span><b>${deckText(n.deck)}</b></div>` : ''}
+      ${n.pool.mirror ? '<div><span>THEY BRING</span><b>A COPY OF YOUR DECK</b></div>' : sig.length ? `<div><span>THEY BRING</span><b class="sig">${sig.map(i => tokenSVG(BY_ID[i], 36, { bubble: false })).join('')}</b></div>` : ''}
+      ${cols.length ? `<div><span>THEY LEAN</span><b>${cols.map(k => `<span class="ctag" style="--cc:${COLORS[k].hex}">${COLORS[k].name}</span>`).join(' ')}</b></div>` : ''}
+      ${n.smart ? '<div><span>WARNING</span><b>READS YOUR HAND</b></div>' : ''}
+      <div><span>REWARD</span><b>+${n.reward.points} PTS${packName ? ' · ' + esc(packName).toUpperCase() : ''}${rc ? ' · ' + esc(rc.name).toUpperCase() : ''}${st === 'done' && n.kind !== 'spar' ? ' (WON)' : ''}</b></div>
+    </div>
+    ${rc ? `<div class="scout-chip">${G.ownedCount(rc.id) ? tokenSVG(rc, 84, { bubble: false }) : shadowTokenSVG(rc, 84)}</div>` : ''}
+    <div class="deckline ${chk.ok ? 'ok' : 'bad'}">${chk.ok ? 'DECK READY' : esc(chk.why).toUpperCase()}${chk.ok ? '' : n.deck ? ` <button class="obtn small" data-action="tourBuild" data-id="${n.id}">BUILD ONE</button>` : ' <button class="obtn small" data-action="autoDeck">AUTO-FILL</button>'}</div>
+    <div class="row center"><button class="obtn primary big" data-action="tourPlay" data-id="${n.id}" ${playable ? '' : 'disabled'}>${st === 'done' && n.kind !== 'spar' ? 'PLAY AGAIN' : 'PLAY'}</button><button class="obtn grey" data-action="closeModal">BACK</button></div>
+  </div>`);
+}
+// Title cards: a sequence of story lines, tap to advance.
+function showCards(cards, onDone) {
+  if (!cards || !cards.length) { if (onDone) onDone(); return; }
+  const el = document.createElement('div'); el.className = 'tcard'; let i = 0;
+  const draw = () => { el.innerHTML = `<div class="tcard-in"><div class="tcard-frame"><p>${esc(cards[i])}</p></div><div class="tcard-dots">${cards.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div><div class="tcard-hint">${i < cards.length - 1 ? 'TAP' : 'TAP TO CONTINUE'}</div></div>`; };
+  draw();
+  el.addEventListener('click', () => { i++; if (i >= cards.length) { el.classList.add('out'); setTimeout(() => { el.remove(); if (onDone) onDone(); }, 300); } else { snd('flip'); draw(); } });
+  document.body.appendChild(el); snd('flip');
+}
+// Show the next unseen story beat for the Tour, if any.
+function queueTourStory() {
+  if (document.querySelector('.tcard, .setpost') || document.body.classList.contains('pk-open') || !$('#modal').hidden) return;
+  const c = G.ensureCampaign(); const cur = G.tourZoneIndex();
+  const beats = [];
+  if (PROLOGUE.length) beats.push(['prologue', PROLOGUE]);
+  ZONES.forEach((z, i) => {
+    if (i > cur) return;
+    if (G.zoneUnlocked(z)) beats.push(['arrive:' + z.id, z.story.arrive]);
+    if (z.challenges.some(ch => c.done[ch.id])) beats.push(['mid:' + z.id, z.story.midway]);
+    if (G.nodeStatus(z.keeper) !== 'locked') beats.push(['before:' + z.id, z.story.beforeKeeper]);
+    if (c.badges.includes(z.id)) beats.push(['after:' + z.id, z.story.afterKeeper]);
+  });
+  if (G.tourComplete() && EPILOGUE.length) beats.push(['epilogue', EPILOGUE]);
+  const next = beats.find(([k, cards]) => cards && cards.length && !G.storySeen(k));
+  if (!next) return;
+  G.markStory(next[0]);
+  showCards(next[1], () => { if (next[0].startsWith('after:')) tourZone = G.tourZoneIndex(); render(); });
+}
+
 function arenaView() {
   const deckOk = state.deck.length === 12;
   const next = nextOpponent(); const un = G.opponentUnlocked(next);
@@ -369,7 +467,7 @@ function arenaView() {
         return `<div class="rung ${u ? '' : 'locked'} ${isNext ? 'next' : ''}">
           <span class="n">0${i + 1}</span><div class="av">${u ? tokenSVG(BY_ID[op.avatar], 44, { bubble: false }) : socketSVG(44)}</div>
           <div class="who"><b>${esc(op.name)}</b><span>${beat ? 'BEATEN · +' + op.reward + ' PTS A WIN' : u ? '+' + op.reward + ' PTS · FIRST WIN BONUS' : 'BEAT THE ONE ABOVE TO UNLOCK'}</span></div>
-          ${u ? `<button class="obtn small ${isNext ? 'primary' : 'grey'}" data-action="battle" data-id="${op.id}" ${deckOk ? '' : 'disabled'}>PLAY</button>` : '<span class="lock">LOCKED</span>'}
+          ${isNext ? '<span class="lock next">UP NEXT</span>' : u ? `<button class="obtn small grey" data-action="battle" data-id="${op.id}" ${deckOk ? '' : 'disabled'}>PLAY</button>` : '<span class="lock">LOCKED</span>'}
         </div>`; }).join('')}</div>
     </div>`;
 }
@@ -422,19 +520,21 @@ function scoreBox(name, avatarId, ev, prefix, cols, who) {
     <div class="sbox-colors">${cols.map(c => `<div><span>${COLORS[c].abbr}</span><i style="background:${COLORS[c].hex}"></i><b>${cc[c] || 0}</b></div>`).join('')}</div>
     <div class="sbox-label">POINTS</div>
     <div class="sbox-points" data-who="${who}" data-total="${total}">${lastTotals ? (who === 'p' ? lastTotals.a : lastTotals.b) : total}</div>
-    <div class="sbox-sub">${swaps ? `-${swaps * B.SWAP_COST} FOR SWAPPING` : '-10 FOR SWAPPING'}</div>
+    <div class="sbox-sub">${match.rules.noSwap ? 'NO SWAPS' : swaps ? `-${swaps * match.rules.swapCost} FOR SWAPPING` : `-${match.rules.swapCost} FOR SWAPPING`}</div>
+    ${who === 'ai' && match.rules.openHand ? `<div class="sbox-hand">${match.ai.hand.map(id => tokenSVG(BY_ID[id], 26, { bubble: false })).join('')}</div>` : ''}
   </div>`;
 }
 function matchScreen() {
-  const ev = B.evaluate(match.p, match.ai);
+  const ev = B.evaluate(match.p, match.ai, match.rules);
   const op = match.opponent;
   const sel = selectedHand >= 0 ? BY_ID[match.p.hand[selectedHand]] : null;
   const status = match.done ? (ev.aTotal > ev.bTotal ? 'GAME OVER — YOU WIN!' : ev.aTotal < ev.bTotal ? `GAME OVER — ${op.name.toUpperCase()} WINS.` : 'GAME OVER — IT’S A DRAW!')
     : match.turn === 'p' ? (sel ? 'NOW TAP AN EMPTY SOCKET ON YOUR SIDE OF THE BOARD.' : `ROUND ${match.round}: PICK A gTOON FROM YOUR HAND.`) : `${op.name.toUpperCase()} IS THINKING…`;
   const pCols = B.topColors(state.deck), aCols = B.topColors(match.ai.slots.filter(Boolean).concat(match.ai.hand, match.ai.deck));
-  const canSwap = match.turn === 'p' && !match.done && selectedHand >= 0 && match.p.deck.length > 0;
+  const canSwap = match.turn === 'p' && !match.done && selectedHand >= 0 && match.p.deck.length > 0 && !match.rules.noSwap;
   return `<div class="gz">
-    <div class="gz-title">GTOON GAME ZONE</div>
+    <div class="gz-title">${match.node ? esc(zoneOf(match.node).name).toUpperCase() : 'GTOON GAME ZONE'}</div>
+    ${(() => { const r = ruleText(match.rules); if (match.node && match.node.kind !== 'spar') r.push(goalText(match.node.goal)); return r.length ? `<div class="gz-rules">${r.join(' · ')}</div>` : ''; })()}
     <div class="gz-grid">
       <aside class="gz-left">
         ${scoreBox(op.name, op.avatar, ev, 'ai', aCols, 'ai')}
@@ -460,7 +560,7 @@ function matchScreen() {
         <div class="gz-hand-title">YOUR gTOONS</div>
         <div class="gz-hand">${[0, 1, 2, 3, 4, 5].map(hi => { const id = match.p.hand[hi]; if (!id) return `<div class="hslot empty">${socketSVG(100)}</div>`;
           return `<div class="hslot ${selectedHand === hi ? 'sel' : ''}" data-action="pickHand" data-i="${hi}">${tokenSVG(BY_ID[id], 100)}</div>`; }).join('')}</div>
-        <div class="gz-tools"><button class="obtn small ${canSwap ? '' : 'grey'}" data-action="swapCard" ${canSwap ? '' : 'disabled'}>SWAP −10</button><span class="small">DECK ${match.p.deck.length}</span><button class="obtn small grey" data-action="forfeit">${match.done ? 'EXIT' : 'QUIT'}</button></div>
+        <div class="gz-tools"><button class="obtn small ${canSwap ? '' : 'grey'}" data-action="swapCard" ${canSwap ? '' : 'disabled'}>SWAP −${match.rules.swapCost}</button><span class="small">DECK ${match.p.deck.length}</span><button class="obtn small grey" data-action="forfeit">${match.done ? 'EXIT' : 'QUIT'}</button></div>
       </aside>
     </div>
     <div class="gz-status">${esc(status)}${match.done ? ' <b data-action="forfeit">CLICK HERE TO RETURN TO THE CHALLENGE ZONE.</b>' : ''}</div>
@@ -500,30 +600,40 @@ function diffHits(before, after, landedWho, landedSlot) {
   return hits;
 }
 
-function startBattle(opId) {
-  const op = OPPONENTS.find(o => o.id === opId);
-  if (!op || !G.opponentUnlocked(op) || state.deck.length !== 12) return;
-  match = B.newMatch(state.deck.slice(), G.opponentDeck(op), op);
+function startMatch(op, aiDeck, opts = {}, node = null) {
+  if (state.deck.length !== 12) return;
+  match = B.newMatch(state.deck.slice(), aiDeck, op, { rules: opts.rules, pAwake: G.awakeIds() });
+  match.node = node;
   selectedHand = -1; lastTotals = null; pendingLand = null; pendingHits = {}; busy = true;
   render();
   const intro = document.createElement('div'); intro.className = 'gz-intro';
-  intro.innerHTML = `<b class="ready">READY?</b><b class="fight">BATTLE!</b>`;
+  intro.innerHTML = `<b class="ready">${node ? esc(node.kind === 'challenge' ? node.opponent : node.name).toUpperCase() : 'READY?'}</b><b class="fight">${node && node.kicker ? esc(node.kicker) : 'BATTLE!'}</b>`;
   document.body.appendChild(intro);
   sfx.good(); setTimeout(() => sfx.great(), 650);
   setTimeout(() => { intro.remove(); busy = false; render(); if (match && match.turn === 'ai') setTimeout(aiTurn, 500); }, 1500);
+}
+function startBattle(opId) {
+  const op = OPPONENTS.find(o => o.id === opId);
+  if (!op || !G.opponentUnlocked(op)) return;
+  startMatch(op, G.opponentDeck(op));
+}
+function startTour(nodeId) {
+  const n = NODES[nodeId]; if (!n || G.nodeStatus(n) === 'locked') return;
+  const chk = G.deckCheck(n); if (!chk.ok) { toast(chk.why); return; }
+  startMatch(G.nodeOpponent(n), G.nodeDeck(n), { rules: n.rules }, n);
 }
 function aiTurn() {
   if (!match || match.done || match.turn !== 'ai' || busy) return;
   const mv = B.aiChoose(match);
   const t = BY_ID[match.ai.hand[mv.handIndex]];
-  const before = B.evaluate(match.p, match.ai);
+  const before = B.evaluate(match.p, match.ai, match.rules);
   const from = rectOf('.sbox.ai .sbox-av') || rectOf('.gz-title');
   const to = rectOf(`.gz-side.ai .sock[data-i="${mv.slot}"]`);
   busy = true; whoosh();
   flyChip(t, from, to, { spins: 2, tilt: 14, dur: 750 }).then(() => {
     B.place(match, 'ai', mv.handIndex, mv.slot);
     pendingLand = { who: 'ai', slot: mv.slot };
-    pendingHits = diffHits(before, B.evaluate(match.p, match.ai), 'ai', mv.slot);
+    pendingHits = diffHits(before, B.evaluate(match.p, match.ai, match.rules), 'ai', mv.slot);
     busy = false; slam(); render();
     if (match.done) setTimeout(finishMatch, 900);
   });
@@ -556,12 +666,33 @@ async function tally(ev) {
 }
 async function finishMatch() {
   if (!match || !match.done) return;
-  const ev = B.evaluate(match.p, match.ai);
+  const ev = B.evaluate(match.p, match.ai, match.rules);
   await tally(ev);
   const won = ev.aTotal > ev.bTotal; const draw = ev.aTotal === ev.bTotal;
-  const res = draw ? { points: 0, firstWin: false, bonus: [], prize: null } : G.recordBattle(match.opponent, won, ev.aTotal - ev.bTotal);
-  snd(won ? 'win' : draw ? 'good' : 'lose');
   const lineup = (side) => `<div class="lineup">${side.slots.filter(Boolean).map(id => `<div class="mini">${tokenSVG(BY_ID[id], 40)}</div>`).join('')}</div>`;
+  const wokeHTML = (ids) => ids && ids.length ? `<div>${ids.map(id => `<span class="woke">SECRET AWAKE · ${esc(BY_ID[id].short).toUpperCase()}</span>`).join('')}</div>` : '';
+  if (match.node) {
+    const node = match.node; const res = G.recordTour(node, ev, match.p.slots);
+    snd(res.cleared ? 'win' : won ? 'good' : 'lose');
+    const title = res.cleared ? (node.kind === 'keeper' ? 'FRAME WON' : node.kind === 'spar' ? 'GOOD SPAR' : 'CLEARED') : won ? 'GOAL MISSED' : 'DEFEAT';
+    const packName = node.reward.pack ? PACKS.find(p => p.id === node.reward.pack).name : '';
+    showModal(`<div class="reveal result ${res.cleared ? 'won' : 'lost'}">
+      <div class="result-title">${title}</div>
+      <div class="result-score"><span class="me">${ev.aTotal}</span><i>–</i><span class="them">${ev.bTotal}</span></div>
+      <div class="result-names"><span>${esc(state.name)}</span><span>${esc(match.opponent.name)}</span></div>
+      ${node.kind !== 'spar' ? `<div class="result-goal">${goalText(node.goal)}${res.cleared ? ' ✓' : ''}</div>` : ''}
+      <div class="result-lineups">${lineup(match.p)}${lineup(match.ai)}</div>
+      <div class="result-pts">+${res.points} POINTS${res.first && node.kind !== 'spar' ? ' · FIRST CLEAR' : ''}</div>
+      ${res.chips.length ? `<div class="small">YOURS NOW</div><div class="reveal-toks">${res.chips.map(id => `<div class="flip">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
+      ${res.pack.length ? `<div class="small">${esc(packName).toUpperCase()}</div><div class="reveal-toks">${res.pack.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
+      ${res.badge ? `<div class="result-pts">FRAME ${zoneOf(node).n} OF 7</div>` : ''}
+      ${wokeHTML(res.woke)}
+      ${res.prize ? `<div class="result-pts">PRIZE: ${esc(BY_ID[res.prize].name).toUpperCase()}</div>` : ''}
+      <div class="row center"><button class="obtn primary" data-action="leaveMatch">CONTINUE</button><button class="obtn grey" data-action="rematch">${res.cleared ? 'AGAIN' : 'RETRY'}</button></div></div>`);
+    return;
+  }
+  const res = draw ? { points: 0, firstWin: false, bonus: [], prize: null, woke: [] } : G.recordBattle(match.opponent, won, ev.aTotal - ev.bTotal, match.p.slots);
+  snd(won ? 'win' : draw ? 'good' : 'lose');
   showModal(`<div class="reveal result ${won ? 'won' : draw ? 'drew' : 'lost'}">
     <div class="result-title">${won ? 'VICTORY' : draw ? 'DRAW' : 'DEFEAT'}</div>
     <div class="result-score"><span class="me">${ev.aTotal}</span><i>–</i><span class="them">${ev.bTotal}</span></div>
@@ -569,8 +700,9 @@ async function finishMatch() {
     <div class="result-lineups">${lineup(match.p)}${lineup(match.ai)}</div>
     ${draw ? '<div class="small">No points this time.</div>' : `<div class="result-pts">+${res.points} POINTS${res.firstWin ? ' · FIRST WIN' : ''}</div>`}
     ${res.bonus.length ? `<div class="small">PREMIUM cPACK</div><div class="reveal-toks">${res.bonus.map((id, i) => `<div class="flip" style="animation-delay:${i * 260}ms">${tokenHTML(BY_ID[id], { count: 0 })}</div>`).join('')}</div>` : ''}
+    ${wokeHTML(res.woke)}
     ${res.prize ? `<div class="result-pts">PRIZE: ${esc(BY_ID[res.prize].name).toUpperCase()}</div>` : ''}
-    <div class="row center"><button class="obtn primary" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">ARENA</button></div></div>`);
+    <div class="row center"><button class="obtn primary" data-action="rematch">REMATCH</button><button class="obtn grey" data-action="leaveMatch">LADDER</button></div></div>`);
 }
 
 // ---------- cZONES ----------
@@ -645,7 +777,7 @@ function codesView() {
 function profileView() {
   const show = BY_ID[G.showcaseId()]; const st = state.stats;
   const rating = state.czone.items.reduce((s, it) => s + BY_ID[it.id].points, 0);
-  const stats = [['cTOONS', `${G.uniqueOwned()}/${CTOONS.length}`], ['SETS', `${(state.sets || []).length}/${Object.keys(CHARACTERS).length}`], ['BINDER VALUE', fmt(G.binderValue())], ['RECORD', `${st.wins}–${st.battles - st.wins}`],
+  const stats = [['cTOONS', `${G.uniqueOwned()}/${CTOONS.length}`], ['SETS', `${G.completeSets().length}/${Object.keys(CHARACTERS).length}`], ['BINDER VALUE', fmt(G.binderValue())], ['RECORD', `${st.wins}–${st.battles - st.wins}`],
     ['PACKS', st.packs], ['TRADES', st.trades], ['RECYCLED', st.recycled], ['cZONE', fmt(rating)]];
   const d = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const prizes = CTOONS.filter(t => t.series === 'pz');
@@ -769,7 +901,7 @@ export function render() {
   const views = {
     home: { main: homeView },
     collection: { binder: binderView, sets: setsView, czone: zoneView },
-    battle: { arena: arenaView, deck: deckView, rules: rulesView },
+    battle: { tour: tourView, arena: arenaView, deck: deckView, rules: rulesView },
     market: { cmart: cmartView, auction: auctionView, codes: codesView },
     profile: { me: profileView, settings: settingsView, device: deviceView, debug: debugView },
   };
@@ -778,6 +910,7 @@ export function render() {
   app.innerHTML = orbitFrame(views[section][subs[section]]());
   if (section === 'collection' && subs.collection === 'czone' && zoneMode === 'mine') bindStage();
   if (binderFocus) { const el = $('#cs-' + binderFocus); binderFocus = null; if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
+  if (section === 'battle' && subs.battle === 'tour') setTimeout(queueTourStory, 250);
   if ((state.pendingSets || []).length && !document.body.classList.contains('pk-open') && !document.querySelector('.setpost')) {
     const c = G.popPendingSet(); if (c) setTimeout(() => showSetPoster(c), 400);
   }
@@ -785,7 +918,7 @@ export function render() {
 
 function quipFor(id) { const c = CHARACTERS[BY_ID[id]?.char]; const q = c && c.quips; return q ? q[Math.floor(Math.random() * q.length)] : null; }
 function afterMatchRender() {
-  const ev = B.evaluate(match.p, match.ai);
+  const ev = B.evaluate(match.p, match.ai, match.rules);
   if (pendingLand) {
     const sock = $(`.gz-side.${pendingLand.who} .sock[data-i="${pendingLand.slot}"]`);
     const id = match[pendingLand.who].slots[pendingLand.slot];
@@ -806,7 +939,7 @@ function afterMatchRender() {
 
 // ---------- actions ----------
 const actions = {
-  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; window.scrollTo(0, 0); },
+  go(d) { section = d.to; if (d.sub) subs[section] = d.sub; zonePick = false; zoneMode = 'mine'; window.scrollTo(0, 0); },
   sub(d) { subs[section] = d.id; zonePick = false; window.scrollTo(0, 0); },
   none() {},
   closeModal() { closeModal(); },
@@ -825,7 +958,7 @@ const actions = {
   allLog() { const d = (t) => new Date(t).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' });
     showModal(`<div class="ptab">ORBIT LOG</div><div class="updates tall">${state.log.map(l => `<div class="upd"><div class="upd-date">${d(l.t)}</div><div>${esc(l.text)}</div></div>`).join('')}</div><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false; },
   versionTap() { const now = Date.now(); if (now - verTapAt > 2500) verTaps = 0; verTapAt = now; verTaps++;
-    if (verTaps >= 7) { verTaps = 0; const on = !state.settings.debug; commit(s => { s.settings.debug = on; }); snd(on ? 'great' : 'tap'); toast(on ? 'Debug menu unlocked.' : 'Debug menu hidden.'); if (on) subs.profile = 'debug'; return; }
+    if (verTaps >= 7) { verTaps = 0; const on = !state.settings.debug; commit(s => { s.settings.debug = on; if (!on) delete s.settings.debugHour; }); snd(on ? 'great' : 'tap'); toast(on ? 'Debug menu unlocked.' : 'Debug menu hidden.'); if (on) subs.profile = 'debug'; return; }
     if (verTaps >= 4) toast(`${7 - verTaps} more…`, 800); return false; },
   dbg(d) { const [op, arg] = d.id.split(':');
     const show = (r) => { render(); openPack(r, { sfx: packSfx }).then(() => render()); };
@@ -852,7 +985,7 @@ const actions = {
       case 'dump': showModal(`<div class="ptab">SAVE</div><pre class="dump">${esc(JSON.stringify(state, null, 1))}</pre><button class="obtn grey block" data-action="closeModal">CLOSE</button>`); return false;
       case 'sanitize': G.sanitize(); toast('Save checked.'); break;
       case 'reload': (async () => { try { const regs = await navigator.serviceWorker?.getRegistrations?.() || []; await Promise.all(regs.map(r => r.unregister())); const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch { /* ignore */ } location.reload(); })(); return false;
-      case 'hide': commit(s => { s.settings.debug = false; }); subs.profile = 'settings'; break;
+      case 'hide': commit(s => { s.settings.debug = false; delete s.settings.debugHour; }); subs.profile = 'settings'; break;
     }
     snd('tap'); },
   detail(d) { snd('clink'); detailModal(d.id); return false; },
@@ -860,7 +993,7 @@ const actions = {
   deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from deck.'); detailModal(d.id); return false; },
   recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} points.`); } detailModal(d.id); return false; },
   gift(d) { const t = BY_ID[d.id];
-    showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Orbit Help → Codes. Each code works once.</p>
+    showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Market → Codes. Each code works once.</p>
       <div class="row center"><button class="obtn" data-action="giftConfirm" data-id="${d.id}">CREATE GIFT CODE</button><button class="obtn grey" data-action="closeModal">CANCEL</button></div>`); return false; },
   giftConfirm(d) { const code = G.giftCtoon(d.id); if (!code) return;
     showModal(`<div class="ptab">GIFT CODE</div><p class="note">Send this to your friend:</p><div class="code">${code}</div>
@@ -877,26 +1010,30 @@ const actions = {
   placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false;
     const slot = +d.i; if (match.p.slots[slot]) return false;
     const hi = selectedHand; const t = BY_ID[match.p.hand[hi]];
-    const before = B.evaluate(match.p, match.ai);
+    const before = B.evaluate(match.p, match.ai, match.rules);
     const from = rectOf(`.hslot[data-i="${hi}"]`); const to = rectOf(`.gz-side.p .sock[data-i="${slot}"]`);
     const src = $(`.hslot[data-i="${hi}"]`); if (src) src.style.visibility = 'hidden';
     busy = true; whoosh();
     flyChip(t, from, to, { spins: 2, tilt: -14 }).then(() => {
       B.place(match, 'p', hi, slot); selectedHand = -1;
       pendingLand = { who: 'p', slot };
-      pendingHits = diffHits(before, B.evaluate(match.p, match.ai), 'p', slot);
+      pendingHits = diffHits(before, B.evaluate(match.p, match.ai, match.rules), 'p', slot);
       busy = false; slam(); render();
       if (match.done) setTimeout(finishMatch, 900); else setTimeout(aiTurn, 700);
     });
     return false; },
   swapCard() { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false; if (B.swap(match, 'p', selectedHand)) { sfx.bad(); toast('Swapped. -10 points.'); } },
-  slotInfo(d) { const side = match[d.who]; const id = side.slots[+d.i]; if (!id) return; const ev = B.evaluate(match.p, match.ai); const v = (d.who === 'p' ? ev.a : ev.b)[+d.i]; const t = BY_ID[id];
+  slotInfo(d) { const side = match[d.who]; const id = side.slots[+d.i]; if (!id) return; const ev = B.evaluate(match.p, match.ai, match.rules); const v = (d.who === 'p' ? ev.a : ev.b)[+d.i]; const t = BY_ID[id];
     showModal(`<div class="detail"><div class="ptab">${esc(t.name).toUpperCase()}</div><div class="detail-tok center">${tokenSVG(t, 120)}</div><div class="power"><span>POWER</span> ${esc(powerText(t.power))}</div>
       <div class="mods"><div>BASE <b>${v.base}</b></div>${v.mods.map(m => `<div>${m.v > 0 ? '+' : ''}${m.v} <span class="small">${esc(m.why)}</span></div>`).join('')}<div>TOTAL <b>${v.total}</b></div></div>
       <button class="obtn grey block" data-action="closeModal">CLOSE</button></div>`); return false; },
-  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; G.recordBattle(match.opponent, false, 0); } match = null; closeModal(); },
-  rematch() { const op = match.opponent; closeModal(); startBattle(op.id); return false; },
-  leaveMatch() { closeModal(); match = null; },
+  forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; if (match.node) G.recordTour(match.node, { aTotal: 0, bTotal: 1, aColors: {}, rules: match.rules }, []); else G.recordBattle(match.opponent, false, 0); } const wasTour = !!(match && match.node); match = null; closeModal(); if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
+  rematch() { const op = match.opponent; const node = match.node; closeModal(); if (node) startTour(node.id); else startBattle(op.id); return false; },
+  leaveMatch() { const wasTour = !!(match && match.node); closeModal(); match = null; if (wasTour) { section = 'battle'; subs.battle = 'tour'; } },
+  tourZone(d) { tourZone = +d.id; },
+  tourNode(d) { const n = NODES[d.id]; if (!n) return false; snd('clink'); tourNodeModal(d.id); return false; },
+  tourPlay(d) { closeModal(); startTour(d.id); return false; },
+  tourBuild(d) { const n = NODES[d.id]; const deck = n && G.buildDeckFor(n); if (!deck) { toast('Not enough legal gToons in your binder yet.'); return false; } commit(s => { s.deck = deck; }); sfx.good(); toast('Deck built for this challenge.'); tourNodeModal(d.id); return false; },
   zonePicker() { zonePick = !zonePick; },
   zoneAdd(d) { const ok = G.placeInZone(d.id, 0.05 + Math.random() * 0.7, 0.05 + Math.random() * 0.6); if (ok) { toast('Placed in your cZone.'); sfx.tap(); closeModal(); section = 'collection'; subs.collection = 'czone'; zoneMode = 'mine'; zonePick = false; } else toast('cZone is full or you have no spare copy.'); },
   bgPicker() { bgModal(); return false; },
