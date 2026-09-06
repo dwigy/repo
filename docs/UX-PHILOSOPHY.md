@@ -146,3 +146,20 @@ Short, confident, warm, slightly old-Hollywood. Title cards. "Your pulls." "Set 
 - No instant state changes for anything physical.
 - No third-party branding, fonts or artwork.
 - No emoji in the UI.
+
+
+## Motion system (v0.8.1)
+
+Motion exists to explain change, never to decorate. Every animation answers one of three questions: where did this come from, what just happened, or what can I touch.
+
+| Layer | Rule | Numbers |
+| --- | --- | --- |
+| Screen change | The whole screen crossfades and rises through the View Transitions API; the bottom bar and header are pinned and do not animate. Same-screen re-renders do not animate. | out 220 ms, in 320 ms, `cubic-bezier(.2,.8,.2,1)` |
+| Entrances | Panels, tiles, cards and chips rise 10 px and fade, staged 50 to 60 ms apart, only when the screen changes. Heroes scale from 1.02. | 420 ms, stagger 50 ms, at most 240 ms total |
+| Sheets and modals | A sheet rises 24 px and fades over a darkening backdrop; closing reverses in 200 ms. Replacing content inside an open sheet only breathes (scale .985). | in 320 ms, out 200 ms |
+| Touch | Every tappable surface compresses to .98 on press and lifts 2 px on hover. Buttons are at least 40 px tall, big buttons 52 px. | 160 ms |
+| Numbers | The coin counter bumps when coins arrive; match totals count up with ticks; result titles spring in. | spring `cubic-bezier(.2,1.4,.4,1)` |
+| Theme | Switching light and dark crossfades the whole screen. | 320 ms |
+| Reduced motion | With `prefers-reduced-motion`, every animation and transition collapses to 1 ms and view transitions are off. | |
+
+Never: bounce for its own sake, parallax on scroll, looping attention-seekers outside the cover page, animation on every re-render.

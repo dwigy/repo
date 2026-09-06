@@ -79,6 +79,8 @@ Open that link on your iPhone and follow the install steps above.
 | Campaign | Three save slots with progress snapshots. A new save plays a spoken intro, then picks one of five starter stacks, each led by a hero chip (+6 when played first). Seven regions, each its own themed page with Train (coins), a region-only pack, three players to beat, a gatekeeper (badge + 1/1 chip) and three places to explore (lore, a chip to find, a Higher-or-Lower mini-game). After seven badges the three heroes open; 100% completion grants a final badge and 1/1. The map jumps between unlocked regions. Menu is always top-left. |
 | Profile | Portfolio (background, favourite chips, badges, link to your stack), Settings (name, sound, theme, artwork, reset), Device (install, backup, restore). |
 | Chip details | Tilt the chip with your finger, flip it to see its mint number, date and where it came from. Completing all eight editions of a character shows a set poster. |
+| Motion | Screen crossfades through the View Transitions API, staged entrances, sheet choreography, press feedback, a cover fade and a theme crossfade, all honouring reduced-motion. |
+| Theme | Light, dark or system, under Profile > Settings. |
 | Sound | A small synthesised sound kit (rip, flip, clink, land, tally, win) generated in the browser, paired with visual pulses. Toggle in Settings. |
 
 The design thinking behind the app lives in `docs/UX-PHILOSOPHY.md` (north star, ten tenets,

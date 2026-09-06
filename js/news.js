@@ -11,6 +11,7 @@ export const NEWS = [
       'The campaign has three save slots, a spoken intro, five starter stacks with a leader chip (+6 when played first), seven regions with Train, Shop, three players, a gatekeeper and places to explore, then the three heroes and 100% completion.',
       'Gatekeepers grant a badge for your profile and a 1/1 chip. Completion grants another of each.',
       'The old zone page is now your portfolio: background, favourite chips, badges and a link to your stack.',
+      'A motion pass: screens crossfade, sheets rise and settle, cards and chips stage in, every surface answers a press, and it all switches off under reduced motion.',
     ] },
   { v: '0.7.0', date: '2026-09-06', title: 'The Orbit Tour',
     items: [
