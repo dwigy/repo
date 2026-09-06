@@ -98,12 +98,20 @@ function orbitFrame(inner) {
 }
 
 // ---------- modal & toast ----------
+let modalTimer = null;
 export function showModal(html, cls = '') {
-  const m = $('#modal');
-  m.innerHTML = `<div class="modal-back" data-action="closeModal"></div><div class="modal panel ${cls}">${html}</div>`;
-  m.hidden = false;
+  const m = $('#modal'); clearTimeout(modalTimer);
+  const open = !m.hidden;
+  m.innerHTML = `<div class="modal-back" data-action="closeModal"></div><div class="modal panel ${cls} ${open ? 'swap' : ''}">${html}</div>`;
+  m.hidden = false; m.classList.remove('out');
 }
-export function closeModal() { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; }
+export function closeModal() {
+  const m = $('#modal'); if (m.hidden) return;
+  if (reducedMotion()) { m.hidden = true; m.innerHTML = ''; return; }
+  m.classList.add('out'); clearTimeout(modalTimer);
+  modalTimer = setTimeout(() => { if (m.classList.contains('out')) { m.hidden = true; m.innerHTML = ''; m.classList.remove('out'); } }, 200);
+}
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let toastTimer = null;
 export function toast(text, ms = 2200) {
   const t = $('#toast'); t.textContent = text; t.hidden = false; t.classList.add('show');
@@ -222,7 +230,7 @@ function binderView() {
     const shown = eds.filter(tierOk);
     if (!shown.length) return '';
     return `<div class="charset ${have === eds.length ? 'complete' : ''}" id="cs-${key}">
-      <div class="charset-head"><div><b>${esc(c.name)}</b><span class="small">${esc(SERIES[c.series].name)} · ${c.year}</span></div>
+      <div class="charset-head"><div><b>${esc(c.name)}</b><span class="small">${esc(SERIES[c.series].name)}</span></div>
         <div class="charset-meter">${eds.map(t => `<i style="--rc:${RARITY[t.rarity].color}" class="${G.ownedCount(t.id) > 0 ? 'on' : ''}"></i>`).join('')}<b>${have}/${eds.length}</b>${have === eds.length ? '<span class="setbadge">SET COMPLETE</span>' : ''}</div></div>
       <div class="tokgrid">${shown.map(t => tokenHTML(t, { owned: G.ownedCount(t.id) > 0, count: G.ownedCount(t.id) })).join('')}</div>
     </div>`;
@@ -258,8 +266,8 @@ function detailModal(id) {
   const inZone = state.czone.items.filter(it => it.id === id).length;
   const actions = [];
   if (n > 0) {
-    if (inDeck < n && state.deck.length < 12) actions.push(`<button class="obtn" data-action="deckAdd" data-id="${id}">ADD TO DECK</button>`);
-    if (inDeck > 0) actions.push(`<button class="obtn grey" data-action="deckRemove" data-id="${id}">REMOVE FROM DECK</button>`);
+    if (inDeck < n && state.deck.length < 12) actions.push(`<button class="obtn" data-action="deckAdd" data-id="${id}">ADD TO STACK</button>`);
+    if (inDeck > 0) actions.push(`<button class="obtn grey" data-action="deckRemove" data-id="${id}">REMOVE FROM STACK</button>`);
     if (n > 1 && t.series !== 'pz' && t.series !== 'one') actions.push(`<button class="obtn grey" data-action="recycle" data-id="${id}">RECYCLE 1 (+${RARITY[t.rarity].recycle})</button>`);
     if (t.series !== 'pz' && t.series !== 'one') actions.push(`<button class="obtn grey" data-action="gift" data-id="${id}">GIFT TO A FRIEND</button>`);
   }
@@ -279,7 +287,7 @@ function detailModal(id) {
       ${n ? `<p class="blurb">“${esc(t.blurb)}”</p>` : '<p class="blurb muted">Not in your binder yet. Find it in packs, trades or by winning chips.</p>'}
       <div class="power"><span>POWER</span> <b>${POWER_NAMES[t.power.t] || ''}</b> ${esc(powerText(t.power))}</div>
       ${t.secret ? `<div class="power secret ${G.isAwake(id) ? '' : 'locked'}"><span>SECRET</span> ${G.isAwake(id) ? `<b>${POWER_NAMES[t.secret.t] || ''}</b> ${esc(powerText(t.secret))}` : `Wakes after ${TRAIN_WINS} wins on the board · ${Math.min(TRAIN_WINS, G.trainedWins(id))}/${TRAIN_WINS}`}</div>` : ''}
-      <div class="small">Owned ${n} · In deck ${inDeck} · In portfolio ${inZone}</div>
+      <div class="small">Owned ${n} · In stack ${inDeck}${(state.favorites || []).includes(id) ? " · Favourite" : ""}</div>
       <div class="row wrap">${actions.join('')}</div>
       ${artSection(t)}
       <div class="byline">[Placeholder art] · ${esc(SERIES[t.series].name)} · No. ${esc(t.id)}</div>
@@ -305,10 +313,8 @@ function artSection(t) {
   if (!t.char || t.series === 'pz') return '';
   const a = getArt(t.char);
   let line;
-  if (a?.custom) line = 'Artwork: your own image (stored on this device).';
-  else if (a?.src && artEnabled()) line = `Artwork: Wikimedia Commons file <a href="${esc(a.page || a.src)}" target="_blank" rel="noopener">${esc(a.file || 'image')}</a>.`;
-  else if (!artEnabled()) line = 'Artwork: drawn portrait (real artwork is switched off in Settings).';
-  else line = 'Artwork: drawn portrait. Real artwork appears when a free-licensed image is found on Wikimedia Commons (needs internet once).';
+  if (a?.custom) line = 'Artwork: your own image, stored on this device.';
+  else line = 'Artwork: placeholder sigil until the chip library lands. You can test your own image here.';
   return `<div class="artbox"><div class="small">${line}</div>
     <div class="row wrap"><label class="obtn small">USE MY OWN IMAGE<input type="file" accept="image/*" hidden data-char="${t.char}" class="artfile"></label>
     ${a?.custom ? `<button class="obtn small grey" data-action="clearArt" data-id="${t.char}">REMOVE MY IMAGE</button>` : ''}</div></div>`;
@@ -367,9 +373,9 @@ function deckView() {
   owned.sort((a, b) => BY_ID[b.id].pts - BY_ID[a.id].pts);
   const cols = B.topColors(state.deck);
   return `<div class="panel">
-    <div class="ptab">MY DECK <em>${state.deck.length}/12</em></div>
+    <div class="ptab">MY STACK <em>${state.deck.length}/12</em></div>
     <div class="deckbar"><div class="small">Top colours: ${cols.map(c => `<span class="ctag" style="--cc:${COLORS[c].hex}">${COLORS[c].name}</span>`).join(' ')} · 3 of a colour on the board = +${B.COLOR_BONUS}</div><div class="row"><button class="obtn grey" data-action="autoDeck">AUTO</button><button class="obtn" data-action="sub" data-id="arena">DONE</button></div></div>
-    <p class="note">Tap a chip to add it to your deck, tap again to remove it.</p>
+    <p class="note">Tap a chip to add it to your stack, tap again to remove it.</p>
     <div class="tokgrid">${owned.map(({ id, n }) => { const t = BY_ID[id]; const inDeck = state.deck.filter(d => d === id).length;
       return tokenHTML(t, { count: n, selected: inDeck > 0, action: 'deckToggle', name: inDeck ? `${t.name} (${inDeck})` : t.name }); }).join('')}</div>
   </div>`;
@@ -378,11 +384,11 @@ function rulesView() {
   return `<div class="panel"><div class="ptab">HOW TO PLAY</div>
     <div class="rules">
       <p><b>THE BOARD.</b> Each player has 7 sockets: a back row of 3 and a front row of 4. The front rows face each other across the VS line.</p>
-      <p><b>THE DECK.</b> Bring 12 chips. You hold 5 in your hand and draw one after every play. Take turns placing one chip until all 14 sockets are full.</p>
+      <p><b>THE STACK.</b> Bring 12 chips. You hold 5 in your hand and draw one after every play. Take turns placing one chip until all 14 sockets are full.</p>
       <p><b>POINTS.</b> Every chip has a point value (1–16) and a colour. Highest total wins.</p>
       <p><b>POWERS.</b> Most chips have a power: doubling a buddy, bonuses per colour, penalties to the rival across the line, back-row or front-row bonuses and more. Powers are shown on the right when you select a chip.</p>
       <p><b>COLOURS.</b> Every 3 chips of the same colour on your side earns +${B.COLOR_BONUS}.</p>
-      <p><b>SWAPPING.</b> Don't like your hand? Swap a chip for the next one in your deck for -${B.SWAP_COST} coins.</p>
+      <p><b>SWAPPING.</b> Don't like your hand? Swap a chip for the next one in your stack for -${B.SWAP_COST} points.</p>
     </div></div>`;
 }
 
@@ -681,9 +687,6 @@ function settingsView() {
     <div class="ptab">SOUND</div><button class="obtn ${state.settings.sound ? '' : 'grey'}" data-action="toggleSound">SOUND EFFECTS: ${state.settings.sound ? 'ON' : 'OFF'}</button>
     <div class="ptab">THEME</div><div class="row wrap">${['system', 'light', 'dark'].map(t => `<button class="obtn small ${(state.settings.theme || 'system') === t ? '' : 'grey'}" data-action="theme" data-id="${t}">${t.toUpperCase()}</button>`).join('')}</div>
     <div class="ptab">HOW TO PLAY</div><button class="obtn grey" data-action="howTo">THE RULES</button>
-    <div class="ptab">REAL ARTWORK</div>
-    <p class="note">Chips show the free-licensed image from each character's Wikipedia article, downloaded once and kept for offline play. Characters without one keep their drawn portrait. You can set your own image on any chip's details page.</p>
-    <div class="row wrap"><button class="obtn ${artEnabled() ? '' : 'grey'}" data-action="toggleArt">REAL ARTWORK: ${artEnabled() ? 'ON' : 'OFF'}</button><button class="obtn grey" data-action="refreshArt">CHECK AGAIN</button></div>
     <div class="ptab danger">RESET</div><p class="note">Deletes your binder and progress on this device. Make a backup under Device first.</p><button class="obtn grey" data-action="resetConfirm">RESET GAME</button>
     <p class="fine">[GAME] is a fan-made homage to the classic collect-and-battle web game. It is free and not for sale. Characters are public-domain cartoon stars; portraits are original. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
     <div class="verline" data-action="versionTap">[GAME] v${APP_VERSION}${state.settings.debug ? ' · DEBUG' : ''}</div></div>`;
@@ -764,7 +767,7 @@ function showSetPoster(charKey) {
       <div class="setpost-kicker">SET COMPLETE</div>
       <div class="setpost-name">${esc(c.name)}</div>
       <div class="setpost-grid">${eds.map((t, i) => `<div style="animation-delay:${i * 90}ms">${tokenSVG(t, 100, { bubble: false })}</div>`).join('')}</div>
-      <div class="setpost-sub">ALL EIGHT EDITIONS · ${esc(SERIES[c.series].name).toUpperCase()} · ${c.year}</div>
+      <div class="setpost-sub">ALL EIGHT EDITIONS · ${esc(SERIES[c.series].name).toUpperCase()}</div>
       <button class="obtn primary" data-action="none">KEEP COLLECTING</button>
     </div>`;
   el.addEventListener('click', () => { el.classList.add('out'); setTimeout(() => el.remove(), 350); });
@@ -777,8 +780,18 @@ function campStory() {
   const p = CAMP.pendingStory(); if (!p) return;
   G.markStory(p[0]); showCards(p[1], () => render());
 }
+let lastKey = '', enterAnim = true, lastPoints = null;
 export function render() {
-  const app = $('#app');
+  const key = match ? 'match' : !coverShown ? 'cover' : !state.onboarded ? 'onboard' : `${section}/${subs[section]}`;
+  const changed = key !== lastKey; lastKey = key; enterAnim = changed;
+  if (changed && document.startViewTransition && !busy && !reducedMotion() && !document.body.classList.contains('pk-open') && key !== 'match') {
+    document.startViewTransition(() => renderNow());
+  } else renderNow();
+}
+function renderNow() {
+  const app = $('#app'); app.classList.toggle('enter', enterAnim);
+  const bumpCoins = lastPoints !== null && state.points > lastPoints; lastPoints = state.points;
+  setTimeout(() => { if (bumpCoins) document.querySelectorAll('.wallet, .camp-coins').forEach(el => { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }); }, 0);
   document.body.classList.toggle('in-match', !!match && state.onboarded);
   document.body.classList.toggle('in-camp', section === 'campaign' && state.onboarded && !match);
   if (!coverShown) { app.innerHTML = coverScreen(); return; }
@@ -795,6 +808,7 @@ export function render() {
   if (!views[section]) section = 'home';
   if (!views[section][subs[section]] || (subs[section] === 'debug' && !state.settings.debug)) subs[section] = Object.keys(views[section])[0];
   app.innerHTML = orbitFrame(views[section][subs[section]]());
+  const onTab = $('.stab.on'); if (onTab && onTab.scrollIntoView) onTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   if (binderFocus) { const el = $('#cs-' + binderFocus); binderFocus = null; if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
   if ((state.pendingSets || []).length && !document.body.classList.contains('pk-open') && !document.querySelector('.setpost')) {
     const c = G.popPendingSet(); if (c) setTimeout(() => showSetPoster(c), 400);
@@ -873,8 +887,8 @@ const actions = {
     }
     snd('tap'); },
   detail(d) { snd('clink'); detailModal(d.id); return false; },
-  deckAdd(d) { commit(s => { if (s.deck.length < 12) s.deck.push(d.id); }); toast('Added to deck.'); detailModal(d.id); return false; },
-  deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from deck.'); detailModal(d.id); return false; },
+  deckAdd(d) { commit(s => { if (s.deck.length < 12) s.deck.push(d.id); }); toast('Added to your stack.'); detailModal(d.id); return false; },
+  deckRemove(d) { commit(s => { const i = s.deck.indexOf(d.id); if (i >= 0) s.deck.splice(i, 1); }); toast('Removed from your stack.'); detailModal(d.id); return false; },
   recycle(d) { const v = G.recycle(d.id); if (v) { sfx.good(); toast(`Recycled for +${v} coins.`); } detailModal(d.id); return false; },
   gift(d) { const t = BY_ID[d.id];
     showModal(`<div class="ptab">GIFT ${esc(t.name).toUpperCase()}?</div><p class="note">This removes one ${esc(t.name)} from your binder and creates a code your friend can redeem under Market → Codes. Each code works once.</p>
@@ -886,9 +900,9 @@ const actions = {
   shareText(d) { navigator.share({ text: `A chip gift for you in [GAME]! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
   claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'FREE CHIP!'); },
   buyPack(d) { const r = G.buyPack(d.id); if (!r) { toast('Not enough points.'); return; } render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
-  autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Deck auto-filled with your best chips.'); },
+  autoDeck() { commit(s => { s.deck = G.autoDeck(s); }); toast('Stack filled with your best chips.'); },
   deckToggle(d) { commit(s => { const inDeck = s.deck.filter(x => x === d.id).length; const own = s.collection[d.id] || 0;
-    if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Deck is full (12).'); }); sfx.tap(); },
+    if (inDeck < own && s.deck.length < 12) s.deck.push(d.id); else if (inDeck > 0) s.deck = s.deck.filter(x => x !== d.id); else toast('Stack is full (12).'); }); sfx.tap(); },
   pickHand(d) { if (!match || match.turn !== 'p' || match.done || busy) return false; selectedHand = selectedHand === +d.i ? -1 : +d.i; snd('pick'); },
   placeCard(d) { if (!match || match.turn !== 'p' || match.done || selectedHand < 0 || busy) return false;
     const slot = +d.i; if (match.p.slots[slot]) return false;
@@ -913,8 +927,8 @@ const actions = {
   forfeit() { if (busy) return false; if (match && !match.done) { if (!confirm('Quit this match? It counts as a loss.')) return false; if (match.node) G.campRecord(match.node, { aTotal: 0, bTotal: 1, aColors: {}, rules: match.rules, forfeit: true }, []); else G.recordBattle(match.opponent, false, 0); } const wasCamp = !!(match && match.node); match = null; closeModal(); if (wasCamp) section = 'campaign'; },
   rematch() { const node = match.node; closeModal(); if (node) startCamp(node.id); else { match = null; } return false; },
   leaveMatch() { const wasCamp = !!(match && match.node); closeModal(); match = null; if (wasCamp) section = 'campaign'; },
-  coverStart() { coverShown = true; snd('great'); },
-  theme(d) { commit(s => { s.settings.theme = d.id; }); applyTheme(); sfx.tap(); },
+  coverStart() { const c = $('.cover'); if (c && !reducedMotion()) { c.classList.add('out'); snd('great'); setTimeout(() => { coverShown = true; render(); }, 420); return false; } coverShown = true; snd('great'); },
+  theme(d) { commit(s => { s.settings.theme = d.id; }); sfx.tap(); if (document.startViewTransition && !reducedMotion()) { document.startViewTransition(() => { applyTheme(); renderNow(); }); return false; } applyTheme(); },
   howTo() { showModal(rulesView() + '<button class="obtn grey block" data-action="closeModal">CLOSE</button>'); return false; },
   favToggle(d) { commit(s => { s.favorites = s.favorites || []; const i = s.favorites.indexOf(d.id); if (i >= 0) s.favorites.splice(i, 1); else if (s.favorites.length < 6) s.favorites.push(d.id); else { toast('Six favourites. Remove one first.'); } }); sfx.tap(); favPicker(); return false; },
   favPicker() { favPicker(); return false; },
