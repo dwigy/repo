@@ -173,7 +173,7 @@ export function makeGiftCode(ctoonId) {
   return `GIFT-${body}-${checksum(GIFT_SALT + body).slice(0, 5)}`.toUpperCase();
 }
 export function parseGiftCode(code) {
-  const m = String(code).trim().toUpperCase().match(/^GIFT-([A-Z]{2}\d{2})\.([A-Z0-9]{6})-([A-Z0-9]{5})$/);
+  const m = String(code).trim().toUpperCase().match(/^GIFT-([A-Z]{2,12}\d{1,2})\.([A-Z0-9]{6})-([A-Z0-9]{5})$/);
   if (!m) return null;
   const body = `${m[1].toLowerCase()}.${m[2].toLowerCase()}`;
   if (checksum(GIFT_SALT + body).slice(0, 5).toUpperCase() !== m[3]) return null;

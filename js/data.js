@@ -80,7 +80,7 @@ export const EDITIONS = [
   { n: 5, variant: 'silver',   pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Silver`,      tag: 'Full Silver',                     short: 'Silver' },
   { n: 6, variant: 'dark',     pose: 'hero',   rarity: 3, label: (c) => `${c.name} · Dark Matter`, tag: 'Dark Matter',                     short: 'Dark Matter' },
   { n: 7, variant: 'gold',     pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Gold`,        tag: 'Full Gold',                       short: 'Gold' },
-  { n: 8, variant: 'platinum', pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Platinum`,    tag: 'Platinum',                        short: 'Platinum' },
+  { n: 8, variant: 'platinum', pose: 'hero',   rarity: 4, label: (c) => `${c.name} · Platinum`,    tag: 'Full Platinum',                   short: 'Platinum' },
 ];
 // Which colour each character's Dark Matter edition punishes.
 const RIVAL_COLOR = { grn: 'red', yel: 'blu', org: 'blu', red: 'grn', blu: 'org', prp: 'yel', slv: 'prp' };
@@ -92,7 +92,7 @@ function editionStats(c, e, i) {
   const own = c.stats[0][0];
   switch (e.variant) {
     case 'holo':     return [own, clamp(topPts - 4, 8, 12), { t: 'perOwnColor', color: own, n: 2 }];
-    case 'silver':   return ['slv', clamp(topPts - 3, 9, 13), i % 2 ? { t: 'mirror' } : { t: 'steal', n: 4 }];
+    case 'silver':   return ['slv', clamp(topPts - 3, 9, 13), c.name.length % 2 ? { t: 'mirror' } : { t: 'steal', n: 4 }];
     case 'dark':     return [own, clamp(topPts - 3, 9, 13), { t: 'minusOppColor', color: RIVAL_COLOR[own] || 'blu', n: 3 }];
     case 'gold':     return [topColor, clamp(topPts, 13, 16), topPower];
     case 'platinum': return ['slv', clamp(topPts - 1, 13, 16), { t: 'plusAll', n: 2 }];

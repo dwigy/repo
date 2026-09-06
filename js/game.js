@@ -344,5 +344,6 @@ export function sanitize() {
     log('The Orbit got a fresh cast! Your binder has been restocked and you got 500 points for the trouble.');
     changed = true;
   }
+  if (state.catalog !== 2) { state.catalog = 2; changed = true; }
   if (changed) { if (state.deck.length < 12) state.deck = autoDeck(state); commit(); }
 }

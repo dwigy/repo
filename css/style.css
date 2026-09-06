@@ -12,6 +12,7 @@
   --gloss: linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.55) 45%, rgba(255,255,255,0) 55%);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--f-ui); font-weight: 600; font-size: 17px; line-height: 1.3; color: var(--text);
@@ -137,7 +138,7 @@ textarea.oinput { resize: vertical; margin-bottom: 8px; font-family: ui-monospac
 .li-tok { flex: none; line-height: 0; }
 
 /* character sets in the binder */
-.charset { padding: 12px 0 4px; border-top: 1px solid var(--line); }
+.charset { padding: 12px 0 4px; border-top: 1px solid var(--line); content-visibility: auto; contain-intrinsic-size: auto 420px; }
 .charset:first-of-type { border-top: 0; }
 .charset-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .charset-head b { font-style: italic; font-size: 20px; color: var(--navy); display: block; line-height: 1; }
@@ -151,8 +152,8 @@ textarea.oinput { resize: vertical; margin-bottom: 8px; font-family: ui-monospac
 /* tokens (chips) */
 .tokgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 14px 10px; }
 .tok { text-align: center; cursor: pointer; }
-.tok-art { position: relative; width: 84%; margin: 0 auto; line-height: 0; }
-.tok-art svg { width: 100%; height: auto; filter: drop-shadow(0 4px 4px rgba(20,53,109,.3)); }
+.tok-art { position: relative; width: 84%; margin: 0 auto; line-height: 0; border-radius: 50%; box-shadow: 0 5px 8px -2px rgba(20,53,109,.35); }
+.tok-art svg { width: 100%; height: auto; }
 .tok:active .tok-art svg { transform: scale(.95); }
 .tok-count { position: absolute; top: 0; left: 0; background: var(--navy); color: #fff; font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 10px; border: 1px solid #fff; line-height: 1.2; }
 .tok-label { display: inline-block; margin-top: -8px; background: linear-gradient(180deg, #fff 0%, #f6f9fb 50%, #e6edf3 52%, #f0f4f8 100%); color: var(--navy); font-size: 11px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; padding: 3px 7px; border: 1px solid var(--line2); border-radius: 4px; max-width: 100%; position: relative; box-shadow: 0 1px 2px rgba(20,53,109,.2); white-space: normal; line-height: 1.1; }
@@ -377,7 +378,7 @@ body.in-match #app { padding-left: 0; padding-bottom: 0; }
 body.pk-open { overflow: hidden; }
 .pk { position: fixed; inset: 0; z-index: 200; font-family: var(--f-ui); color: #fff; overflow: hidden; }
 .pk-back { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 20%, rgba(31,74,146,.92), rgba(8,14,32,.96)); backdrop-filter: blur(6px); }
-.pk-stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); text-align: center; }
+.pk-stage { position: absolute; inset: 0; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); text-align: center; }
 .pk-hint { font-family: var(--f-head); font-size: 12px; letter-spacing: .16em; color: var(--cyan); }
 .pk-sub { font-style: italic; font-weight: 800; font-size: 14px; letter-spacing: .1em; color: rgba(255,255,255,.75); }
 .pk-btn { margin-top: 4px; min-width: 200px; }
@@ -391,6 +392,7 @@ body.pk-open { overflow: hidden; }
 @keyframes spark { from { transform: translate(0,0) rotate(0); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
 .pk-flyers { position: fixed; inset: 0; pointer-events: none; }
 .pk-flyer { position: fixed; width: 80px; height: 80px; line-height: 0; filter: drop-shadow(0 10px 12px rgba(0,0,0,.5)); }
+.pk-flyer svg { width: 80px; height: 80px; }
 .pk-dots { display: flex; gap: 8px; margin-bottom: 4px; }
 .pk-dots i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: transparent; }
 .pk-dots i.done { background: var(--rc); border-color: var(--rc); }

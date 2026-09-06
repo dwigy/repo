@@ -195,21 +195,21 @@ function scene(t, id) {
   } else {
     deco = `<rect x="0" y="0" width="100" height="100" fill="url(#bg${id})"/><rect x="0" y="0" width="100" height="100" fill="url(#dots${id})"/>`;
   }
-  return `<defs>
-      <radialGradient id="bg${id}" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></radialGradient>
-      <radialGradient id="sep${id}" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#f1e2c0"/><stop offset="1" stop-color="#8a6b3f"/></radialGradient>
-      <radialGradient id="hl${id}" cx="50%" cy="50%" r="55%"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-      <pattern id="dots${id}" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1" fill="#fff" opacity=".18"/></pattern>
-      <linearGradient id="gl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-      <linearGradient id="bv${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9d7e5"/><stop offset="1" stop-color="#5b7fa6"/></linearGradient>
-      <linearGradient id="au${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#f5c342"/><stop offset="1" stop-color="#9a6b00"/></linearGradient>
-      <radialGradient id="vig${id}" cx="50%" cy="40%" r="60%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".75"/></radialGradient>
-      <linearGradient id="met${id}" x1="0" y1="0" x2="1" y2="1">${METAL[v] ? METAL[v].bg.map((c, i, a) => `<stop offset="${a.length > 1 ? i / (a.length - 1) : 0}" stop-color="${c}"/>`).join('') : ''}</linearGradient>
-      <linearGradient id="sheen${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity=".55"/><stop offset=".55" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-      <radialGradient id="neb${id}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#3b1d7a"/><stop offset=".45" stop-color="#151238"/><stop offset="1" stop-color="#05060f"/></radialGradient>
-      ${METAL[v] ? `<filter id="tone${id}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="${METAL[v].r}"/><feFuncG type="table" tableValues="${METAL[v].g}"/><feFuncB type="table" tableValues="${METAL[v].b}"/></feComponentTransfer></filter>` : ''}
-      <clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath>
-    </defs>
+  // Only the defs this variant actually uses (the binder renders 126 chips at once).
+  const defs = [
+    `<clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath>`,
+    `<linearGradient id="gl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`,
+  ];
+  if (v === 'reel') defs.push(`<radialGradient id="sep${id}" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#f1e2c0"/><stop offset="1" stop-color="#8a6b3f"/></radialGradient>`);
+  else if (v === 'stage') defs.push(`<radialGradient id="vig${id}" cx="50%" cy="40%" r="60%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".75"/></radialGradient>`);
+  else if (v === 'holo') defs.push(`<radialGradient id="hl${id}" cx="50%" cy="50%" r="55%"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`);
+  else if (v === 'dark') defs.push(`<radialGradient id="neb${id}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#3b1d7a"/><stop offset=".45" stop-color="#151238"/><stop offset="1" stop-color="#05060f"/></radialGradient>`);
+  else if (METAL[v]) defs.push(`<linearGradient id="met${id}" x1="0" y1="0" x2="1" y2="1">${METAL[v].bg.map((c, i, a) => `<stop offset="${a.length > 1 ? i / (a.length - 1) : 0}" stop-color="${c}"/>`).join('')}</linearGradient>`,
+    `<linearGradient id="sheen${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity=".55"/><stop offset=".55" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`);
+  else defs.push(`<radialGradient id="bg${id}" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></radialGradient>`,
+    `<pattern id="dots${id}" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1" fill="#fff" opacity=".18"/></pattern>`);
+  if (METAL[v]) defs.push(`<filter id="tone${id}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="${METAL[v].r}"/><feFuncG type="table" tableValues="${METAL[v].g}"/><feFuncB type="table" tableValues="${METAL[v].b}"/></feComponentTransfer></filter>`);
+  return `<defs>${defs.join('')}</defs>
     <g clip-path="url(#clip${id})">${deco}</g>`;
 }
 
@@ -230,9 +230,12 @@ function photo(t, id) {
   if (!a || !a.src) return '';
   const filt = t.variant === 'reel' ? `filter="url(#sepia${id})"` : t.variant === 'holo' ? `filter="url(#vivid${id})"` : '';
   const tf = t.pose === 'mirror' ? 'translate(100 0) scale(-1 1)' : t.pose === 'zoom' ? 'translate(50 50) scale(1.15) rotate(-4) translate(-50 -50)' : '';
-  return `<defs><filter id="sepia${id}"><feColorMatrix type="matrix" values=".393 .769 .189 0 0 .349 .686 .168 0 0 .272 .534 .131 0 0 0 0 0 1 0"/></filter><filter id="vivid${id}"><feColorMatrix type="saturate" values="1.6"/></filter></defs>
-    <g transform="${tf}"><image href="${a.src}" x="4" y="4" width="92" height="92" preserveAspectRatio="xMidYMid slice" ${filt}/></g>
-    ${t.variant === 'stage' ? `<circle cx="50" cy="50" r="46" fill="url(#vig${id})"/>` : ''}`;
+  const over = t.variant === 'stage' ? `<circle cx="50" cy="50" r="46" fill="url(#vig${id})"/>`
+    : t.variant === 'dark' ? `<circle cx="50" cy="50" r="46" fill="#05060f" opacity=".35"/>${[[14, 22, 1.2], [78, 18, 1.4], [88, 44, .9], [70, 80, 1.1], [22, 76, .8], [50, 8, .7], [8, 50, 1]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".9"/>`).join('')}`
+    : t.variant === 'holo' ? HOLO.map((c, i) => `<path d="M50 50 L${(50 + 70 * Math.cos(i * Math.PI / 3)).toFixed(1)} ${(50 + 70 * Math.sin(i * Math.PI / 3)).toFixed(1)} L${(50 + 70 * Math.cos((i + 1) * Math.PI / 3)).toFixed(1)} ${(50 + 70 * Math.sin((i + 1) * Math.PI / 3)).toFixed(1)} Z" fill="${c}" opacity=".28"/>`).join('')
+    : '';
+  return `<defs><filter id="sepia${id}" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".393 .769 .189 0 0 .349 .686 .168 0 0 .272 .534 .131 0 0 0 0 0 1 0"/></filter><filter id="vivid${id}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="1.6"/></filter></defs>
+    <g transform="${tf}"><image href="${a.src}" x="4" y="4" width="92" height="92" preserveAspectRatio="xMidYMid slice" ${filt}/></g>${over}`;
 }
 
 // The glossy chip: scene + portrait + bevel ring + colour ring + point bubble.
@@ -285,9 +288,10 @@ export function shadowTokenSVG(t, size = 100) {
   const id = 'k' + (uid++);
   const draw = CHARS[t.char] || CHARS.rookie;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
-    <defs><clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath><filter id="sil${id}"><feColorMatrix type="matrix" values="0 0 0 0 .32  0 0 0 0 .42  0 0 0 0 .56  0 0 0 1 0"/></filter></defs>
-    <circle cx="50" cy="50" r="46" fill="#7f97b1"/>
-    <g clip-path="url(#clip${id})" filter="url(#sil${id})" opacity=".85"><g transform="translate(50 50) scale(.8) translate(-50 -50)">${draw()}</g></g>
+    <defs><clipPath id="clip${id}"><circle cx="50" cy="50" r="46"/></clipPath></defs>
+    <circle cx="50" cy="50" r="46" fill="#8ea3ba"/>
+    <g clip-path="url(#clip${id})" opacity=".22"><g transform="translate(50 50) scale(.8) translate(-50 -50)">${draw()}</g></g>
+    <circle cx="50" cy="50" r="46" fill="#6f87a3" opacity=".45"/>
     <text x="50" y="62" text-anchor="middle" font-size="34" font-weight="800" fill="#dbe7f2" font-family="'Barlow Condensed', sans-serif">?</text>
     <circle cx="50" cy="50" r="47" fill="none" stroke="#c9d7e5" stroke-width="4"/>
     <circle cx="50" cy="50" r="49" fill="none" stroke="#3d5a80" stroke-width="1.4"/>
