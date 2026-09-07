@@ -91,7 +91,7 @@ function orbitFrame(inner) {
   const sub = tabs.length ? `<div class="subnav">${tabs.map(([k, n]) => `<button class="stab ${subs[section] === k ? 'on' : ''}" data-action="sub" data-id="${k}">${n}</button>`).join('')}</div>` : '';
   return `<div class="frame ${tabs.length ? '' : 'nosub'}">
     <div class="orbit-head">
-      <div class="orbit-row"><div class="orbit-logo" data-action="go" data-to="home"><span class="ph">[GAME]</span></div>${wallet()}</div>
+      <div class="orbit-row"><div class="orbit-logo" data-action="go" data-to="home"><span class="ph">${esc(WORLD.game)}</span></div>${wallet()}</div>
       ${sub}
     </div>
     <div class="content">${inner}</div>
@@ -657,7 +657,7 @@ function coverScreen() {
   const rings = Array.from({ length: 7 }, (_, i) => `<circle cx="50" cy="50" r="${12 + i * 6}" fill="none" stroke="#fff" stroke-opacity="${(0.55 - i * 0.06).toFixed(2)}" stroke-width=".6" transform="rotate(${i * 11} 50 50)" style="animation-delay:${i * -1.3}s" class="ring"/>`).join('');
   return `<div class="cover" data-action="coverStart">
     <svg class="cover-art" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"><defs><radialGradient id="cvg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#2f7ff5"/><stop offset=".5" stop-color="#14356d"/><stop offset="1" stop-color="#05070f"/></radialGradient></defs><rect width="100" height="100" fill="url(#cvg)"/>${rings}</svg>
-    <div class="cover-in"><div class="cover-mark">${socketSVG(150)}</div><div class="cover-title">[GAME]</div><div class="cover-sub">WORKING TITLE</div><div class="cover-tap">TAP TO START</div></div>
+    <div class="cover-in"><div class="cover-mark">${socketSVG(150)}</div><div class="cover-title">${esc(WORLD.game)}</div><div class="cover-sub">WORKING TITLE</div><div class="cover-tap">TAP TO START</div></div>
     <div class="cover-ver">v${APP_VERSION}</div></div>`;
 }
 function applyTheme() {
@@ -705,8 +705,8 @@ function settingsView() {
     <div class="ptab">THEME</div><div class="row wrap">${['system', 'light', 'dark'].map(t => `<button class="obtn small ${(state.settings.theme || 'system') === t ? '' : 'grey'}" data-action="theme" data-id="${t}">${t.toUpperCase()}</button>`).join('')}</div>
     <div class="ptab">HOW TO PLAY</div><button class="obtn grey" data-action="howTo">THE RULES</button>
     <div class="ptab danger">RESET</div><p class="note">Deletes your binder and progress on this device. Make a backup under Device first.</p><button class="obtn grey" data-action="resetConfirm">RESET GAME</button>
-    <p class="fine">[GAME] is an original game. Every form, region and story in it is our own. It is free and not for sale. Names shown in brackets are working titles and will change. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
-    <div class="verline" data-action="versionTap">[GAME] v${APP_VERSION}${state.settings.debug ? ' · DEBUG' : ''}</div></div>`;
+    <p class="fine">${esc(WORLD.game)} is an original game. Every form, region and story in it is our own. It is free and not for sale. Names shown in brackets are working titles and will change. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
+    <div class="verline" data-action="versionTap">${esc(WORLD.game)} v${APP_VERSION}${state.settings.debug ? ' · DEBUG' : ''}</div></div>`;
 }
 function deviceView() {
   return `<div class="panel"><div class="ptab">INSTALL ON iPHONE OR iPAD</div>
@@ -758,9 +758,9 @@ function debugView() {
 }
 
 function onboardingScreen() {
-  return `<div class="cn-bar"><div class="cn-strip"><span class="cn-strip-hot">[GAME]</span><span class="cn-strip-txt">Working title</span></div></div>
+  return `<div class="cn-bar"><div class="cn-strip"><span class="cn-strip-hot">${esc(WORLD.game)}</span><span class="cn-strip-txt">Working title</span></div></div>
   <div class="frame onboard">
-    <div class="orbit-head"><div class="orbit-logo"><span class="ph">[GAME]</span></div></div>
+    <div class="orbit-head"><div class="orbit-logo"><span class="ph">${esc(WORLD.game)}</span></div></div>
     <div class="content">
       <div class="panel join">
         <div class="ptab">NEW PLAYER</div>
@@ -921,7 +921,7 @@ const actions = {
     showModal(`<div class="ptab">GIFT CODE</div><p class="note">Send this to your friend:</p><div class="code">${code}</div>
       <div class="row center"><button class="obtn" data-action="copyText" data-text="${code}">COPY</button>${navigator.share ? `<button class="obtn grey" data-action="shareText" data-text="${code}">SHARE…</button>` : ''}<button class="obtn grey" data-action="closeModal">DONE</button></div>`); return false; },
   copyText(d) { copy(d.text); return false; },
-  shareText(d) { navigator.share({ text: `A companion gift for you in [GAME]! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
+  shareText(d) { navigator.share({ text: `A companion gift for you in ${WORLD.game}! Redeem this code: ${d.text}` }).catch(() => {}); return false; },
   claimFree() { const t = G.claimDailyFree(); if (t) revealModal([t.id], 'FREE COMPANION!'); },
   buyPack(d) { const r = G.buyPack(d.id); if (!r) { toast('Not enough points.'); return; } render(); openPack(r, { sfx: packSfx }).then(() => render()); return false; },
   autoDeck() { commit(s => { s.stack = G.autoDeck(s); }); toast('Stack filled with your best companions.'); },
@@ -993,7 +993,7 @@ const actions = {
   trade(d) { const o = G.todaysTrades()[+d.i]; if (G.doTrade(o)) revealModal([o.get], 'TRADE COMPLETE!'); },
   redeem() { const r = G.redeemCode($('#codeInput')?.value); if (r.ok) { sfx.great(); if (r.ctoons?.length) revealModal(r.ctoons, r.text.toUpperCase()); else toast(r.text); } else { sfx.bad(); toast(r.text); } },
   copySave() { copy(exportCode()); return false; },
-  shareSave() { navigator.share({ title: '[GAME] save', text: exportCode() }).catch(() => {}); return false; },
+  shareSave() { navigator.share({ title: `${WORLD.game} save`, text: exportCode() }).catch(() => {}); return false; },
   restoreSave() { try { const obj = parseSaveCode($('#restoreInput').value); if (!confirm('Replace the save on this device with this backup?')) return false; replaceState(obj); G.sanitize(); sfx.great(); toast('Save restored!'); section = 'home'; } catch (e) { sfx.bad(); toast(e.message); return false; } },
   saveName() { const v = ($('#nameInput')?.value || '').trim().slice(0, 16); if (v) { commit(s => { s.name = v; }); toast('Name saved.'); } },
   toggleSound() { commit(s => { s.settings.sound = !s.settings.sound; }); setSound(state.settings.sound); sfx.tap(); },

@@ -30,7 +30,11 @@ export const TERM = {
 };
 
 export const WORLD = {
-  game:        '[GAME]',            // PENDING (agency)
+  // PENDING (agency). Changing this renames the game everywhere in the app.
+  // Two files cannot import a module and carry the literal: index.html (title,
+  // boot line, apple-mobile-web-app-title) and manifest.webmanifest (name,
+  // short_name). Change those three by hand and nothing else.
+  game:        '[GAME]',
   corp:        '[CORP]',            // PENDING: the corporation. Candidates: Everhold Corp., Meridian Corp., Halcyon Corp., Vantage Corp.
   corpChief:   'the Chief',         // its executive; face unseen until the end
   gathering:   'the Gathering',     // the corporation's plan

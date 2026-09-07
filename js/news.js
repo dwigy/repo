@@ -1,5 +1,8 @@
 // Version log and roadmap shown on the Home page and under Profile.
+// World nouns come from the lexicon; nothing here hard-codes one.
 // Newest first. Keep entries short: a title card, then a few lines.
+import { WORLD } from './lexicon.js';
+
 export const APP_VERSION = '0.10.0';
 
 export const NEWS = [
@@ -23,7 +26,7 @@ export const NEWS = [
     ] },
   { v: '0.8.0', date: '2026-09-06', title: 'Placeholder rebrand and the campaign',
     items: [
-      'All names are placeholders now: [GAME], companions, stacks, coins, regions. Companion art is a stand-in mark per form until the new library lands.',
+      `All names are placeholders now: ${WORLD.game}, companions, stacks, coins, regions. Companion art is a stand-in mark per form until the new library lands.`,
       'A cover page with tap to start, a new placeholder logo and app icon, and a dark mode (Profile > Settings > Theme).',
       'Five tabs: Home, Collection, Campaign in the centre, Online (coming soon) and Profile.',
       'The campaign has three save slots, a spoken intro, five starter stacks with a leader companion (+6 when played first), seven regions with Train, Shop, three players, a Keeper and places to explore, then the Hall and every known companion.',

@@ -1,5 +1,5 @@
 import { region as regionOf } from './lexicon.js';
-// [GAME] — catalog data. Placeholder names throughout: characters are Alpha to Zulu,
+// Catalogue data. Placeholder names throughout: characters are Alpha to Zulu,
 // sets are Set One to Set Six. Mechanics (colours, points, powers) are final;
 // names and artwork are stand-ins until branding lands.
 

@@ -1,7 +1,9 @@
 // Every title card in the campaign, keyed by beat. Short, present tense, warm.
 // Rules for writers: never explain why the Split happened, never give a number of
 // fragments, never "use" a companion, no sentence over twelve words.
-// World nouns live in js/lexicon.js; these cards inline their current values.
+// World nouns come from js/lexicon.js; never write one as a literal here.
+import { WORLD } from './lexicon.js';
+
 export const LORE = {
   "intro": [
     "Long ago, everything rests in harmony. Children draw it as a circle.",
@@ -211,7 +213,7 @@ export const LORE = {
   ],
   "corp.buyer.accept": "Heavy coins. A gap in your stack. The river moves. You don't.",
   "corp.buyer.refuse": "He smiles and leaves a card. The river takes it. Good river.",
-  "corp.emptied.closed": "The Grove's shop is closed. Bare shelves. A [CORP] sign, very polite.",
+  "corp.emptied.closed": `The Grove's shop is closed. Bare shelves. A ${WORLD.corp} sign, very polite.`,
   "corp.emptied.intro": "A baker, flour on everything. He never asks about your family.",
   "corp.emptied.win": "He bows late, and badly. The shelves stay bare. Not for long.",
   "corp.emptied.lose": "He doesn't bow. He offers a job. The wind smells less green.",
