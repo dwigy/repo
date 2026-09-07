@@ -78,7 +78,8 @@ export function startNewPlayer(name) {
   return commit(s => {
     s.name = (name || 'player').trim().slice(0, 16) || 'player';
     s.points = 500;
-    const starters = ['alpha1', 'delta1', 'golf1', 'india1', 'juliett1', 'mike1', 'bravo1', 'echo1', 'hotel1', 'lima1', 'yankee1'];
+    // Twenty to start with, so the first stack is legal from the very first meeting.
+    const starters = ['alpha1', 'alpha2', 'golf1', 'golf2', 'mike1', 'mike2', 'november1', 'sierra1', 'bravo1', 'charlie1', 'delta1', 'delta2', 'echo1', 'foxtrot1', 'hotel1', 'india1', 'juliett1', 'kilo1', 'lima1', 'papa1'];
     starters.forEach(id => addCompanion(id, 1, 'starter'));
     addCompanion('pz01', 1, 'prize'); s.prizes.push('pz01');
     // one random uncommon and one random rare to make the first stack fun
@@ -470,6 +471,9 @@ export function buyRegionPack(n) {
 }
 // Tinker's Night: the longest night of the year, Dec 20-22 everywhere.
 export function isTinkersNight(d = new Date()) { return d.getMonth() === 11 && d.getDate() >= 20 && d.getDate() <= 22; }
+// A stack is ready when it is exactly twenty, three of a form at most, one whole fragment at most.
+export function stackCheck() { return B.validateStack(state.stack); }
+export const deckCheck = stackCheck;
 export function storySeen(key) { const sv = activeSave(); return !sv || (sv.seen || []).includes(key); }
 export function markStory(key) { const sv = activeSave(); if (sv) commit(() => { sv.seen = sv.seen || []; if (!sv.seen.includes(key)) sv.seen.push(key); }); }
 

@@ -40,7 +40,7 @@ export const NEWS = [
   { v: '0.6.0', date: '2026-09-06', title: 'A new front door',
     items: [
       'Five tabs: Home, Collection, Battle, Market, Profile. The old top tabs are gone.',
-      'Home is a poster of this week\'s featured series, your daily round, the main menu and this news card.',
+      'Home is a poster of this week\'s featured finding, your daily round, the main menu and this news card.',
       'Collection gathers your binder, a new Sets page and your portfolio in one place.',
       'Battle opens on your next challenger with one big PLAY button and the full ladder below.',
       'Profile holds your stats, awards, log and every setting, backup and install step.',

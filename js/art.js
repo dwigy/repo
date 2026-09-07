@@ -240,13 +240,13 @@ export function packSVG(pack, opts = {}) {
       <circle cx="${w / 2}" cy="150" r="58" fill="#fff" opacity=".18"/>
       <g transform="translate(${w / 2 - 48} 102)">${chipBackSVG(96, tint[1])}</g>
       <text x="${w / 2}" y="238" text-anchor="middle" font-family="Michroma, 'Arial Black', sans-serif" font-style="italic" font-size="15" fill="#fff" letter-spacing="2">PACK</text>
-      <text x="${w / 2}" y="262" text-anchor="middle" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-style="italic" font-weight="800" font-size="16" fill="#fff" opacity=".9">${(pack.name || '').toUpperCase().replace(' CPACK', '')} · ${pack.size} CHIPS</text>
+      <text x="${w / 2}" y="262" text-anchor="middle" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-style="italic" font-weight="800" font-size="16" fill="#fff" opacity=".9">${(pack.name || 'BLANKS').toUpperCase()} · ${pack.size} BLANKS</text>
       <line x1="10" y1="40" x2="${w - 10}" y2="40" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 4" opacity=".8"/>
     </g>
     <g class="pack-top">
       <rect x="6" y="6" width="${w - 12}" height="34" rx="6" fill="url(#foil${id})" stroke="#1c3f7a" stroke-width="2"/>
       <polygon points="${crimp}" transform="translate(6 6)" fill="#fff" opacity=".7"/>
-      <text x="${w / 2}" y="29" text-anchor="middle" font-family="'Barlow Condensed', sans-serif" font-style="italic" font-weight="800" font-size="12" fill="#fff" letter-spacing="3">RIP HERE ›››</text>
+      <text x="${w / 2}" y="29" text-anchor="middle" font-family="'Barlow Condensed', sans-serif" font-style="italic" font-weight="800" font-size="12" fill="#fff" letter-spacing="3">OPEN HERE ›››</text>
     </g>
   </svg>`;
 }

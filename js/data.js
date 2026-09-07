@@ -39,7 +39,9 @@ export const FINDINGS = {
   whole: { name: 'Whole Fragments', color: '#ffd166', bg: ['#2b1a4a', '#7b4dd6'], blurb: 'Unbroken pieces. Each is held by a Keeper. Never sold, never traded.' },
   award: { name: 'Awards',      color: '#ffffff', bg: ['#1f1f3a', '#4a4a8a'], blurb: 'Given for the road itself. Never in a pack.' },
 };
-FINDINGS.meta = { total: null }; // never known
+// The catalogue is open-ended: there is no total. Hidden from enumeration so no
+// listing can ever treat it as a finding.
+Object.defineProperty(FINDINGS, 'meta', { value: { total: null }, enumerable: false });
 
 
 // Forms: the fixed catalogue of shapes a fragment takes. 21 are bound to a region
