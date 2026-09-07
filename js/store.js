@@ -5,7 +5,7 @@
 const LS_KEY = 'cartoon-orbit-save-v1';
 const DB_NAME = 'cartoon-orbit';
 const DB_STORE = 'kv';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function todayKey(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
@@ -19,9 +19,11 @@ export function freshState() {
     savedAt: 0,
     name: 'player',
     points: 0,
-    collection: {},          // { ctoonId: count }
-    deck: [],                // up to 12 ctoon ids
-    czone: { bg: 'orbit', items: [] }, // items: [{id, x, y}] (x/y 0..1)
+    collection: {},          // { id: count } derived from `companions`
+    companions: [],          // owned instances: { u, id, nick, found: { where, region, date, mint }, wins }
+    mint: 0,
+    stack: [],               // twenty ids carried together
+    portfolio: { bg: 'orbit', items: [] },
     unlockedBgs: ['orbit'],
     daily: { last: '', streak: 0 },
     dailyFree: '',           // date the free vendor chip was claimed
@@ -36,8 +38,9 @@ export function freshState() {
     onboarded: false,
     saves: [null, null, null],   // campaign save slots
     activeSave: -1,
-    badges: [],                  // profile badges (status symbols, not chips)
-    favorites: [],               // chip ids shown on the portfolio
+    seals: [],                   // region marks on the profile (status, not companions)
+    favorites: [],               // ids shown on the portfolio
+    worldChanged: false,         // one-time card after the 0.10 migration
   };
 }
 
@@ -102,15 +105,31 @@ export function commit(fn) {
 function migrate(s) {
   const base = freshState();
   const out = { ...base, ...s };
-  for (const k of ['czone', 'daily', 'quests', 'trades', 'stats', 'settings']) {
-    out[k] = { ...base[k], ...(s[k] || {}) };
+  // 0.10 "The World": deck -> stack, badges -> seals, czone -> portfolio, counts -> companion instances.
+  if ((s.v || 1) < 2) {
+    if (!Array.isArray(out.stack) || !out.stack.length) out.stack = Array.isArray(s.deck) ? s.deck.slice() : [];
+    if (!Array.isArray(out.seals) || !out.seals.length) out.seals = Array.isArray(s.badges) ? s.badges.slice() : [];
+    if (!s.portfolio && s.czone) out.portfolio = s.czone;
+    if (!Array.isArray(s.companions) || !s.companions.length) {
+      const prov = s.prov || {}; let mint = s.mint || 0; const list = [];
+      Object.entries(s.collection || {}).forEach(([id, n]) => { for (let i = 0; i < n; i++) { const p = prov[id]; list.push({ u: `${id}-${++mint}`, id, nick: '', found: { where: 'before', region: null, date: (p && p.t) || s.created || Date.now(), mint: (i === 0 && p && p.mint) || mint }, wins: (s.trained && s.trained[id]) || 0 }); } });
+      out.companions = list; out.mint = mint;
+    }
+    (Array.isArray(s.saves) ? s.saves : []).forEach((sv, i) => { if (!sv) return; sv.seals = sv.seals || sv.badges || []; sv.hall = sv.hall || sv.heroes || []; sv.corp = sv.corp || {}; if (sv.gates && sv.gates.length > 6) { sv.hall = []; sv.complete = false; } delete sv.badges; delete sv.heroes; });
+    delete out.deck; delete out.badges; delete out.czone;
+    if (s.onboarded) out.worldChanged = true;
   }
+  for (const k of ['portfolio', 'daily', 'quests', 'trades', 'stats', 'settings']) {
+    out[k] = { ...base[k], ...(out[k] || s[k] || {}) };   // out[k] may already hold a migrated value
+  }
+  if (!Array.isArray(out.companions)) out.companions = [];
+  if (!Array.isArray(out.stack)) out.stack = [];
+  if (!Array.isArray(out.seals)) out.seals = [];
   if (!Array.isArray(out.saves) || out.saves.length !== 3) out.saves = [null, null, null];
-  if (!Array.isArray(out.badges)) out.badges = [];
   if (!Array.isArray(out.favorites)) out.favorites = [];
   if (!Array.isArray(out.unlockedBgs)) out.unlockedBgs = [];
   if (!out.unlockedBgs.includes('orbit')) out.unlockedBgs.unshift('orbit');
-  if (!out.czone.bg) out.czone.bg = 'orbit';
+  if (!out.portfolio.bg) out.portfolio.bg = 'orbit';
   out.v = SAVE_VERSION;
   return out;
 }

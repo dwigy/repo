@@ -1,0 +1,1 @@
+{ "name": "orbit-world", "private": true, "type": "module", "scripts": { "lint": "node scripts/lexicon-lint.mjs", "sim": "node scripts/sim.mjs", "smoke": "node scripts/smoke.mjs", "ladder": "node scripts/ladder.mjs" } }

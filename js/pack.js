@@ -31,7 +31,7 @@ export function openPack({ pack, ids, newIds = [] }, hooks = {}) {
           <div class="pk-hint">${esc(pack.name).toUpperCase()}</div>
           <div class="pk-packwrap"><div class="pk-peek" id="pkPeek">${chipBackSVG(110)}</div><div class="pk-pack" id="pkPack">${packSVG(pack, { size: 230 })}</div><div class="pk-tear" id="pkTear"></div></div>
           <div class="pk-sub">DRAG ACROSS THE TOP TO RIP IT OPEN</div>
-          <button class="obtn pk-btn" id="pkRip">RIP IT</button>
+          <button class="obtn pk-btn" id="pkRip">BREATHE</button>
           <button class="pk-x" id="pkSkip">SKIP</button>
         </div>`;
       const el = root.querySelector('#pkPack'), top = () => el.querySelector('.pack-top'), body = () => el.querySelector('.pack-body');
