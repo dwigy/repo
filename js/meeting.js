@@ -41,11 +41,12 @@ export function neighbours(i) {
 }
 const rowMates = (i) => { const base = i < ROW ? 0 : ROW; const out = []; for (let k = base; k < base + ROW; k++) if (k !== i) out.push(k); return out; };
 
-// Stack validation: exactly twenty, at most three of one form, at most one whole fragment.
-export function validateStack(ids) {
+// Stack validation: twenty companions, at most three of one form, at most one whole fragment.
+// A player who owns fewer than twenty carries everything they have, so `size` can be lowered.
+export function validateStack(ids, size = STACK_SIZE) {
   const list = (ids || []).map(id => BY_ID[id]).filter(Boolean);
   if (list.length !== (ids || []).length) return { ok: false, why: 'Unknown companion in the stack' };
-  if (list.length !== STACK_SIZE) return { ok: false, why: `A stack carries ${STACK_SIZE}` };
+  if (list.length !== size) return { ok: false, why: size < STACK_SIZE ? `Carry all ${size} you have` : `A stack carries ${STACK_SIZE}` };
   const byForm = {}; list.forEach(t => { byForm[t.char] = (byForm[t.char] || 0) + 1; });
   const over = Object.entries(byForm).find(([, n]) => n > MAX_COPIES);
   if (over) return { ok: false, why: `No more than ${MAX_COPIES} of one form` };

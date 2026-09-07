@@ -120,7 +120,9 @@ export function fitStack(s = state) {
   const before = (s.stack || []).slice();
   const owned = { ...s.collection }; const kept = [];
   for (const id of before) { if (owned[id] > 0 && BY_ID[id]) { owned[id]--; kept.push(id); } }
-  const stack = kept.length >= B.STACK_SIZE ? kept.slice(0, B.STACK_SIZE) : autoStack(s, kept);
+  const total = Object.values(s.collection).reduce((a, n) => a + n, 0);
+  const target = Math.min(B.STACK_SIZE, total);
+  const stack = kept.length >= target ? kept.slice(0, target) : autoStack(s, kept);
   return { stack, changed: stack.length !== before.length || stack.some((id, i) => id !== before[i]) };
 }
 
@@ -472,7 +474,10 @@ export function buyRegionPack(n) {
 // Tinker's Night: the longest night of the year, Dec 20-22 everywhere.
 export function isTinkersNight(d = new Date()) { return d.getMonth() === 11 && d.getDate() >= 20 && d.getDate() <= 22; }
 // A stack is ready when it is exactly twenty, three of a form at most, one whole fragment at most.
-export function stackCheck() { return B.validateStack(state.stack); }
+export function stackCheck() {
+  const owned = Object.values(state.collection).reduce((a, n) => a + n, 0);
+  return B.validateStack(state.stack, Math.min(B.STACK_SIZE, owned));
+}
 export const deckCheck = stackCheck;
 export function storySeen(key) { const sv = activeSave(); return !sv || (sv.seen || []).includes(key); }
 export function markStory(key) { const sv = activeSave(); if (sv) commit(() => { sv.seen = sv.seen || []; if (!sv.seen.includes(key)) sv.seen.push(key); }); }

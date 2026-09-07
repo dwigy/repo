@@ -120,7 +120,7 @@ function migrate(s) {
     if (s.onboarded) out.worldChanged = true;
   }
   for (const k of ['portfolio', 'daily', 'quests', 'trades', 'stats', 'settings']) {
-    out[k] = { ...base[k], ...(s[k] || {}) };
+    out[k] = { ...base[k], ...(out[k] || s[k] || {}) };   // out[k] may already hold a migrated value
   }
   if (!Array.isArray(out.companions)) out.companions = [];
   if (!Array.isArray(out.stack)) out.stack = [];

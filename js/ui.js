@@ -385,7 +385,7 @@ function deckView() {
   const owned = [];
   Object.entries(state.collection).forEach(([id, n]) => { if (n > 0) owned.push({ id, n }); });
   owned.sort((a, b) => BY_ID[b.id].pts - BY_ID[a.id].pts);
-  const cols = B.topColors(state.stack); const chk = B.validateStack(state.stack);
+  const cols = B.topColors(state.stack); const chk = G.stackCheck();
   const hero = G.heroChip();
   return `<div class="panel">
     <div class="ptab">MY ${U('stack')} <em>${state.stack.length}/${B.STACK_SIZE} · ${B.PLAY_SIZE} PLAY</em></div>
@@ -514,7 +514,7 @@ function diffHits(before, after, landedWho, landedSlot) {
 }
 
 function startMatch(op, aiDeck, opts = {}, node = null) {
-  if (!B.validateStack(state.stack).ok) return;
+  if (!G.stackCheck().ok) return;
   match = B.newMatch(state.stack.slice(), aiDeck, op, { rules: { ...(opts.rules || {}), heroP: G.heroChip(), heroAi: node && node.kind !== 'train' ? node.avatar : null }, pAwake: G.awakeIds() });
   match.node = node;
   selectedHand = -1; lastTotals = null; pendingLand = null; pendingHits = {}; busy = true;
