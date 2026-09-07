@@ -127,13 +127,13 @@ function hallView() {
 }
 function chairView() {
   const seats = Array.from({ length: 13 }, (_, i) => `<div class="seat ${i === 12 ? 'empty' : ''}" ${i === 12 ? 'data-action="campSit"' : ''}>${i === 12 ? '' : socketSVG(40)}</div>`).join('');
-  return `<div class="camp-shell region chair" style="--s1:#1b2a44;--s2:#0f1a30;--s3:#05070f;--hue:#f5a623">
+  return `<div class="camp-shell region chair dark" style="--s1:#1b2a44;--s2:#0f1a30;--s3:#05070f;--hue:#f5a623">
     <div class="camp-top"><span></span><b>${esc(WORLD.hall).toUpperCase()}</b><span></span></div>
     <div class="camp-body chair-body"><div class="hero-kicker">TWELVE SEATS. ONE EMPTY CHAIR.</div><div class="seats">${seats}</div>
       <div class="tour-zone-name">Sit.</div><button class="obtn primary big" data-action="campSit">SIT</button></div></div>`;
 }
 function beliefView() {
-  return `<div class="camp-shell region belief" style="--s1:#1b2a44;--s2:#0f1a30;--s3:#05070f;--hue:#f5a623">
+  return `<div class="camp-shell region belief dark" style="--s1:#1b2a44;--s2:#0f1a30;--s3:#05070f;--hue:#f5a623">
     <div class="camp-top"><span></span><b>WHICH DO YOU BELIEVE?</b><span></span></div>
     <div class="camp-body"><div class="hero-kicker">NO WRONG ANSWER</div>
       <div class="tellings">${WORLD.tellings.map(tl => `<button class="telling" style="--tc:${tl.color}" data-action="campBelieve" data-id="${tl.key}"><b>${esc(tl.name.replace(/^the /, 'The '))}</b><p>${esc(tl.card)}</p></button>`).join('')}</div></div></div>`;
@@ -184,7 +184,7 @@ export function nodeModal(id) {
   const tl = n.kind === 'keeper' && st === 'done' && n.telling ? tellingOf(n.telling) : null;
   H.showModal(`<div class="scout">
     <div class="scout-top"><div class="scout-av">${st === 'locked' ? socketSVG(110) : tokenSVG(BY_ID[op.avatar], 110, { bubble: false })}</div><div><div class="scout-kind">${n.kind === 'train' ? 'PRACTICE' : n.kind === 'keeper' ? U('keeper') + ' OF ' + esc(r.name).toUpperCase() : n.kind === 'hall' ? 'ONE OF THE TWELVE' : n.kind === 'corp' ? esc(WORLD.corp).toUpperCase() : 'A PLAYER'}</div><div class="scout-name">${esc(op.name)}</div>${line ? `<div class="scout-line">“${esc(line)}”</div>` : ''}</div></div>
-    ${declined ? `<div class="decline"><p>${esc(first(lore(`r${n.region}.keeper.decline`)) || 'Not like this.')}</p><p><b>${esc(r.question)}</b></p><p class="small">${esc(balance.why)}</p></div>` : ''}
+    ${declined ? `<div class="decline"><p>${esc(first(lore(`r${n.region}.keeper.decline`)) || `Not like this. ${r.question}`)}</p><p class="small">${esc(balance.why)}</p></div>` : ''}
     <div class="scout-rows">
       ${rules.length ? `<div><span>HOUSE RULE</span><b>${rules.join(' ')}</b></div>` : ''}
       ${n.kind === 'keeper' ? `<div><span>THE ${U('keeper')}</span><b>A balanced ${t('stack')}: six bright ones at most, one ${t('whole')} at most. Bow before and after.</b></div>` : ''}
@@ -194,7 +194,7 @@ export function nodeModal(id) {
       ${tl ? `<div><span>THEIR TELLING</span><b>${esc(tl.name)}</b></div>` : ''}
     </div>
     ${n.reward && n.reward.whole ? `<div class="scout-chip">${G.ownedCount(n.reward.whole) ? tokenSVG(BY_ID[n.reward.whole], 84, { bubble: false }) : shadowTokenSVG(BY_ID[n.reward.whole], 84)}</div>` : ''}
-    <div class="deckline ${chk.ok ? 'ok' : 'bad'}">${chk.ok ? U('stack') + ' READY' : esc(chk.why).toUpperCase() + ' <button class="obtn small" data-action="autoDeckCamp" data-id="' + n.id + '">FILL IT</button>'}</div>
+    <div class="deckline ${chk.ok && !declined ? 'ok' : 'bad'}">${!chk.ok ? esc(chk.why).toUpperCase() + ' <button class="obtn small" data-action="autoDeckCamp" data-id="' + n.id + '">FILL IT</button>' : declined ? 'COME BACK WITH A BALANCED ' + U('stack') : U('stack') + ' READY'}</div>
     <div class="row center"><button class="obtn primary big" data-action="campPlay" data-id="${n.id}" ${playable ? '' : 'disabled'}>${n.kind === 'keeper' ? 'KNOCK' : st === 'done' && n.kind !== 'train' ? 'MEET AGAIN' : 'MEET'}</button><button class="obtn grey" data-action="closeModal">BACK</button></div>
   </div>`);
 }

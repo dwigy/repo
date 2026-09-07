@@ -932,3 +932,10 @@ body, .frame, .panel, .modal, .tile, .slot, .starter, .tnode, .obtn, .lnav, .sta
 .notice.lantern { border-color: #f5a623; background: linear-gradient(180deg, #fff8e6, #ffefc9); }
 .notice.lantern i { background: linear-gradient(180deg, #ffd76a, #f5a623); color: #5a3a00; }
 .pro-ring { display: inline-block; padding: 4px; border-radius: 50%; border: 3px solid var(--belief, transparent); }
+/* the chair and the belief are their own dark rooms */
+.camp-shell.dark { background: radial-gradient(120% 80% at 50% 0%, var(--s1), var(--s2) 55%, var(--s3)); color: #fff; }
+.camp-shell.dark .camp-top { background: rgba(10, 16, 30, .72); border-bottom-color: rgba(255,255,255,.12); }
+.camp-shell.dark .camp-top b { color: #fff; }
+.camp-shell.dark .hero-kicker { color: rgba(255,255,255,.75); }
+.camp-shell.dark .telling p { color: rgba(255,255,255,.9); }
+.camp-shell.dark .tour-zone-name { color: #fff; }
