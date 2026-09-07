@@ -85,7 +85,7 @@ Seven regions, in order, climbing. A region is a town and the country around it.
 | 2. The Tide | a river town of docks and ferries | orange | Flow | Let things move. Feel what you feel. | What do you want? |
 | 3. The Forge | a workshop town of kilns and sun-baked terraces | yellow | Will | Make something and stand behind it. | What will you do? |
 | 4. The Grove | an orchard town with a wind that smells green | green | Care | Play for the other player too. | Who is this for? |
-| 5. The Choir | a small city of bells and radio towers | blue | Voice | Say the true thing plainly. | What do you mean? |
+| 5. The Signal | a small city of radio towers and open windows | blue | Voice | Say the true thing plainly. | What do you mean? |
 | 6. The Observatory | a hill town under clear cold nights | indigo | Sight | See the board that is really there. | What do you see? |
 | 7. The Summit | a handful of buildings above the weather | purple, then white | Wholeness | Bring it all with you. | Who are you now? |
 
@@ -99,7 +99,7 @@ A true win earns their telling, with one story only they hold. A Seal. The regio
 2. **The Tide.** A ferry pilot who never stops moving and never seems rushed. Telling: Seed.
 3. **The Forge.** A young smith with burnt eyebrows and an opinion about everything. No telling picked yet, and says so.
 4. **The Grove.** An old beekeeper who moves slowly and never gets stung. Plays like the board is a garden. Telling: Love.
-5. **The Choir.** A retired singer who talks so quietly you have to listen. Telling: Mirror.
+5. **The Signal.** The Caller, retired, who talks so quietly you have to listen. Telling: Mirror.
 6. **The Observatory.** An astronomer who plays with the lights off. Knows your stack before you show it. Telling: Sleep, gently.
 7. **The Summit.** Barely there. The fewest words in the game. Holds all the tellings. Will not say which is true.
 
@@ -163,7 +163,7 @@ After the Hall's three, the player is asked one question. Which telling do you b
 Case-insensitive, whole words. A single hit fails a deliverable.
 
 - **Ancestors:** ctoon, czone, gtoon, orbit, pokemon, pokémon, gym, trainer, professor, rival, badge, elite four, pokedex.
-- **Music:** song, note (noun), scale, chord, octave, tune, melody, sing (allowed only as "singer" for the Choir Keeper).
+- **Music:** song, note (noun), scale, chord, octave, tune, melody, sing, singer, choir, chorus, bell, hymn, anthem, lyric, verse, refrain. No exceptions. "Harmony" stays, as an ordinary word for the thing before the Split.
 - **Esoteric:** chakra, sigil, alchemy, alchemical, archon, occult, esoteric, initiation, initiate, gnosis, sacred geometry, kabbalah, tarot, ritual, mystic.
 - **Tool verbs:** "use your companion", "use a companion", "use it" near a companion word.
 - **Resolution:** "the split happened because", "there are N fragments", a numeral before "fragments in the world".

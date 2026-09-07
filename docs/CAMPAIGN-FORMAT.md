@@ -67,7 +67,7 @@ Each Seal opens the next region.
 | Tide | 55 / 14 | 160 / 400 / — | Common–Uncommon | 0.65 | `colorBonus: 8` |
 | Forge | 70 / 18 | 200 / 500 / 1,200 | Uncommon | 0.75 | `noSwap` |
 | Grove | 90 / 22 | 250 / 650 / 1,500 | Uncommon–Rare | 0.82 `smart` | `flipRows`, `lastBonus: 8` |
-| Choir | 110 / 28 | 320 / 800 / 1,900 | Rare | 0.88 `smart` | `noPowers`, `rowBonus.back: 3` |
+| Signal | 110 / 28 | 320 / 800 / 1,900 | Rare | 0.88 `smart` | `noPowers`, `rowBonus.back: 3` |
 | Observatory | 140 / 35 | 400 / 1,000 / 2,400 | Rare–Mythic | 0.94 `smart` | `openHand`, `colorSet: 2`, `colorBonus: 4` |
 | Summit | 180 / 45 | 500 / 1,300 / 3,000 | Mythic; Legendary in Mega | 1.0 `smart` | `secretsOn`, `reelChange` |
 
@@ -83,7 +83,7 @@ A Keeper is not a gate. They know the lesson best and have waited to teach it. T
 | The Tide | Flow | What do you want? | a ferry pilot, always moving, never rushed | Seed |
 | The Forge | Will | What will you do? | a young smith, burnt eyebrows, opinions | none yet, and says so |
 | The Grove | Care | Who is this for? | an old beekeeper; the board is a garden | Love |
-| The Choir | Voice | What do you mean? | a retired singer; you have to listen | Mirror |
+| The Signal | Voice | What do you mean? | the Caller, retired; you have to listen | Mirror |
 | The Observatory | Sight | What do you see? | an astronomer, lights off, knows your stack | Sleep |
 | The Summit | Wholeness | Who are you now? | barely there; the fewest words | all; will not say which |
 

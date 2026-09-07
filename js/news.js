@@ -33,7 +33,7 @@ export const NEWS = [
       'A seven-zone campaign that leaves the first town and comes back to it. Two challenges, a sparring partner and a Keeper in every region.',
       'House rules bend each match: no swaps, no powers, a hand of three, double sets, open hands, secret powers awake.',
       'Eleven new stars: Bobby Bumps, Colonel Heeza Liar, Julius the Cat, Pete, Clarabelle, Horace, Minnie (1928), Mutt, Jeff, Happy Hooligan and Buster Brown.',
-      'Eight new powers: Encore, Twins, Chorus Line, Crown, Underdog, Brick, Shield and Veto.',
+      'Eight new powers: Second Wind, Twins, Hand in Hand, Crown, Underdog, Brick, Shield and Veto.',
       'Secret powers on Mythic and Legendary companions wake up after three wins on the board.',
       "Seven 1/1 companion companions you can only win on the Tour.",
     ] },

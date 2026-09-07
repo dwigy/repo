@@ -1,3 +1,4 @@
+import { region as regionOf } from './lexicon.js';
 // [GAME] — catalog data. Placeholder names throughout: characters are Alpha to Zulu,
 // sets are Set One to Set Six. Mechanics (colours, points, powers) are final;
 // names and artwork are stand-ins until branding lands.
@@ -79,13 +80,13 @@ export const FORMS = {
              stats: [["blu", 3, {"t": "first", "n": 4}], ["yel", 6, {"t": "lonely", "n": 4}], ["blu", 8, {"t": "last", "n": 6}], ["blu", 12, {"t": "last", "n": 12}]] },
   papa:     { name: 'Papa', quips: ["Here we go.", "Fine.", "Done."], finding: 'f1', region: 4, top: 3, home: 'Coming through the orchard rows, smelling of leaves.', pull: 'Someone opening a window in a stuffy room.', quirk: 'Nudges every companion one socket toward the front.',
              stats: [["yel", 3, {"t": "first", "n": 2}], ["yel", 6, {"t": "chain", "n": 1}], ["org", 8, {"t": "underdog", "n": 5}], ["yel", 11, {"t": "chain", "n": 2}]] },
-  quebec:   { name: 'Quebec', quips: ["Onward.", "Careful.", "Ha."], finding: 'f1', region: 5, top: 4, home: 'The bell tower, hanging by too many feet.', pull: 'A word said plainly, and meant.', quirk: 'Rings once when it takes a front socket.',
+  quebec:   { name: 'Quebec', quips: ["Onward.", "Careful.", "Ha."], finding: 'f1', region: 5, top: 4, home: 'The tallest tower, hanging by too many feet.', pull: 'A word said plainly, and meant.', quirk: 'Waves once when it takes a front socket.',
              stats: [["org", 4, {"t": "crown", "n": 3}], ["org", 6, {"t": "bomb", "n": 2}], ["red", 9, {"t": "veto"}], ["org", 13, {"t": "crown", "n": 6}]] },
   romeo:    { name: 'Romeo', quips: ["Let's see.", "Close.", "Right."], finding: 'f6', region: 5, top: 4, home: 'The steps below the radio tower, listening.', pull: 'Being heard without raising your voice.', quirk: 'Copies whoever plays beside it, half a turn late.',
              stats: [["slv", 3, {"t": "lonely", "n": 3}], ["slv", 6, {"t": "shield"}], ["blu", 9, {"t": "underdog", "n": 6}], ["slv", 13, {"t": "minusOppColor", "color": "red", "n": 3}]] },
   sierra:   { name: 'Sierra', quips: ["Ready.", "Hm.", "Again."], finding: 'f6', wanderer: true, top: 5, home: 'Rolling along any road, going the way you go.', pull: 'Company on a walk you meant to take alone.', quirk: 'Swaps front to back every turn. Never explains.',
              stats: [["red", 5, {"t": "opp", "n": 3}], ["red", 8, {"t": "bomb", "n": 2}], ["red", 10, {"t": "veto"}], ["red", 16, {"t": "bomb", "n": 4}]] },
-  tango:    { name: 'Tango', quips: ["Watch this.", "Easy.", "Next."], finding: 'f6', region: 5, top: 3, home: 'Between the radio towers, in the soft static.', pull: 'The quiet after a bell stops.', quirk: 'Goes silent in daylight. Loud in a night socket.',
+  tango:    { name: 'Tango', quips: ["Watch this.", "Easy.", "Next."], finding: 'f6', region: 5, top: 3, home: 'Between the radio towers, in the soft static.', pull: 'The quiet after the hour is called.', quirk: 'Goes silent in daylight. Loud in a night socket.',
              stats: [["yel", 3, {"t": "plusOwnColor", "color": "yel", "n": 1}], ["yel", 6, {"t": "back", "n": 4}], ["yel", 8, {"t": "perOwnColor", "color": "yel", "n": 2}], ["yel", 11, {"t": "plusAll", "n": 1}]] },
   uniform:  { name: 'Uniform', quips: ["Steady.", "Hold.", "Now."], finding: 'f6', region: 6, top: 3, home: 'The telescope dome, curled where the lens cap goes.', pull: 'Being seen properly, all at once.', quirk: 'Sees the back row. Tells the front row.',
              stats: [["org", 3, {"t": "chain", "n": 1}], ["org", 6, {"t": "front", "n": 3}], ["blu", 8, {"t": "crown", "n": 4}], ["org", 11, {"t": "chain", "n": 2}]] },
@@ -166,13 +167,13 @@ function build() {
   // Whole fragments: one per Keeper, one for every known companion. Never in a pack.
   const one = (n, name, color, pts, power, secret, blurb) => ({ id: `one${n}`, char: 'one', series: 'whole', finding: 'whole', name, short: name, edition: 'Whole fragment', edShort: 'Whole', variant: 'gold', pose: 'hero', rarity: 4, light: 4, points: VALUE[4], color, pts, power, secret, blurb, one: n, region: n <= 7 ? n : null });
   out.push(
-    one(1, 'Whole fragment of The Hearth', 'slv', 12, { t: 'mirror' },                          { t: 'shield' },          'Unbroken. Held by the Keeper of the Hearth until a true meeting.'),
-    one(2, 'Whole fragment of The Tide', 'blu', 14, { t: 'opp', n: 6 },                       { t: 'crown', n: 4 },     'Unbroken. Held by the second Keeper until a true meeting.'),
-    one(3, 'Whole fragment of The Forge', 'org', 12, { t: 'bomb', n: 3 },                      { t: 'late', n: 5 },      'Unbroken. Held by the third Keeper until a true meeting.'),
-    one(4, 'Whole fragment of The Grove', 'blu', 13, { t: 'last', n: 9 },                      { t: 'veto' },            'Unbroken. Held by the fourth Keeper until a true meeting.'),
-    one(5, 'Whole fragment of The Choir', 'prp', 14, { t: 'plusOwnColor', color: 'prp', n: 3 }, { t: 'chain', n: 2 },    'Unbroken. Held by the fifth Keeper until a true meeting.'),
-    one(6, 'Whole fragment of The Observatory', 'grn', 13, { t: 'chain', n: 2 },                     { t: 'underdog', n: 8 },  'Unbroken. Held by the sixth Keeper until a true meeting.'),
-    one(7, 'Whole fragment of The Summit', 'slv', 16, { t: 'plusAll', n: 2 },                   { t: 'crown', n: 6 },     'Unbroken. Held by the seventh Keeper until a true meeting.'),
+    one(1, `Whole fragment of ${regionOf(1).name}`, 'slv', 12, { t: 'mirror' },                          { t: 'shield' },          'Unbroken. Held by the Keeper of the Hearth until a true meeting.'),
+    one(2, `Whole fragment of ${regionOf(2).name}`, 'blu', 14, { t: 'opp', n: 6 },                       { t: 'crown', n: 4 },     'Unbroken. Held by the second Keeper until a true meeting.'),
+    one(3, `Whole fragment of ${regionOf(3).name}`, 'org', 12, { t: 'bomb', n: 3 },                      { t: 'late', n: 5 },      'Unbroken. Held by the third Keeper until a true meeting.'),
+    one(4, `Whole fragment of ${regionOf(4).name}`, 'blu', 13, { t: 'last', n: 9 },                      { t: 'veto' },            'Unbroken. Held by the fourth Keeper until a true meeting.'),
+    one(5, `Whole fragment of ${regionOf(5).name}`, 'prp', 14, { t: 'plusOwnColor', color: 'prp', n: 3 }, { t: 'chain', n: 2 },    'Unbroken. Held by the fifth Keeper until a true meeting.'),
+    one(6, `Whole fragment of ${regionOf(6).name}`, 'grn', 13, { t: 'chain', n: 2 },                     { t: 'underdog', n: 8 },  'Unbroken. Held by the sixth Keeper until a true meeting.'),
+    one(7, `Whole fragment of ${regionOf(7).name}`, 'slv', 16, { t: 'plusAll', n: 2 },                   { t: 'crown', n: 6 },     'Unbroken. Held by the seventh Keeper until a true meeting.'),
     one(8, 'Whole fragment of the road', 'yel', 16, { t: 'plusAll', n: 3 },                   { t: 'veto' },            'Unbroken. For the one who found every known companion.'),
   );
   return out;
@@ -268,4 +269,4 @@ export function powerText(p) {
   }
   return '';
 }
-export const POWER_NAMES = { x2: 'Buddy', perOppColor: 'Counter', perOwnColor: 'Rally', minusOppColor: 'Hex', plusOwnColor: 'Boost', plusAll: 'Anthem', opp: 'Jab', steal: 'Pickpocket', mirror: 'Mirror', back: 'Backstage', front: 'Spotlight', first: 'Opener', last: 'Closer', late: 'Encore', lonely: 'Loner', pair: 'Twins', chain: 'Chorus Line', crown: 'Crown', underdog: 'Underdog', bomb: 'Brick', shield: 'Shield', veto: 'Veto', none: 'None' };
+export const POWER_NAMES = { x2: 'Buddy', perOppColor: 'Counter', perOwnColor: 'Rally', minusOppColor: 'Hex', plusOwnColor: 'Boost', plusAll: 'Ovation', opp: 'Jab', steal: 'Pickpocket', mirror: 'Mirror', back: 'Backstage', front: 'Spotlight', first: 'Opener', last: 'Closer', late: 'Second Wind', lonely: 'Loner', pair: 'Twins', chain: 'Hand in Hand', crown: 'Crown', underdog: 'Underdog', bomb: 'Brick', shield: 'Shield', veto: 'Veto', none: 'None' };

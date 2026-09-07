@@ -47,7 +47,7 @@ export const WORLD = {
     { key: 'tide',        name: 'The Tide',        town: 'a river town of docks and ferries',                          hue: '#ff8a1e', lesson: 'Flow',       line: 'Let things move. Feel what you feel.',   question: 'What do you want?' },
     { key: 'forge',       name: 'The Forge',       town: 'a workshop town of kilns and sun-baked terraces',           hue: '#f7e400', lesson: 'Will',       line: 'Make something and stand behind it.',     question: 'What will you do?' },
     { key: 'grove',       name: 'The Grove',       town: 'an orchard town with a wind that smells green',             hue: '#3ec81e', lesson: 'Care',       line: 'Play for the other player too.',          question: 'Who is this for?' },
-    { key: 'choir',       name: 'The Choir',       town: 'a small city of bells and radio towers',                    hue: '#2f8ff5', lesson: 'Voice',      line: 'Say the true thing plainly.',             question: 'What do you mean?' },
+    { key: 'signal',      name: 'The Signal',      town: 'a small city of radio towers and open windows',             hue: '#2f8ff5', lesson: 'Voice',      line: 'Say the true thing plainly.',             question: 'What do you mean?' },
     { key: 'observatory', name: 'The Observatory', town: 'a hill town under clear cold nights',                       hue: '#4b3fbf', lesson: 'Sight',      line: 'See the board that is really there.',     question: 'What do you see?' },
     { key: 'summit',      name: 'The Summit',      town: 'a handful of buildings above the weather',                  hue: '#c02fe0', lesson: 'Wholeness',  line: 'Bring it all with you.',                  question: 'Who are you now?', lightAtClear: '#ffffff' },
   ],

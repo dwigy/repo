@@ -29,7 +29,7 @@ Android: open in Chrome, tap the ⋮ menu, choose **Install app**.
 | Discs and blanks | Shops sell **blanks**: empty discs, hand-made in small batches, sealed a few to a pack. A blank stays empty until it is opened, and the opener's own breath draws a fragment in. The rip overlay opens on "Breathe." |
 | A meeting | Twelve sockets a side, six front and six back. Carry twenty, play twelve, hold five in hand. Three of a colour is a set. Twenty-two named powers, plus a secret power on Mythic and Legendary companions that wakes after three wins on the board. Both players bow. |
 | The stack | Exactly twenty, no more than three of one form, at most one whole fragment. |
-| The road | Seven towns in order: the Hearth, the Tide, the Forge, the Grove, the Choir, the Observatory, the Summit. Each has a shop, three players worth meeting, places to explore, practice for coins, and one **Keeper**. |
+| The road | Seven towns in order: the Hearth, the Tide, the Forge, the Grove, the Signal, the Observatory, the Summit. Each has a shop, three players worth meeting, places to explore, practice for coins, and one **Keeper**. |
 | Keepers | Not bosses. The person who knows the region's lesson best. They decline an unbalanced stack with their question and no penalty. Beat one in a true meeting for their telling, a **Seal**, and the region's **whole fragment**. |
 | [CORP] | A corporation collecting for the wrong reason. It meets you four times: a friendly buyer, an emptied shop, a stolen whole fragment in the open, and the Gathering at the foot of the Summit. |
 | The Hall | Seven Seals earn an invitation. Twelve seats, an empty thirteenth chair, and three of the twelve who test each arrival. Then one question about the Great Split, with five answers and no wrong one. |

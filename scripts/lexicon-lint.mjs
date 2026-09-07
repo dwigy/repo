@@ -6,7 +6,7 @@ const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const FILES = ['js/ui.js', 'js/camp.js', 'js/story.js', 'js/news.js', 'js/data.js', 'js/campaign.js', 'js/lexicon.js', 'js/pack.js', 'js/game.js', 'index.html', 'manifest.webmanifest', 'README.md', 'docs/WORLD.md'];
 const GROUPS = {
   ancestors: /\b(ctoons?|czones?|gtoons?|orbit|pok[eé]mon|gyms?|trainers?|professors?|rivals?|badges?|elite four|pok[eé]dex)\b/gi,
-  music: /\b(songs?|notes?|scales?|chords?|octaves?|tunes?|melod(?:y|ies)|sing|sings|singing)\b/gi,
+  music: /\b(songs?|notes?|scales?|chords?|octaves?|tunes?|melod(?:y|ies)|sing|sings|singer|singers|singing|choirs?|chorus|bells?|hymns?|anthems?|harmonies|lyrics?|verses?|refrains?)\b/gi,
   esoteric: /\b(chakras?|sigils?|alchemy|alchemical|archons?|occult|esoteric|initiations?|initiates?|gnosis|sacred geometry|kabbalah|tarot|rituals?|mystics?)\b/gi,
   retired: /\b(chips?|decks?|zones?|heroes|hero|gatekeepers?|series)\b/gi,
   toolverb: /\buse (?:your|a|an|the|my|this|that) (?:companions?|discs?|fragments?)\b|\buse it\b.{0,40}\b(?:companions?|discs?|fragments?)\b|\b(?:companions?|discs?|fragments?)\b.{0,40}\buse it\b/gi,

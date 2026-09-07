@@ -125,29 +125,29 @@ export const LORE = {
   "r4.placeb": "The hives. Hum all day. The beekeeper says they gossip.",
   "r4.placec": "The cider house. Warm, loud, and everyone's companions out at once.",
   "r5.arrive": [
-    "The Choir. Bells, radio towers, and a small city talking at once.",
+    "The Signal. Radio towers, open windows, a small city talking at once.",
     "Grey, clear light. Like a voice with nothing to hide."
   ],
   "r5.npca.intro": "The late radio host. Talks to the whole city. Means every word.",
   "r5.npca.win": "Clear signal. You say what you mean on the board. Rare.",
   "r5.npca.lose": "Static. You play three things at once and mean none. Pick one.",
-  "r5.npcb.intro": "The bell ringer. Strong arms, few words. Each one lands.",
+  "r5.npcb.intro": "The tower climber. Strong arms, few words. Each one lands.",
   "r5.npcb.win": "True. That's the word. True.",
-  "r5.npcb.lose": "A bell says one thing, loudly. You say six things, softly.",
+  "r5.npcb.lose": "They say one thing, loudly. You say six things, softly.",
   "r5.npcc.intro": "The letters-page editor. Reads everything the city means to say. Plays plainly.",
   "r5.npcc.win": "No wasted words. Front row says it, back row proves it. Printed.",
   "r5.npcc.lose": "Too much hedging. Say the true thing. Then play it.",
-  "r5.keeper.greet": "The singer, retired. So quiet you lean in. That's the idea.",
+  "r5.keeper.greet": "The Caller, retired. So quiet you lean in. That's the idea.",
   "r5.keeper.decline": "This stack mumbles. No plain word in it. What do you mean?",
-  "r5.keeper.win": "Plainly said. The Seal, and the Choir's whole fragment. Keep meaning it.",
+  "r5.keeper.win": "Plainly said. The Seal, and the Signal's whole fragment. Keep meaning it.",
   "r5.keeper.lose": "Quieter next time. You hear more that way. Come back.",
   "r5.keeper.story": [
     "One winter my voice goes. My companion talks for me, quietly.",
     "Harmony looks at itself, sees two. The fragments: the one meeting itself."
   ],
   "r5.placea": [
-    "The bell tower. Rung by hand every hour. Nobody misses one. Ever.",
-    "A fragment lives up here. The bells sound kinder for it."
+    "The hour tower. Called by hand every hour. Nobody misses one. Ever.",
+    "A fragment lives up here. The hour lands kinder for it."
   ],
   "r5.placeb": "The radio towers. Every voice in the city, sent out. Some return.",
   "r5.placec": "The hush room. No echo. People come here to mean things.",
