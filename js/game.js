@@ -438,7 +438,7 @@ export function explore(placeId) {
     sv.explored.push(p.id);
     let companion = null; if (p.kind === 'find' && p.reward.chip) { companion = p.reward.chip; addCompanion(companion, 1, 'found', { region: p.region }); sv.found.push(companion); log(`Found ${BY_ID[companion].short} in the ${REGIONS[p.region - 1].name}.`); }
     grantAll(s, sv);
-    return { kind: p.kind, place: p, companion };
+    return { kind: p.kind, place: p, chip: companion };
   });
 }
 export function finishGame(placeId, score, max) {
@@ -621,5 +621,10 @@ export const debug = {
   fakeWin(opId) { const op = OPPONENTS.find(o => o.id === opId) || OPPONENTS[0]; return recordBattle(op, true, 5); },
   clearDupes() { commit(s => { Object.keys(s.collection).forEach(id => { while ((s.collection[id] || 0) > 1) removeCompanion(id, 1); }); }); },
   wipeSets() { commit(s => { s.sets = []; s.pendingSets = []; }); },
+  // Campaign fast-forward, for testing the arc without playing every meeting.
+  winNode(id) { const n = NODES[id]; if (!n) return null; return campRecord(n, { aTotal: 99, bTotal: 1, aColors: {}, rules: B.DEFAULT_RULES }, []); },
+  clearRegion(n) { const r = REGIONS[n - 1]; if (!r) return; r.npcs.forEach(x => this.winNode(x.id)); r.places.forEach(p => { const sv = activeSave(); if (sv && !sv.explored.includes(p.id)) commit(() => sv.explored.push(p.id)); }); if (r.corp && r.corp.kind === 'corp') this.winNode(r.corp.id); this.winNode(r.gate.id); },
+  clearRoad() { for (let n = 1; n <= 6; n++) this.clearRegion(n); GATHERING.forEach(c => this.winNode(c.id)); this.clearRegion(7); },
+  buyerSeen(accept = false) { buyerAnswer(accept); },
   queueSet(charKey) { commit(s => { s.pendingSets = s.pendingSets || []; if (!s.pendingSets.includes(charKey)) s.pendingSets.push(charKey); }); },
 };

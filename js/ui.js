@@ -400,10 +400,10 @@ function deckView() {
 function rulesView() {
   return `<div class="panel"><div class="ptab">HOW TO PLAY</div>
     <div class="rules">
-      <p><b>THE BOARD.</b> Each player has 7 sockets: a back row of 3 and a front row of 4. The front rows face each other across the VS line.</p>
-      <p><b>THE STACK.</b> Bring 12 companions. You hold 5 in your hand and draw one after every play. Take turns placing one companion until all 14 sockets are full.</p>
+      <p><b>THE BOARD.</b> Each player has twelve sockets: a back row of six and a front row of six. The front rows face each other. A full board is a full day.</p>
+      <p><b>THE STACK.</b> Carry twenty companions. You hold five in hand and draw one after every play. Take turns placing one until all twenty-four sockets are full.</p>
       <p><b>POINTS.</b> Every companion has a point value (1–16) and a colour. Highest total wins.</p>
-      <p><b>POWERS.</b> Most companions have a power: doubling a buddy, bonuses per colour, penalties to the rival across the line, back-row or front-row bonuses and more. Powers are shown on the right when you select a companion.</p>
+      <p><b>POWERS.</b> Most companions have a power: doubling a buddy, bonuses per colour, penalties to the one across the line, back-row or front-row bonuses and more. Powers are shown on the right when you select a companion.</p>
       <p><b>COLOURS.</b> Every 3 companions of the same colour on your side earns +${B.COLOR_BONUS}.</p>
       <p><b>SWAPPING.</b> Don't like your hand? Swap a companion for the next one in your stack for -${B.SWAP_COST} points.</p>
     </div></div>`;
