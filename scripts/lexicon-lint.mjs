@@ -34,13 +34,22 @@ let hits = 0;
 for (const f of FILES) {
   const path = resolve(ROOT, f); if (!existsSync(path)) continue;
   const src = readFileSync(path, 'utf8');
-  const chunks = f.endsWith('.js') ? jsStrings(src).map(x => ({ text: stripHtml(x.text), at: x.at })) : [{ text: stripHtml(src), at: 0 }];
+  // A document may fence a region it must quote verbatim (a ban list quotes the ban list).
+  const fenced = src.replace(/<!-- lint:ignore-start -->[\s\S]*?<!-- lint:ignore-end -->/g, (m) => m.replace(/[^\n]/g, ' '));
+  const chunks = f.endsWith('.js') ? jsStrings(fenced).map(x => ({ text: stripHtml(x.text), at: x.at })) : [{ text: stripHtml(fenced), at: 0 }];
   for (const ch of chunks) {
+    // Identifiers, class names, ids and urls are not user-facing copy.
+    if (f.endsWith('.js') && !/\s/.test(ch.text.trim())) continue;
+    // CSS values, SVG markup and animation keyframes are not user-facing copy.
+    if (f.endsWith('.js') && /(scale|translate|rotate|cubic-bezier|linear-gradient|radial-gradient)\(|<svg|viewBox=|stroke-width|animation-delay|border-radius|z-index/.test(ch.text)) continue;
     for (const [group, re] of Object.entries(GROUPS)) {
       re.lastIndex = 0; let m;
       while ((m = re.exec(ch.text))) {
         const lineStart = ch.text.lastIndexOf('\n', m.index) + 1; const lineEnd = ch.text.indexOf('\n', m.index);
         const line = ch.text.slice(lineStart, lineEnd < 0 ? undefined : lineEnd).trim();
+        // part of a kebab/dot identifier (hero-kicker, region-badge, .series) -> not copy
+        const before = ch.text[m.index - 1] || ' ', after = ch.text[m.index + m[0].length] || ' ';
+        if (/[-_.]/.test(before) || /[-_]/.test(after)) continue;
         if (allow.some(a => a.re.test(line) || a.re.test(m[0]))) continue;
         const ln = f.endsWith('.js') ? lineOf(src, ch.at) : lineOf(src, m.index);
         console.log(`${f}:${ln} [${group}] "${m[0]}"  …${line.slice(Math.max(0, m.index - lineStart - 40), m.index - lineStart + 50).replace(/\s+/g, ' ')}…`);

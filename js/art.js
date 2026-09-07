@@ -1,5 +1,5 @@
 // Chip art: placeholder sigils rendered inside glossy circular chips.
-import { SERIES, COLORS, RARITY, PACK_TINTS } from './data.js';
+import { FINDINGS, COLORS, RARITY, PACK_TINTS } from './data.js';
 import { getArt, artEnabled } from './artwork.js';
 
 const O = 'stroke="#111" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"';
@@ -47,7 +47,7 @@ const METAL = {
 const TIER_RING = { 0: ['#ffffff', '#c9d2dc', '#7f8a98'], 1: ['#c9ffd9', '#2fbf5a', '#166b33'], 2: ['#bfe0ff', '#1e8fff', '#0b4fa8'], 3: ['#e6d2ff', '#9b4dff', '#4d1a9e'], 4: ['#fff2b0', '#f5a623', '#8a5a00'], 5: ['#ffd3e6', '#f06aa8', '#8a2a5a'] };
 
 function scene(t, id) {
-  const [d, l] = SERIES[t.series]?.bg || ['#333', '#777'];
+  const [d, l] = FINDINGS[t.series]?.bg || ['#333', '#777'];
   const v = t.variant || 'classic';
   let deco = '';
   if (v === 'reel') {
@@ -127,7 +127,7 @@ export function tokenSVG(t, size = 100, opts = {}) {
     ${scene(t, id)}
     <g clip-path="url(#clip${id})"><g ${METAL[t.variant] ? `filter="url(#tone${id})"` : ''}><g transform="translate(50 50) scale(.8) translate(-50 -50) ${pose(t)}">${draw()}</g>${photo(t, id)}</g>${t.rarity >= 3 || t.variant === 'holo' ? sparkles : ''}</g>
     <g clip-path="url(#clip${id})"><ellipse cx="36" cy="26" rx="28" ry="15" fill="url(#gl${id})" transform="rotate(-18 36 26)"/><path d="M18 74 Q50 96 82 74" fill="none" stroke="#fff" stroke-width="5" opacity=".22"/></g>
-    ${outer}${t.series === 'one' ? SPROCKETS : ''}
+    ${outer}${t.series === 'whole' ? SPROCKETS : ''}
     ${ring ? `<circle cx="50" cy="50" r="43.5" fill="none" stroke="${col.hex}" stroke-width="3.2"/>` : ''}
     <circle cx="50" cy="50" r="49" fill="none" stroke="#3d5a80" stroke-width="1.4"/>
     ${bubble ? `<circle cx="76" cy="76" r="13" fill="${col.hex}" stroke="#fff" stroke-width="2.5"/><ellipse cx="72" cy="70" rx="7" ry="4" fill="#fff" opacity=".45"/><text x="76" y="81" text-anchor="middle" font-size="15" font-weight="800" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" fill="${t.color === 'yel' || t.color === 'slv' ? '#1c2f4a' : '#fff'}">${label}</text>` : ''}
