@@ -1,4 +1,10 @@
-# Cartoon Orbit — Evaluation and Rework Plan
+# Interface evaluation, pre-world build
+
+> **Archived.** This document scored the 0.7 build and set the rework that shipped in 0.8
+> and 0.9. It is kept for the reasoning, not the words: it predates the world, so it uses
+> retired vocabulary throughout and names screens that no longer exist. Nothing here is
+> user-facing, and the vocabulary lint does not read it. For current design law see
+> `UX-PHILOSOPHY.md`; for the world see `WORLD.md`.
 
 Scored against `UX-PHILOSOPHY.md`. Each screen gets two marks out of 10 for the state before this rework: **E** (expensive, bespoke) and **A** (art-first). Then the changes, ordered by impact.
 

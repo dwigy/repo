@@ -61,15 +61,19 @@ One vertical page per region. A three-stop sky and an ambient loop. Top to botto
 
 Each Seal opens the next region.
 
-| Region | Practice win / loss | Std / Prem / Mega | Pack light | Keeper diff | New rule |
-|---|---|---|---|---|---|
-| Hearth | 40 / 10 | 120 / 300 / — | Common | 0.55 | none; `noPowers` for player 2 |
-| Tide | 55 / 14 | 160 / 400 / — | Common–Uncommon | 0.65 | `colorBonus: 8` |
-| Forge | 70 / 18 | 200 / 500 / 1,200 | Uncommon | 0.75 | `noSwap` |
-| Grove | 90 / 22 | 250 / 650 / 1,500 | Uncommon–Rare | 0.82 `smart` | `flipRows`, `lastBonus: 8` |
-| Signal | 110 / 28 | 320 / 800 / 1,900 | Rare | 0.88 `smart` | `noPowers`, `rowBonus.back: 3` |
-| Observatory | 140 / 35 | 400 / 1,000 / 2,400 | Rare–Mythic | 0.94 `smart` | `openHand`, `colorSet: 2`, `colorBonus: 4` |
-| Summit | 180 / 45 | 500 / 1,300 / 3,000 | Mythic; Legendary in Mega | 1.0 `smart` | `secretsOn`, `reelChange` |
+| Region | Practice win / loss | Std / Prem / Mega | Pack light | Keeper diff | Keeper tier | New rule |
+|---|---|---|---|---|---|---|
+| Hearth | 40 / 10 | 120 / 300 / — | Common | 0.65 | -0.75 | none |
+| Tide | 55 / 14 | 160 / 400 / — | Common–Uncommon | 0.65 | -0.25 | `colorBonus: 8` |
+| Forge | 70 / 18 | 200 / 500 / 1,200 | Uncommon | 0.85 | -0.25 | `noSwap` |
+| Grove | 90 / 22 | 250 / 650 / 1,500 | Uncommon–Rare | 0.65 `smart` | -1.5 | `rowBonus.back: 3`, `handSize: 4`, `secretsOn` |
+| Signal | 110 / 28 | 320 / 800 / 1,900 | Rare | 0.75 `smart` | -1.85 | `noPowers`, `rowBonus.back: 3` |
+| Observatory | 140 / 35 | 400 / 1,000 / 2,400 | Rare–Mythic | 0.75 `smart` | +2.55 | `colorSet: 2`, `colorBonus: 4`, `secretsOn` |
+| Summit | 180 / 45 | 500 / 1,300 / 3,000 | Mythic; Legendary in Mega | 0.55 `smart` | +0.4 | `secretsOn`, `reelChange` |
+
+**Keeper tier** shifts every companion in a Keeper's stack after the signature one up or down an edition; a fraction shifts that share of the list. It is the strength knob, and difficulty is the fine adjustment. Both are measured, not guessed: `scripts/ladder.mjs` sweeps the grid and `scripts/sim.mjs` writes `docs/balance.md`.
+
+A house rule applies to both sides of the table. `secretsOn` wakes every secret power present, the player's included; a rule that woke only the Keeper's was a wall no stack could pass.
 
 Standard = 3 Practice wins, Premium = 7. A player's first win pays 4× Practice, a Keeper 10×. A 1.25× coin lever lives in config. Opponent totals rise from 92 to 158. One Standard pack per region keeps the player within 8.
 

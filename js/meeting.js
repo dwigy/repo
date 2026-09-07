@@ -164,8 +164,11 @@ function mkSide(deck, hand, awakeIds, isAi = false) { const d = shuffle(deck); r
 export function newMatch(playerDeck, aiDeck, opponent, opts = {}) {
   const rules = withRules(opts.rules);
   const first = opts.first || (Math.random() < 0.5 ? 'p' : 'ai');
+  // The house rule wakes every secret at the table, not just the host's. A
+  // player carries few trained secrets mid-road; a one-sided rule is a wall.
   const aiAwake = opts.aiAwake ?? (rules.secretsOn ? 'all' : []);
-  return { opponent, rules, turn: first, p: mkSide(playerDeck, rules.handSize, opts.pAwake), ai: mkSide(aiDeck, rules.handSize, aiAwake, true), done: false, lastMove: null, round: 1 };
+  const pAwake = rules.secretsOn ? 'all' : (opts.pAwake || []);
+  return { opponent, rules, turn: first, p: mkSide(playerDeck, rules.handSize, pAwake), ai: mkSide(aiDeck, rules.handSize, aiAwake, true), done: false, lastMove: null, round: 1 };
 }
 
 export function place(match, who, handIndex, slot) {

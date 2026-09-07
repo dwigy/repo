@@ -2,11 +2,12 @@
 // Usage: node scripts/sim.mjs [meetings per matchup=2000] [--check]
 import * as B from '../js/meeting.js';
 import { BY_ID, PACKABLE } from '../js/data.js';
+import { trainPool } from '../js/game.js';
 import { REGIONS, STARTERS, GATHERING, HALL } from '../js/campaign.js';
 const N = +(process.argv[2] || 2000); const CHECK = process.argv.includes('--check');
 const rnd = Math.random;
 function pool(node) {
-  if (node.kind === 'train') { const p = PACKABLE.filter(t => t.rarity >= node.minR && t.rarity <= node.maxR); const out = []; while (out.length < 20) out.push(p[Math.floor(rnd() * p.length)].id); return out; }
+  if (node.kind === 'train') return trainPool(node, rnd);
   const pl = node.pool || {}; if (pl.fixed) return pl.fixed.slice();
   const c = PACKABLE.filter(t => t.rarity >= (pl.minR ?? 0) && t.rarity <= (pl.maxR ?? 4)); const out = []; const span = (pl.maxR ?? 4) - (pl.minR ?? 0) + 1;
   while (out.length < 20) { const r = (pl.minR ?? 0) + Math.floor(Math.pow(rnd(), 1.4) * span); const p = c.filter(t => t.rarity === r); const src = p.length ? p : c; out.push(src[Math.floor(rnd() * src.length)].id); }
@@ -27,7 +28,18 @@ function rollPack(pack) {
   }
   return out;
 }
-function legal(ids) { const list = ids.map(id => BY_ID[id]).sort(byPts); const out = []; const byForm = {}; let whole = 0; for (const t of list) { if (out.length >= 20) break; if ((byForm[t.char] || 0) >= 3) continue; if (t.series === 'whole' && whole) continue; out.push(t.id); byForm[t.char] = (byForm[t.char] || 0) + 1; if (t.series === 'whole') whole++; } return out; }
+// Mirrors game.js autoStack: lean into the strongest light, then top up on points.
+function legal(ids) {
+  const list = ids.map(id => BY_ID[id]).sort(byPts);
+  const by = {}; list.forEach(t => (by[t.color] = by[t.color] || []).push(t.pts));
+  let lead = null, score = 0;
+  for (const [c, pts] of Object.entries(by)) { if (pts.length < 12) continue; const v = pts.slice().sort((a, b) => b - a).slice(0, 12).reduce((a, b) => a + b, 0); if (v > score) { score = v; lead = c; } }
+  const out = []; const byForm = {}; let whole = 0;
+  const take = (t) => { if (out.length >= 20) return; if ((byForm[t.char] || 0) >= 3) return; if (t.series === 'whole' && whole) return; out.push(t.id); byForm[t.char] = (byForm[t.char] || 0) + 1; if (t.series === 'whole') whole++; };
+  if (lead) for (const t of list) { if (out.length >= 20) break; if (t.color === lead) take(t); }
+  for (const t of list) { if (out.length >= 20) break; take(t); }
+  return out;
+}
 const byPts = (a, b) => b.pts - a.pts;
 function roadStack(upTo) {
   let owned = STARTERS[0].chips.slice();
@@ -43,7 +55,7 @@ function play(pStack, node, opp) {
   while (!m.done) { if (m.turn === 'p') { const mv = mover('p'); B.place(m, 'p', mv.handIndex, mv.slot); } else { const mv = B.aiChoose(m); B.place(m, 'ai', mv.handIndex, mv.slot); } }
   const ev = B.evaluate(m.p, m.ai, m.rules); return ev.aTotal > ev.bTotal ? 1 : 0;
 }
-function rate(mk, node, opp, n = N) { let w = 0; let st = mk(); for (let i = 0; i < n; i++) { if (i % 25 === 0) st = mk(); w += play(st, node, opp); } return Math.round(100 * w / n); }
+function rate(mk, node, opp, n = N) { let w = 0; let st = mk(); for (let i = 0; i < n; i++) { st = mk(); w += play(st, node, opp); } return Math.round(100 * w / n); }
 const rows = []; const out = [];
 out.push(`# Balance (${N} meetings per matchup)\n\nGreedy players on both sides. "first" is the first stack; "road N" is the best legal stack from light up to that region's tier; "full" is the best from everything.\n`);
 out.push('| Region | Node | diff | first | road N | full |\n| --- | --- | --- | --- | --- | --- |');

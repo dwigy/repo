@@ -1,5 +1,10 @@
 # Collectible and Pack-Opening Experiences: Research for Cartoon Orbit
 
+> **Archived research, pre-world.** This report was commissioned before the game had a
+> world of its own. It studies other products and names the property this build started
+> from, so its vocabulary is retired and its brand references do not describe what ships.
+> Read it for the industry analysis only. Current canon: `docs/WORLD.md`.
+
 Scope: how the best collect-and-reveal products communicate rarity, make variants feel exclusive, stage the reveal, pace the loop, keep people opening "one more" without dark patterns, and let people flex. Each entity is rated on the owner's four axes (unique / user-friendly / art-first / addictive), then principles are extracted with evidence and a concrete "apply to Orbit" note. Where a claim is from memory rather than a fetched source it is marked **(memory)**.
 
 ## 0. Where Orbit stands today (from the screenshots and `js/pack.js`)

@@ -1,5 +1,10 @@
 # Art-First App and Game Studios: What They Do, and What Cartoon Orbit Should Steal
 
+> **Archived research, pre-world.** This report was commissioned before the game had a
+> world of its own. It studies other products and names the property this build started
+> from, so its vocabulary is retired and its brand references do not describe what ships.
+> Read it for the industry analysis only. Current canon: `docs/WORLD.md`.
+
 Research brief for the Cartoon Orbit redesign (fan-made PWA, iPhone Safari, plain HTML/CSS/ES modules). Goal per the owner: chip-art focused, game focused, expensive and luxurious feeling, bespoke rather than "vibe-coded", addictive, and still unmistakably Cartoon Orbit 2003.
 
 Method: one web search pass per entity (page fetches mostly blocked, so search snippets plus prior knowledge), cross-referenced against the current Orbit screenshots (`shots/02-home`, `04-binder`, `05-detail`, `06e-pack-flip1`, `09-match`, `sheet.png`). Where a claim comes from memory rather than a search result it is marked **(memory)**.

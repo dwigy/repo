@@ -98,21 +98,57 @@ export function startNewPlayer(name) {
 
 // Best 12 cards by points (respecting owned counts).
 // The best legal stack of twenty from everything owned (three of a form, one whole fragment).
+// A practice pool: `mix` weights each rarity from minR up, else the band is flat.
+export function trainPool(node, rnd = Math.random) {
+  const out = [];
+  const at = (r) => PACKABLE.filter(t => t.rarity === r);
+  const flat = PACKABLE.filter(t => t.rarity >= node.minR && t.rarity <= node.maxR);
+  while (out.length < B.STACK_SIZE) {
+    let pool = flat;
+    if (node.mix) {
+      let x = rnd(), acc = 0, r = node.minR;
+      for (let k = 0; k < node.mix.length; k++) { acc += node.mix[k]; if (x < acc) { r = node.minR + k; break; } r = node.minR + k; }
+      const p = at(r); if (p.length) pool = p;
+    }
+    out.push(pool[Math.floor(rnd() * pool.length)].id);
+  }
+  return out;
+}
 export function autoStack(s = state, keep = []) {
   const list = [];
   Object.entries(s.collection).forEach(([id, n]) => { for (let i = 0; i < n; i++) list.push(id); });
   list.sort((a, b) => BY_ID[b].pts - BY_ID[a].pts);
+  // A stack that shares a light scores the colour bonus every meeting, so the
+  // builder picks the strongest light it can fill and leans into it, then tops
+  // up on points. Colour-blind greed leaves a third of the score on the table.
+  const lead = bestLight(list, keep);
   const out = keep.slice(); const byForm = {}; let whole = 0;
   out.forEach(id => { const t = BY_ID[id]; if (t) { byForm[t.char] = (byForm[t.char] || 0) + 1; if (t.series === 'whole') whole++; } });
-  for (const id of list) {
-    if (out.length >= B.STACK_SIZE) break;
-    if (out.filter(x => x === id).length >= (s.collection[id] || 0)) continue;
-    const t = BY_ID[id]; if (!t) continue;
-    if ((byForm[t.char] || 0) >= B.MAX_COPIES) continue;
-    if (t.series === 'whole' && whole >= B.MAX_WHOLE) continue;
+  const take = (id) => {
+    if (out.length >= B.STACK_SIZE) return false;
+    if (out.filter(x => x === id).length >= (s.collection[id] || 0)) return false;
+    const t = BY_ID[id]; if (!t) return false;
+    if ((byForm[t.char] || 0) >= B.MAX_COPIES) return false;
+    if (t.series === 'whole' && whole >= B.MAX_WHOLE) return false;
     out.push(id); byForm[t.char] = (byForm[t.char] || 0) + 1; if (t.series === 'whole') whole++;
-  }
+    return true;
+  };
+  if (lead) for (const id of list) { if (out.length >= B.STACK_SIZE) break; if (BY_ID[id] && BY_ID[id].color === lead) take(id); }
+  for (const id of list) { if (out.length >= B.STACK_SIZE) break; take(id); }
   return out;
+}
+// The light with the most point weight in its best twelve, among what is owned.
+function bestLight(list, keep = []) {
+  const by = {};
+  keep.forEach(id => { const t = BY_ID[id]; if (t) by[t.color] = (by[t.color] || []).concat(t.pts); });
+  list.forEach(id => { const t = BY_ID[id]; if (t) (by[t.color] = by[t.color] || []).push(t.pts); });
+  let best = null, score = 0;
+  for (const [c, pts] of Object.entries(by)) {
+    if (pts.length < B.PLAY_SIZE) continue;                       // cannot fill a board with it
+    const v = pts.slice().sort((a, b) => b - a).slice(0, B.PLAY_SIZE).reduce((a, b) => a + b, 0);
+    if (v > score) { score = v; best = c; }
+  }
+  return best;
 }
 export const autoDeck = autoStack;
 // Pad or trim a stack to twenty using what is owned; returns { stack, changed }.
@@ -380,7 +416,7 @@ export function campOpponent(node) {
   return { id: node.id, name, diff: node.diff ?? 0.5, smart: !!node.smart, avatar: node.avatar || 'rookie', reward: node.reward ? node.reward.coins : 0, taunt: '', node, region: r ? r.n : 8 };
 }
 export function campDeck(node) {
-  if (node.kind === 'train') { const pool = PACKABLE.filter(t => t.rarity >= node.minR && t.rarity <= node.maxR); const out = []; while (out.length < B.STACK_SIZE) out.push(pool[Math.floor(Math.random() * pool.length)].id); return out; }
+  if (node.kind === 'train') return trainPool(node);
   const pool = node.pool || {};
   if (pool.mirror) return state.stack.slice();
   if (pool.fixed) return pool.fixed.slice();

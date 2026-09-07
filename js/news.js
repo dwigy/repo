@@ -10,6 +10,8 @@ export const NEWS = [
       'Seven towns, seven Keepers. Each holds a lesson, a telling and a whole fragment. Beat one in a balanced meeting and you hold its Seal.',
       'A corporation is buying its way toward every fragment. It meets you four times, and it never raises its voice.',
       'Seven Seals earn the Hall: twelve seats, an empty thirteenth, and one question with no wrong answer.',
+      'Build a stack and it now leans into one light, the way the colour bonus asks. Practice, players and Keepers were all measured against that.',
+      'A house rule applies to both sides of the table. Where secret powers are awake, yours are awake too.',
     ] },
   { v: '0.9.0', date: '2026-09-06', title: 'Motion',
     items: [

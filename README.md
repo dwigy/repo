@@ -60,7 +60,12 @@ The service worker needs `http://localhost` or `https://`.
 ```
 npm run lint     # vocabulary lint over every user-facing string
 npm run sim      # balance simulation; --write updates docs/balance.md
+npm run smoke    # full arc in a headless browser, cover to the Hall
+npm run ladder   # difficulty grid per Keeper; ONLY, TIERS and DIFFS narrow it
 ```
+
+A meeting is close to deterministic once both stacks are dealt, so the stack roll is
+the sample. Both the simulation and the ladder sweep roll a fresh road stack every match.
 
 ## Project layout
 
