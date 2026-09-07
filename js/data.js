@@ -209,17 +209,17 @@ export const BACKGROUNDS = [
 
 // Training roster: sparring partners available from every region's Train.
 export const OPPONENTS = [
-  { id: 'rex',    name: 'Rookie',     diff: 0.35, minR: 0, maxR: 0, reward: 120, avatar: 'kilo1',     taunt: '[Placeholder line: the rookie.]' },
-  { id: 'betty',  name: 'Collector',  diff: 0.55, minR: 0, maxR: 1, reward: 180, avatar: 'foxtrot1',  taunt: '[Placeholder line: the collector.]' },
-  { id: 'tom',    name: 'Tycoon',     diff: 0.7,  minR: 1, maxR: 2, reward: 240, avatar: 'november2', taunt: '[Placeholder line: the tycoon.]' },
-  { id: 'vendor', name: 'Vendor',     diff: 0.85, minR: 2, maxR: 3, reward: 320, avatar: 'charlie3',  taunt: '[Placeholder line: the vendor.]' },
-  { id: 'master', name: 'Master',     diff: 1.0,  minR: 3, maxR: 4, reward: 500, avatar: 'juliett7',  taunt: '[Placeholder line: the master.]' },
+  { id: 'rex',    name: 'Rookie',     diff: 0.35, minR: 0, maxR: 0, reward: 120, avatar: 'kilo1',     taunt: 'I only just started. Go easy on me.' },
+  { id: 'betty',  name: 'Collector',  diff: 0.55, minR: 0, maxR: 1, reward: 180, avatar: 'foxtrot1',  taunt: 'Every one of mine has a story. Want to hear it?' },
+  { id: 'tom',    name: 'Tycoon',     diff: 0.7,  minR: 1, maxR: 2, reward: 240, avatar: 'november2', taunt: 'I have a shelf for the ones I win.' },
+  { id: 'vendor', name: 'Vendor',     diff: 0.85, minR: 2, maxR: 3, reward: 320, avatar: 'charlie3',  taunt: 'I sell all day. I play at closing time.' },
+  { id: 'master', name: 'Master',     diff: 1.0,  minR: 3, maxR: 4, reward: 500, avatar: 'juliett7',  taunt: 'Show me the board you see. I will show you mine.' },
 ];
 
 export const TRADERS = [
-  { id: 'gus',  name: 'Trader One',   line: '[Placeholder line: trader one.]' },
-  { id: 'vera', name: 'Trader Two',   line: '[Placeholder line: trader two.]' },
-  { id: 'kip',  name: 'Trader Three', line: '[Placeholder line: trader three.]' },
+  { id: 'gus',  name: 'Gus',   line: 'I trade fair. Ask anyone on this street.' },
+  { id: 'vera', name: 'Vera',  line: 'Bring me something I have never carried.' },
+  { id: 'kip',  name: 'Kip',   line: 'Two for one, and I keep the friendlier one.' },
 ];
 
 export const QUESTS = [

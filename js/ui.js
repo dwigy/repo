@@ -705,7 +705,7 @@ function settingsView() {
     <div class="ptab">THEME</div><div class="row wrap">${['system', 'light', 'dark'].map(t => `<button class="obtn small ${(state.settings.theme || 'system') === t ? '' : 'grey'}" data-action="theme" data-id="${t}">${t.toUpperCase()}</button>`).join('')}</div>
     <div class="ptab">HOW TO PLAY</div><button class="obtn grey" data-action="howTo">THE RULES</button>
     <div class="ptab danger">RESET</div><p class="note">Deletes your binder and progress on this device. Make a backup under Device first.</p><button class="obtn grey" data-action="resetConfirm">RESET GAME</button>
-    <p class="fine">[GAME] is a fan-made homage to the classic collect-and-battle web game. It is free and not for sale. Characters are public-domain cartoon stars; portraits are original. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
+    <p class="fine">[GAME] is an original game. Every form, region and story in it is our own. It is free and not for sale. Names shown in brackets are working titles and will change. Fonts: Michroma and Barlow Condensed (SIL Open Font License).</p>
     <div class="verline" data-action="versionTap">[GAME] v${APP_VERSION}${state.settings.debug ? ' · DEBUG' : ''}</div></div>`;
 }
 function deviceView() {
